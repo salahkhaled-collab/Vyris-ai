@@ -1,0 +1,229 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── NextAuth required models ───────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Vela domain models ─────────────────────────────────────────
+
+enum Role {
+  CEO
+  FOUNDER
+  EXECUTIVE
+  MANAGER
+  OTHER
+}
+
+enum WorkspaceType {
+  PERSONAL
+  TEAM
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+
+  role          Role?
+  workspaceType WorkspaceType?
+  onboarded     Boolean        @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  sentMessages TeamMessage[] @relation("MessageAuthor")
+  sentInvites  Invite[]      @relation("InviteSender")
+
+  ownedProjects Project[] @relation("ProjectOwner")
+  ownedTasks    Task[]    @relation("TaskOwner")
+  contacts      Contact[] @relation("ContactOwner")
+  documents     Document[] @relation("DocumentOwner")
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+
+  members  User[]
+  messages TeamMessage[]
+  invites  Invite[]
+  projects Project[]
+  contacts Contact[]
+  documents Document[]
+}
+
+model TeamMessage {
+  id        String   @id @default(cuid())
+  content   String   @db.Text
+  channel   String   @default("message") // "message" | "email"
+  createdAt DateTime @default(now())
+
+  teamId String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  authorId String
+  author   User   @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+
+  recipientId String?
+}
+
+model Invite {
+  id        String   @id @default(cuid())
+  token     String   @unique @default(cuid())
+  teamId    String
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  invitedBy String
+  inviter   User     @relation("InviteSender", fields: [invitedBy], references: [id], onDelete: Cascade)
+
+  // Optional — set when sent via email, null for shareable-link-only invites
+  email String?
+
+  status    String   @default("pending") // "pending" | "accepted" | "revoked"
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  acceptedBy String?  // userId of whoever accepted, once used
+}
+
+enum ProjectStatus {
+  ACTIVE
+  PAUSED
+  DONE
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+model Project {
+  id          String        @id @default(cuid())
+  title       String
+  description String?       @db.Text
+  status      ProjectStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Optional team scoping — null means a personal project, visible only
+  // to the owner; set means visible to the whole team.
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  tasks Task[]
+  documents Document[]
+}
+
+model Task {
+  id        String     @id @default(cuid())
+  title     String
+  status    TaskStatus @default(TODO)
+  dueDate   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projectId String
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  ownerId String
+  owner   User   @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  company   String?
+  role      String?
+  notes     String?  @db.Text
+  tag       String?  // e.g. "Investor", "Press", "Client", "Partner"
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+}
+
+model Document {
+  id        String   @id @default(cuid())
+  filename  String
+  mimeType  String
+  sizeBytes Int
+  data      Bytes    // file content stored directly in Postgres
+
+  createdAt DateTime @default(now())
+
+  ownerId String
+  owner   User   @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Optional: attach to a project, or leave standalone
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+}
+
+// Note: Gmail messages are NOT stored here — the Inbox page fetches
+// them live from Google's API on each load (read-only, no persistence),
+// same pattern as Calendar events. This avoids storing third-party
+// email content in our own database.
