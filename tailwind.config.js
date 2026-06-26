@@ -5,15 +5,26 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        ink: "#0E1116",
-        panel: "#161A22",
-        "panel-2": "#1D222C",
-        line: "rgba(255,255,255,0.07)",
-        brass: "#C9A66B",
-        "brass-soft": "rgba(201,166,107,0.14)",
-        signal: "#7FE0C8",
-        "ink-text": "#E7E9EE",
-        muted: "#8A93A6",
+        // ── Core surfaces ─────────────────────────────────
+        // A refined slate-charcoal palette: slightly cooler,
+        // with more contrast between layers for depth.
+        ink: "#0B0F14",              // deepest background
+        panel: "#111720",            // card / sidebar surface
+        "panel-2": "#1A2030",        // elevated surface (inputs, badges)
+        line: "rgba(148,163,194,0.10)", // borders — slightly blue-tinted
+
+        // ── Accent: refined steel-blue ────────────────────
+        // A sophisticated muted blue that reads as premium
+        // without the heaviness of gold/brass.
+        brass: "#5B8AF5",            // primary accent (was gold)
+        "brass-soft": "rgba(91,138,245,0.12)", // accent surface
+
+        // ── Signal: crisp teal ────────────────────────────
+        signal: "#34D399",           // success / positive (cleaner emerald)
+
+        // ── Typography ────────────────────────────────────
+        "ink-text": "#E8ECF4",       // primary text — cool white
+        muted: "#7B8BA5",            // secondary text — slate
       },
       fontFamily: {
         display: ["Fraunces", "serif"],

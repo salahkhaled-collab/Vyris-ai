@@ -36,7 +36,7 @@ export function Topbar({ eyebrow, title, statusText }: TopbarProps) {
             {statusText}
           </div>
         )}
-        <button className="px-4 py-2 rounded-full text-sm font-medium bg-brass text-[#1a140a]">
+        <button className="px-4 py-2 rounded-full text-sm font-medium bg-brass text-white">
           Ask Vela
         </button>
       </div>
