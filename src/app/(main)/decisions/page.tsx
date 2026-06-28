@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import { CheckCircle2, Circle } from "lucide-react";
 
 export default function DecisionsPage() {
-  const open   = decisions.filter((d) => d.status === "open");
+  const open = decisions.filter((d) => d.status === "open");
   const decided = decisions.filter((d) => d.status === "decided");
 
   return (
@@ -41,7 +41,7 @@ export default function DecisionsPage() {
                 {d.options.map((opt, idx) => {
                   const scoreTone =
                     opt.score >= 75 ? "text-signal" :
-                    opt.score >= 50 ? "text-brass"  : "text-muted";
+                      opt.score >= 50 ? "text-brass" : "text-muted";
 
                   return (
                     <div
