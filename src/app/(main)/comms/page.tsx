@@ -40,7 +40,7 @@ export default function CommsPage() {
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-8">
         <p className="text-sm text-muted max-w-2xl">
-          A combined log of what&apos;s gone out — team messages and Vela&apos;s drafted
+          A combined log of what&apos;s gone out — team messages and vyris&apos;s drafted
           replies. For your actual inbox, see{" "}
           <Link href="/inbox" className="text-brass hover:underline">
             Inbox
@@ -55,7 +55,7 @@ export default function CommsPage() {
         <section className="space-y-3">
           <div className="flex items-center gap-2">
             <Bot className="w-4 h-4 text-signal" strokeWidth={1.75} />
-            <h2 className="font-display text-lg">Vela Drafts</h2>
+            <h2 className="font-display text-lg">vyris Drafts</h2>
           </div>
           <Panel className="p-6">
             <div className="flex items-center gap-3 text-sm text-muted">

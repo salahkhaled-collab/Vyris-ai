@@ -80,11 +80,11 @@ export default function DecisionsPage() {
                 })}
               </div>
 
-              {/* Vela recommendation */}
+              {/* Vyris recommendation */}
               {d.recommendation && (
                 <div className="mt-6 flex gap-3 items-start rounded-xl bg-panel-2 border border-line p-4">
                   <span className="text-[11px] uppercase tracking-[0.18em] text-brass pt-0.5 whitespace-nowrap">
-                    Vela recommends
+                    Vyris recommends
                   </span>
                   <p className="text-sm text-muted leading-relaxed">{d.recommendation}</p>
                 </div>

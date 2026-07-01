@@ -40,7 +40,7 @@ interface OutreachItem {
   aiDrafted?: boolean;
 }
 
-interface VelaInsight {
+interface VyrisInsight {
   id: string;
   text: string;
   type: "opportunity" | "risk" | "action";
@@ -62,15 +62,15 @@ const DEALS: Deal[] = [
 ];
 
 const RECENT_ACTIVITY: OutreachItem[] = [
-  { id: "a1", type: "call",    company: "Meridian Health",    contact: "Rachel Torres",  summary: "Discussed revised pricing — aligned on scope, want adjusted payment terms", time: "2 hr ago" },
-  { id: "a2", type: "email",   company: "Atlas Financial",    contact: "James Liu",      summary: "Vela drafted follow-up on proposal. Awaiting your review.", time: "4 hr ago", aiDrafted: true },
-  { id: "a3", type: "meeting", company: "AeroVault",          contact: "Liam Chen",      summary: "45-min discovery call — strong product fit, budget confirmed for Q3", time: "Today, 10:00" },
-  { id: "a4", type: "email",   company: "Northwind Logistics", contact: "Erik Johansson", summary: "Sent final contract draft with updated SLA terms", time: "Today, 09:15" },
-  { id: "a5", type: "note",    company: "Ironclad Industries", contact: "Marcus Webb",    summary: "Warm intro from Sarah K. — large enterprise, long sales cycle expected", time: "Yesterday" },
-  { id: "a6", type: "email",   company: "Cascade Media",      contact: "Olivia Hart",    summary: "Vela prepared personalized demo deck based on their media verticals", time: "Yesterday", aiDrafted: true },
+  { id: "a1", type: "call", company: "Meridian Health", contact: "Rachel Torres", summary: "Discussed revised pricing — aligned on scope, want adjusted payment terms", time: "2 hr ago" },
+  { id: "a2", type: "email", company: "Atlas Financial", contact: "James Liu", summary: "Vyris drafted follow-up on proposal. Awaiting your review.", time: "4 hr ago", aiDrafted: true },
+  { id: "a3", type: "meeting", company: "AeroVault", contact: "Liam Chen", summary: "45-min discovery call — strong product fit, budget confirmed for Q3", time: "Today, 10:00" },
+  { id: "a4", type: "email", company: "Northwind Logistics", contact: "Erik Johansson", summary: "Sent final contract draft with updated SLA terms", time: "Today, 09:15" },
+  { id: "a5", type: "note", company: "Ironclad Industries", contact: "Marcus Webb", summary: "Warm intro from Sarah K. — large enterprise, long sales cycle expected", time: "Yesterday" },
+  { id: "a6", type: "email", company: "Cascade Media", contact: "Olivia Hart", summary: "Vyris prepared personalized demo deck based on their media verticals", time: "Yesterday", aiDrafted: true },
 ];
 
-const VELA_INSIGHTS: VelaInsight[] = [
+const VYRIS_INSIGHTS: VyrisInsight[] = [
   { id: "i1", text: "Meridian Health deal is 2× more likely to close if contract revisions are sent today — their board meets Friday.", type: "action" },
   { id: "i2", text: "Atlas Financial hasn't opened the proposal in 48 hours. Suggest a brief check-in call.", type: "risk" },
   { id: "i3", text: "Ironclad Industries matches your ideal customer profile — similar to Pinnacle Advisory (closed $380K last month).", type: "opportunity" },
@@ -80,12 +80,12 @@ const VELA_INSIGHTS: VelaInsight[] = [
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
 const STAGE_CONFIG: Record<DealStage, { label: string; color: string; dotColor: string }> = {
-  lead:        { label: "Lead",        color: "text-muted bg-panel-2",                dotColor: "bg-white/20" },
-  qualified:   { label: "Qualified",   color: "text-violet-400 bg-violet-500/[0.10]", dotColor: "bg-violet-400" },
-  proposal:    { label: "Proposal",    color: "text-sky-400 bg-sky-500/[0.10]",       dotColor: "bg-sky-400" },
-  negotiation: { label: "Negotiation", color: "text-brass bg-brass-soft",             dotColor: "bg-brass" },
-  closed_won:  { label: "Closed Won",  color: "text-signal bg-signal/[0.10]",         dotColor: "bg-signal" },
-  closed_lost: { label: "Closed Lost", color: "text-red-400 bg-red-500/[0.10]",       dotColor: "bg-red-400" },
+  lead: { label: "Lead", color: "text-muted bg-panel-2", dotColor: "bg-white/20" },
+  qualified: { label: "Qualified", color: "text-violet-400 bg-violet-500/[0.10]", dotColor: "bg-violet-400" },
+  proposal: { label: "Proposal", color: "text-sky-400 bg-sky-500/[0.10]", dotColor: "bg-sky-400" },
+  negotiation: { label: "Negotiation", color: "text-brass bg-brass-soft", dotColor: "bg-brass" },
+  closed_won: { label: "Closed Won", color: "text-signal bg-signal/[0.10]", dotColor: "bg-signal" },
+  closed_lost: { label: "Closed Lost", color: "text-red-400 bg-red-500/[0.10]", dotColor: "bg-red-400" },
 };
 
 const ACTIVITY_ICON: Record<ActivityType, typeof Mail> = {
@@ -93,10 +93,10 @@ const ACTIVITY_ICON: Record<ActivityType, typeof Mail> = {
 };
 
 const ACTIVITY_TONE: Record<ActivityType, string> = {
-  email:   "bg-sky-500/[0.10] text-sky-400",
-  call:    "bg-signal/[0.10] text-signal",
+  email: "bg-sky-500/[0.10] text-sky-400",
+  call: "bg-signal/[0.10] text-signal",
   meeting: "bg-violet-500/[0.10] text-violet-400",
-  note:    "bg-amber-500/[0.10] text-amber-400",
+  note: "bg-amber-500/[0.10] text-amber-400",
 };
 
 function fmt(value: number): string {
@@ -397,7 +397,7 @@ function ActivityFeed({ activities }: { activities: OutreachItem[] }) {
                   {a.aiDrafted && (
                     <span className="inline-flex items-center gap-1 text-[10px] text-brass bg-brass-soft px-2 py-0.5 rounded-full">
                       <Sparkles className="w-2.5 h-2.5" strokeWidth={2} />
-                      Vela drafted
+                      vyris drafted
                     </span>
                   )}
                 </div>
@@ -412,15 +412,15 @@ function ActivityFeed({ activities }: { activities: OutreachItem[] }) {
   );
 }
 
-// ── Vela insights ──────────────────────────────────────────────────────────────
+// ── Vyris insights ──────────────────────────────────────────────────────────────
 
-function InsightsPanel({ insights }: { insights: VelaInsight[] }) {
-  const tone: Record<VelaInsight["type"], string> = {
+function InsightsPanel({ insights }: { insights: VyrisInsight[] }) {
+  const tone: Record<VyrisInsight["type"], string> = {
     opportunity: "text-signal",
-    risk:        "text-brass",
-    action:      "text-muted",
+    risk: "text-brass",
+    action: "text-muted",
   };
-  const icon: Record<VelaInsight["type"], string> = {
+  const icon: Record<VyrisInsight["type"], string> = {
     opportunity: "↗", risk: "▲", action: "→",
   };
 
@@ -429,7 +429,7 @@ function InsightsPanel({ insights }: { insights: VelaInsight[] }) {
       <div className="flex items-center justify-between mb-5">
         <div className="flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-muted" strokeWidth={1.75} />
-          <h3 className="font-display text-xl">Vela&apos;s Insights</h3>
+          <h3 className="font-display text-xl">Vyris&apos;s Insights</h3>
         </div>
         <span className="w-1.5 h-1.5 rounded-full bg-signal" />
       </div>
@@ -518,7 +518,7 @@ export default function BizDevPage() {
             <span className="text-muted">Pipeline is trending strong.</span>
           </h2>
           <p className="mt-4 text-sm leading-relaxed text-muted max-w-xl">
-            Meridian Health is ready for revised contract terms, and Atlas Financial hasn&apos;t opened your proposal yet. Vela has drafted follow-ups for both.
+            Meridian Health is ready for revised contract terms, and Atlas Financial hasn&apos;t opened your proposal yet. vyris has drafted follow-ups for both.
           </p>
           <div className="mt-6 flex gap-3">
             <button className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity">
@@ -543,7 +543,7 @@ export default function BizDevPage() {
           <div className="lg:col-span-2">
             <ActivityFeed activities={RECENT_ACTIVITY} />
           </div>
-          <InsightsPanel insights={VELA_INSIGHTS} />
+          <InsightsPanel insights={VYRIS_INSIGHTS} />
         </section>
       </main>
 

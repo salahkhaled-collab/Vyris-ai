@@ -114,7 +114,7 @@ export default function InboxPage() {
               <div>
                 <div className="text-sm font-medium mb-1">Connect Gmail</div>
                 <div className="text-xs text-muted">
-                  See your real inbox here, read-only — Vela never sends or deletes anything.
+                  See your real inbox here, read-only — Vyris never sends or deletes anything.
                 </div>
               </div>
               <button
@@ -177,7 +177,7 @@ export default function InboxPage() {
           )}
         </section>
 
-        {/* System notifications (Vela-generated, not email) */}
+        {/* System notifications (Vyris-generated, not email) */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-xl">Notifications</h2>

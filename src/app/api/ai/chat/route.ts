@@ -25,7 +25,7 @@ function buildSystemPrompt(): string {
     .map((r) => `- ${r.name}: ${r.trigger} → ${r.action}`)
     .join("\n");
 
-  return `You are Vela, an AI Chief of Staff embedded in a premium executive productivity app.
+  return `You are Vyris, an AI Chief of Staff embedded in a premium executive productivity app.
 Your tone is calm, precise, and direct — like a trusted senior aide, not a chatty assistant.
 Keep responses concise (a few sentences to a short paragraph) unless asked for detail.
 
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     console.error("Anthropic API error:", err);
     return NextResponse.json(
-      { error: "anthropic_api_error", message: "Vela couldn't respond right now. Try again." },
+      { error: "anthropic_api_error", message: "Vyris couldn't respond right now. Try again." },
       { status: 502 }
     );
   }

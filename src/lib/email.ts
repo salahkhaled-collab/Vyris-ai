@@ -1,6 +1,6 @@
 import { Resend } from "resend";
 
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "Vela <onboarding@resend.dev>";
+const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL || "Vyris <onboarding@resend.dev>";
 
 /**
  * Sends an email via Resend. Returns { sent: false, reason } instead of
@@ -57,9 +57,9 @@ export function inviteEmailHtml(params: {
 }): string {
   return `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
-      <h2 style="color: #0E1116;">You're invited to ${escapeHtml(params.teamName)} on Vela</h2>
+      <h2 style="color: #0E1116;">You're invited to ${escapeHtml(params.teamName)} on Vyris</h2>
       <p style="color: #444; line-height: 1.6;">
-        ${escapeHtml(params.inviterName)} invited you to join their team workspace on Vela,
+        ${escapeHtml(params.inviterName)} invited you to join their team workspace on Vyris,
         an AI Chief of Staff. Click below to accept and get started.
       </p>
       <a href="${params.inviteUrl}"
@@ -85,7 +85,7 @@ export function teamMessageEmailHtml(params: { senderName: string; content: stri
         )}</p>
       </div>
       <p style="color: #999; font-size: 12px; margin-top: 24px;">
-        Sent via Vela. Reply directly to this email or open Vela to continue the conversation.
+        Sent via Vyris. Reply directly to this email or open Vyris to continue the conversation.
       </p>
     </div>
   `;

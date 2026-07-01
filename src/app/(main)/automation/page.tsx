@@ -41,7 +41,7 @@ export default function AutomationPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        setError(data.message ?? "Vela couldn't respond right now.");
+        setError(data.message ?? "Vyris couldn't respond right now.");
         return;
       }
 
@@ -53,7 +53,7 @@ export default function AutomationPage() {
       };
       setMessages((prev) => [...prev, reply]);
     } catch {
-      setError("Could not reach Vela. Check your connection and try again.");
+      setError("Could not reach Vyris. Check your connection and try again.");
     } finally {
       setPending(false);
     }
@@ -73,7 +73,7 @@ export default function AutomationPage() {
         {/* Chat */}
         <Panel className="lg:col-span-2 flex flex-col overflow-hidden">
           <div className="px-6 py-5 border-b border-line flex items-center justify-between">
-            <h3 className="font-display text-xl">Ask Vela</h3>
+            <h3 className="font-display text-xl">Ask Vyris</h3>
             <span className="w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_0_4px_rgba(127,224,200,0.12)]" />
           </div>
 
@@ -117,7 +117,7 @@ export default function AutomationPage() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
-              placeholder="Ask Vela anything — delegate a task, request a summary..."
+              placeholder="Ask Vyris anything — delegate a task, request a summary..."
               disabled={pending}
               className="flex-1 bg-panel-2 border border-line rounded-lg px-4 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass disabled:opacity-60"
             />

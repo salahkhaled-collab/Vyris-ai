@@ -17,7 +17,7 @@ export const metrics: MetricCard[] = [
   { id: "decisions", label: "Open Decisions", value: 3, sub: "2 due today", subTone: "signal", category: "decision" },
   { id: "projects", label: "Active Projects", value: 12, sub: "4 at risk", subTone: "muted", category: "execution" },
   { id: "meetings", label: "Meetings Today", value: 5, sub: "Next in 42 min", subTone: "muted", category: "external" },
-  { id: "inbox", label: "Inbox Triage", value: 18, sub: "Vela drafted 11 replies", subTone: "signal", category: "execution" },
+  { id: "inbox", label: "Inbox Triage", value: 18, sub: "Vyris drafted 11 replies", subTone: "signal", category: "execution" },
 ];
 
 export const priorityLedger: PriorityItem[] = [
@@ -75,7 +75,7 @@ export const todaysSchedule: ScheduleItem[] = [
   { id: "s4", time: "16:30", title: "1:1 — Head of Product", meta: "30 min", highlight: false },
 ];
 
-export const velaActivity: ActivityItem[] = [
+export const vyrisActivity: ActivityItem[] = [
   { id: "a1", text: "Drafted 11 email replies, awaiting your approval" },
   { id: "a2", text: "Summarized Tuesday's board call into 4 action items" },
   { id: "a3", text: "Flagged a scheduling conflict next Thursday" },
@@ -242,7 +242,7 @@ export const notifications: Notification[] = [
   },
   {
     id: "n2",
-    title: "Vela drafted 11 email replies",
+    title: "Vyris drafted 11 email replies",
     detail: "Awaiting your approval before sending.",
     source: "AI & Automation",
     time: "28 min ago",
@@ -295,7 +295,7 @@ export const teamMembers: TeamMember[] = [
     name: "Maya Chen",
     role: "Head of Product",
     department: "Product",
-    email: "maya@vela.app",
+    email: "maya@vyris.app",
     phone: "+1 (415) 555-0182",
     status: "online",
     timezone: "PST · San Francisco",
@@ -305,7 +305,7 @@ export const teamMembers: TeamMember[] = [
     name: "David Okafor",
     role: "VP Engineering",
     department: "Engineering",
-    email: "david@vela.app",
+    email: "david@vyris.app",
     phone: "+1 (212) 555-0347",
     status: "online",
     timezone: "EST · New York",
@@ -315,7 +315,7 @@ export const teamMembers: TeamMember[] = [
     name: "Priya Nair",
     role: "Head of Marketing",
     department: "Marketing",
-    email: "priya@vela.app",
+    email: "priya@vyris.app",
     phone: "+44 20 7946 0821",
     status: "away",
     timezone: "GMT · London",
@@ -325,7 +325,7 @@ export const teamMembers: TeamMember[] = [
     name: "Tom Reyes",
     role: "Finance Lead",
     department: "Finance",
-    email: "tom@vela.app",
+    email: "tom@vyris.app",
     phone: "+1 (312) 555-0593",
     status: "offline",
     timezone: "CST · Chicago",
@@ -335,7 +335,7 @@ export const teamMembers: TeamMember[] = [
     name: "Sarah Klein",
     role: "Operations Manager",
     department: "Operations",
-    email: "sarah@vela.app",
+    email: "sarah@vyris.app",
     phone: "+1 (650) 555-0274",
     status: "online",
     timezone: "PST · San Francisco",
@@ -345,7 +345,7 @@ export const teamMembers: TeamMember[] = [
     name: "James Whitfield",
     role: "General Counsel",
     department: "Legal",
-    email: "james@vela.app",
+    email: "james@vyris.app",
     phone: "+1 (202) 555-0461",
     status: "online",
     timezone: "EST · Washington D.C.",
@@ -355,7 +355,7 @@ export const teamMembers: TeamMember[] = [
     name: "Aisha Oduya",
     role: "Chief of Staff",
     department: "Executive",
-    email: "aisha@vela.app",
+    email: "aisha@vyris.app",
     phone: "+1 (415) 555-0739",
     status: "away",
     timezone: "PST · San Francisco",
@@ -365,7 +365,7 @@ export const teamMembers: TeamMember[] = [
     name: "Leo Martínez",
     role: "Head of Design",
     department: "Design",
-    email: "leo@vela.app",
+    email: "leo@vyris.app",
     phone: "+34 91 555 0126",
     status: "online",
     timezone: "CET · Barcelona",

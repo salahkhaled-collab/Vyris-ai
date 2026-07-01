@@ -20,7 +20,7 @@ export function PlaceholderPage({ eyebrow, title, icon: Icon, suggestions }: Pla
           <p className="text-sm text-muted leading-relaxed mb-6">
             This page exists in the navigation but doesn&apos;t have real content yet —
             building it now would mean inventing filler rather than something you&apos;d
-            actually use. Tell Vela what should live here and it'll get built for real.
+            actually use. Tell Vyris what should live here and it'll get built for real.
           </p>
           <div className="text-left bg-panel-2 rounded-xl p-4">
             <div className="text-[11px] uppercase tracking-[0.14em] text-muted mb-2">

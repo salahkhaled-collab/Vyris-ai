@@ -4,7 +4,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
 /**
- * NextAuth configuration for Vela.
+ * NextAuth configuration for Vyris.
  *
  * Uses the Prisma adapter with database-backed sessions. Google OAuth
  * tokens (access + refresh) are stored in the `Account` table by the

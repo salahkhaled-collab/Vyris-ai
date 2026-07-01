@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
-import { priorityLedger, velaActivity } from "@/lib/mock-data";
+import { priorityLedger, vyrisActivity } from "@/lib/mock-data";
 import { SchedulePanel } from "@/components/dashboard/SchedulePanel";
 import { useUser } from "@/lib/user-context";
 import { sortLedgerForRole } from "@/lib/role-priority";
@@ -15,6 +15,14 @@ const urgencyStyles = {
   normal: "bg-panel-2 text-muted",
 };
 
+function formatBriefingDate(date: Date) {
+  return date.toLocaleDateString("en-US", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+}
+
 export default function DashboardPage() {
   const { role } = useUser();
 
@@ -23,29 +31,36 @@ export default function DashboardPage() {
     [role]
   );
 
+  const handleReviewPriorities = () => {
+    // TODO: wire to priority review flow
+  };
+
+  const handleDelegateToVyris = () => {
+    // TODO: wire to delegation flow
+  };
+
   return (
     <>
       <Topbar
-        eyebrow="Sunday, 14 June"
+        eyebrow={formatBriefingDate(new Date())}
         title="Command Center"
-        statusText="Vela is monitoring 6 threads"
+        statusText="Vyris is monitoring 6 threads"
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">
 
         {/* ── Hero Briefing ── */}
         <Panel className="p-8 relative overflow-hidden">
-          {/* Ambient decoration — kept very subtle */}
           <svg
             className="absolute -right-16 -top-16 opacity-[0.05] animate-orbit-drift pointer-events-none"
             width="280"
             height="280"
             viewBox="0 0 320 320"
           >
-            <circle cx="160" cy="160" r="150" fill="none" stroke="#C9A66B" strokeWidth="1" />
-            <circle cx="160" cy="160" r="110" fill="none" stroke="#C9A66B" strokeWidth="1" />
-            <circle cx="160" cy="10"  r="5"   fill="#C9A66B" />
-            <circle cx="270" cy="160" r="3"   fill="#7FE0C8" />
+            <circle cx="160" cy="160" r="150" fill="none" stroke="currentColor" strokeWidth="1" className="text-brass" />
+            <circle cx="160" cy="160" r="110" fill="none" stroke="currentColor" strokeWidth="1" className="text-brass" />
+            <circle cx="160" cy="10" r="5" fill="currentColor" className="text-brass" />
+            <circle cx="270" cy="160" r="3" fill="currentColor" className="text-signal" />
           </svg>
 
           <div className="relative max-w-2xl">
@@ -62,11 +77,19 @@ export default function DashboardPage() {
               group still has an open agenda item.
             </p>
             <div className="mt-6 flex gap-3">
-              <button className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity">
+              <button
+                type="button"
+                onClick={handleReviewPriorities}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity"
+              >
                 Review priorities
               </button>
-              <button className="px-4 py-2 rounded-lg text-sm font-medium bg-panel-2 hover:bg-white/[0.06] transition-colors">
-                Delegate to Vela
+              <button
+                type="button"
+                onClick={handleDelegateToVyris}
+                className="px-4 py-2 rounded-lg text-sm font-medium bg-panel-2 hover:bg-white/[0.06] transition-colors"
+              >
+                Delegate to Vyris
               </button>
             </div>
           </div>
@@ -75,7 +98,6 @@ export default function DashboardPage() {
         {/* ── Main content: Ledger (wide) + Side column ── */}
         <section className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-          {/* Priority Ledger — full attention, no competition */}
           <Panel className="lg:col-span-2 overflow-hidden">
             <div className="px-6 py-5 flex items-center justify-between border-b border-line">
               <h3 className="font-display text-xl">Priority Ledger</h3>
@@ -117,22 +139,20 @@ export default function DashboardPage() {
             </div>
           </Panel>
 
-          {/* Side column: Schedule + Vela Activity */}
           <div className="space-y-6">
             <SchedulePanel />
 
             <Panel className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-display text-xl">Vela&apos;s Activity</h3>
-                {/* Live pulse indicator */}
+                <h3 className="font-display text-xl">Vyris&apos;s Activity</h3>
                 <span className="w-1.5 h-1.5 rounded-full bg-signal shadow-[0_0_0_4px_rgba(127,224,200,0.12)]" />
               </div>
               <ul className="space-y-3 text-sm">
-                {velaActivity.map((a) => (
-                  <li key={a.id} className="flex gap-2 items-start">
-                    <span className="text-signal mt-px shrink-0">→</span>
-                    <span className="text-muted leading-snug">{a.text}</span>
-                  </li>
+               {vyrisActivity.map((activity) => (
+         <li key={activity.id} className="flex gap-2 items-start">
+          <span className="text-signal mt-px shrink-0">→</span>
+           <span className="text-muted leading-snug">{activity.text}</span>
+         </li>
                 ))}
               </ul>
             </Panel>

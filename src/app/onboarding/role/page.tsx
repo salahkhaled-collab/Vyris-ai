@@ -9,7 +9,7 @@ const roles: { id: Role; label: string; description: string }[] = [
   { id: "FOUNDER", label: "Founder", description: "Building the company, wears every hat" },
   { id: "EXECUTIVE", label: "Executive", description: "Leads a function, reports to the top" },
   { id: "MANAGER", label: "Manager", description: "Runs a team, executes against strategy" },
-  { id: "OTHER", label: "Other", description: "Something else — Vela adapts either way" },
+  { id: "OTHER", label: "Other", description: "Something else — vyris adapts either way" },
 ];
 
 export default function RolePage() {
@@ -32,7 +32,7 @@ export default function RolePage() {
         </div>
         <h1 className="font-display text-3xl mb-2">What&apos;s your role?</h1>
         <p className="text-sm text-muted mb-8">
-          This helps Vela prioritize what surfaces in your Command Center.
+          This helps Vyris prioritize what surfaces in your Command Center.
         </p>
 
         <div className="space-y-2">

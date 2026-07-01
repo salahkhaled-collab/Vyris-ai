@@ -32,14 +32,14 @@ interface Member {
 // ── Seed data ─────────────────────────────────────────────────────────────────
 
 const SEED: Member[] = [
-  { id: "m1", name: "Maya Chen",       role: "Head of Product",    department: "Product",     email: "maya@vela.app",   phone: "+1 (415) 555-0182", photo: null, status: "online"  },
-  { id: "m2", name: "David Okafor",    role: "VP Engineering",     department: "Engineering", email: "david@vela.app",  phone: "+1 (212) 555-0347", photo: null, status: "online"  },
-  { id: "m3", name: "Priya Nair",      role: "Head of Marketing",  department: "Marketing",   email: "priya@vela.app",  phone: "+44 20 7946 0821",  photo: null, status: "away"    },
-  { id: "m4", name: "Tom Reyes",       role: "Finance Lead",       department: "Finance",     email: "tom@vela.app",    phone: "+1 (312) 555-0593", photo: null, status: "offline" },
-  { id: "m5", name: "Sarah Klein",     role: "Operations Manager", department: "Operations",  email: "sarah@vela.app",  phone: "+1 (650) 555-0274", photo: null, status: "online"  },
-  { id: "m6", name: "James Whitfield", role: "General Counsel",    department: "Legal",       email: "james@vela.app",  phone: "+1 (202) 555-0461", photo: null, status: "online"  },
-  { id: "m7", name: "Aisha Oduya",     role: "Chief of Staff",     department: "Executive",   email: "aisha@vela.app",  phone: "+1 (415) 555-0739", photo: null, status: "away"    },
-  { id: "m8", name: "Leo Martínez",    role: "Head of Design",     department: "Design",      email: "leo@vela.app",    phone: "+34 91 555 0126",   photo: null, status: "online"  },
+  { id: "m1", name: "Maya Chen",       role: "Head of Product",    department: "Product",     email: "maya@vyris.app",   phone: "+1 (415) 555-0182", photo: null, status: "online"  },
+  { id: "m2", name: "David Okafor",    role: "VP Engineering",     department: "Engineering", email: "david@vyris.app",  phone: "+1 (212) 555-0347", photo: null, status: "online"  },
+  { id: "m3", name: "Priya Nair",      role: "Head of Marketing",  department: "Marketing",   email: "priya@vyris.app",  phone: "+44 20 7946 0821",  photo: null, status: "away"    },
+  { id: "m4", name: "Tom Reyes",       role: "Finance Lead",       department: "Finance",     email: "tom@vyris.app",    phone: "+1 (312) 555-0593", photo: null, status: "offline" },
+  { id: "m5", name: "Sarah Klein",     role: "Operations Manager", department: "Operations",  email: "sarah@vyris.app",  phone: "+1 (650) 555-0274", photo: null, status: "online"  },
+  { id: "m6", name: "James Whitfield", role: "General Counsel",    department: "Legal",       email: "james@vyris.app",  phone: "+1 (202) 555-0461", photo: null, status: "online"  },
+  { id: "m7", name: "Aisha Oduya",     role: "Chief of Staff",     department: "Executive",   email: "aisha@vyris.app",  phone: "+1 (415) 555-0739", photo: null, status: "away"    },
+  { id: "m8", name: "Leo Martínez",    role: "Head of Design",     department: "Design",      email: "leo@vyris.app",    phone: "+34 91 555 0126",   photo: null, status: "online"  },
 ];
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -412,7 +412,7 @@ function AddMemberModal({ onClose, onAdd }: { onClose: () => void; onAdd: (m: Me
 
 // ── Page ──────────────────────────────────────────────────────────────────────
 
-const STORAGE_KEY = "vela-team-members";
+const STORAGE_KEY = "vyris-team-members";
 
 function loadMembers(): Member[] {
   if (typeof window === "undefined") return SEED;

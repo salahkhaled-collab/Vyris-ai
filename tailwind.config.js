@@ -5,26 +5,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ── Core surfaces ─────────────────────────────────
-        // A refined slate-charcoal palette: slightly cooler,
-        // with more contrast between layers for depth.
+        // ── Core surfaces — neutral charcoal, no blue tint ──
         ink: "#111114",              // deepest background
         panel: "#16161a",            // card / sidebar surface
         "panel-2": "#1a1a1f",        // elevated surface (inputs, badges)
-        line: "rgba(255,255,255,0.06)", // borders — slightly blue-tinted
+        line: "rgba(255,255,255,0.06)", // neutral border
 
-        // ── Accent: refined steel-blue ────────────────────
-        // A sophisticated muted blue that reads as premium
-        // without the heaviness of gold/brass.
-        brass: "#7070a8",            // primary accent (was gold)
-        "brass-soft": "rgba(112,112,168,0.15)", // accent surface
+        // ── Accent: warm taupe/bronze ──────────────────────
+        brass: "#a89478",            // primary accent
+        "brass-soft": "rgba(168,148,120,0.15)", // accent surface
 
-        // ── Signal: crisp teal ────────────────────────────
-        signal: "#5a9e7a",           // success / positive (cleaner emerald)
+        // ── Signal: muted emerald, kept distinct from brass ──
+        signal: "#5a9e7a",
 
-        // ── Typography ────────────────────────────────────
-        "ink-text": "#e8e8ed",       // primary text — cool white
-        muted: "#4a4a52",            // secondary text — slate
+        // ── Typography ──────────────────────────────────────
+        "ink-text": "#e8e8ed",
+        muted: "#4a4a52",
       },
       fontFamily: {
         display: ["Fraunces", "serif"],

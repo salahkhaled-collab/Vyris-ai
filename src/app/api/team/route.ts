@@ -100,7 +100,7 @@ export async function POST(req: NextRequest) {
     } else {
       emailResult = await sendEmail({
         to: recipient.email,
-        subject: `Message from ${session.user.name ?? "a teammate"} on Vela`,
+        subject: `Message from ${session.user.name ?? "a teammate"} on Vyris`,
         html: teamMessageEmailHtml({
           senderName: session.user.name ?? "A teammate",
           content: body.content.trim(),

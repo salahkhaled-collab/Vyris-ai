@@ -4,7 +4,7 @@ import { UserProvider } from "@/lib/user-context";
 import { AuthProvider } from "@/lib/auth-provider";
 
 export const metadata: Metadata = {
-  title: "Vela — AI Chief of Staff",
+  title: "Vyris — AI Chief of Staff",
   description: "Your AI-powered Chief of Staff for strategic execution.",
 };
 

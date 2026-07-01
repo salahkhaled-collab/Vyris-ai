@@ -21,13 +21,13 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
   if (!doc) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
 
-  return new NextResponse(doc.data, {
-    headers: {
-      "Content-Type": doc.mimeType,
-      "Content-Disposition": `attachment; filename="${doc.filename}"`,
-      "Content-Length": String(doc.sizeBytes),
-    },
-  });
+  return new NextResponse(new Uint8Array(doc.data), {
+  headers: {
+    "Content-Type": doc.mimeType,
+    "Content-Disposition": `attachment; filename="${doc.filename}"`,
+    "Content-Length": String(doc.sizeBytes),
+  },
+});
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {

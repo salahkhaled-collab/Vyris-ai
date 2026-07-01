@@ -23,7 +23,7 @@ function LoginContent() {
         <div className="w-10 h-10 rounded-full border border-brass flex items-center justify-center mx-auto mb-6">
           <div className="w-2.5 h-2.5 rounded-full bg-brass" />
         </div>
-        <h1 className="font-display text-3xl mb-2">Vela</h1>
+        <h1 className="font-display text-3xl mb-2">Vyris</h1>
         <p className="text-sm text-muted mb-8">
           Sign in to access your Command Center, calendar, and AI Chief of Staff.
         </p>
@@ -54,7 +54,7 @@ function LoginContent() {
         </button>
 
         <p className="text-[11px] text-muted mt-6 leading-relaxed">
-          Vela requests read-only calendar access to populate your Command Center.
+          Vyris requests read-only calendar access to populate your Command Center.
           You can revoke access at any time from your Google account settings.
         </p>
       </div>

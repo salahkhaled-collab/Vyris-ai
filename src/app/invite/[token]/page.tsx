@@ -54,7 +54,7 @@ export default function InvitePage() {
 
         {status === "unauthenticated" && (
           <>
-            <h1 className="font-display text-2xl mb-2">You&apos;ve been invited to Vela</h1>
+            <h1 className="font-display text-2xl mb-2">You&apos;ve been invited to Vyris</h1>
             <p className="text-sm text-muted mb-8">
               Sign in with Google to accept and join the team.
             </p>

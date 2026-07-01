@@ -45,7 +45,7 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
-// ── Vela domain models ─────────────────────────────────────────
+// ── Vyris domain models ─────────────────────────────────────────
 
 enum Role {
   CEO

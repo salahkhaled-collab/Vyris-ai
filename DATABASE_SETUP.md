@@ -10,8 +10,8 @@
 ```bash
 brew install postgresql@16
 brew services start postgresql@16
-createdb vela
-# DATABASE_URL=postgresql://localhost:5432/vela
+createdb vyris
+# DATABASE_URL=postgresql://localhost:5432/vyris
 ```
 
 ## 2. Enable both Google APIs
@@ -63,8 +63,8 @@ strategy changed from JWT to database-backed). Existing sign-ins won't
 have the new scope. To fix:
 
 1. Go to https://myaccount.google.com/permissions
-2. Find "Vela" (or your app name) and remove access.
-3. Sign out of Vela and sign back in — you'll be asked to consent to
+2. Find "Vyris" (or your app name) and remove access.
+3. Sign out of Vyris and sign back in — you'll be asked to consent to
    both Calendar and Gmail access this time.
 
 ## What's wired up
@@ -77,7 +77,7 @@ have the new scope. To fix:
 - **Gmail**: `/api/gmail` reads the 15 most recent inbox messages
   (sender, subject, snippet, read/unread) — metadata only, never the
   full email body. Shown in a dedicated "Email" section on the Inbox
-  page, kept separate from Vela's own system notifications below it.
+  page, kept separate from Vyris's own system notifications below it.
 - **Onboarding profile** (role, workspace type): lives on the `User`
   row, via `GET/PATCH /api/profile`.
 - **Team**: choosing "Team" in onboarding creates a `Team` row. The
@@ -93,7 +93,7 @@ No invite-link flow yet. To add a second member:
 
 ## Gmail integration notes / limitations
 
-- Read-only. Vela cannot send, delete, or modify anything in Gmail —
+- Read-only. Vyris cannot send, delete, or modify anything in Gmail —
   the OAuth scope (`gmail.readonly`) doesn't permit it.
 - Fetches only `INBOX` messages, newest 15, metadata only (From,
   Subject, Date headers + snippet) — never downloads full message
@@ -122,7 +122,7 @@ Two ways to invite someone, both create a row in the `Invite` table:
    for testing, not for inviting real teammates.
 4. For real delivery to any address: verify your own domain in Resend
    (Domains → Add Domain → add their DNS records), then set
-   `RESEND_FROM_EMAIL="Vela <invites@yourdomain.com>"`.
+   `RESEND_FROM_EMAIL="Vyris <invites@yourdomain.com>"`.
 
 If `RESEND_API_KEY` is missing, email invites silently fall back to
 "invite created, copy the link yourself" — nothing breaks, you just

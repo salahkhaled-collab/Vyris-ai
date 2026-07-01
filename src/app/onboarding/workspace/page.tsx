@@ -15,14 +15,14 @@ const options: {
     id: "PERSONAL",
     label: "Personal",
     description:
-      "Just you and Vela. Your dashboard, decisions, and automations stay private.",
+      "Just you and vyris. Your dashboard, decisions, and automations stay private.",
     icon: User,
   },
   {
     id: "TEAM",
     label: "Team",
     description:
-      "Bring your team in. Adds a shared workspace where you can message members and send emails from Vela.",
+      "Bring your team in. Adds a shared workspace where you can message members and send emails from vyris.",
     icon: Users,
   },
 ];
@@ -46,7 +46,7 @@ export default function WorkspacePage() {
         <div className="text-[11px] uppercase tracking-[0.18em] text-brass mb-2">
           Step 2 of 2
         </div>
-        <h1 className="font-display text-3xl mb-2">How will you use Vela?</h1>
+        <h1 className="font-display text-3xl mb-2">How will you use Vyris?</h1>
         <p className="text-sm text-muted mb-8">
           {role
             ? `As ${role === "OTHER" ? "your role" : `a ${role.charAt(0) + role.slice(1).toLowerCase()}`}, you can switch this later in Settings.`
@@ -93,7 +93,7 @@ export default function WorkspacePage() {
             workspaceType ? "bg-brass text-[#1a140a]" : "bg-panel-2 text-muted cursor-not-allowed opacity-60"
           )}
         >
-          Enter Vela
+          Enter Vyris
         </button>
       </div>
     </div>

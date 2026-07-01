@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
   if (body.email?.trim()) {
     emailResult = await sendEmail({
       to: body.email.trim(),
-      subject: `You're invited to join ${team.name} on Vela`,
+      subject: `You're invited to join ${team.name} on Vyris`,
       html: inviteEmailHtml({
         inviterName: user.name ?? "Someone",
         teamName: team.name,
