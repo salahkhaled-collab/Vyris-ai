@@ -11,3 +11,12 @@ declare module "next-auth" {
     };
   }
 }
+
+declare module "next-auth/jwt" {
+  interface JWT {
+    id: string;
+    role: Role | null;
+    workspaceType: WorkspaceType | null;
+    onboarded: boolean;
+  }
+}
