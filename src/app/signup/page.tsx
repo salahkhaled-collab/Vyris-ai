@@ -1,59 +1,75 @@
 "use client";
 
-import { Suspense, useState, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
+import { signIn } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-function LoginContent() {
-  const { status } = useSession();
+export default function SignUpPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
-
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(false);
-
-  useEffect(() => {
-    if (status === "authenticated") {
-      router.replace(callbackUrl);
-    }
-  }, [status, callbackUrl, router]);
-
-  useEffect(() => {
-    if (searchParams.get("signup_success") === "true") {
-      setSignupSuccess(true);
-    }
-  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !password) {
-      setError("Please enter your email and password.");
+    setError(null);
+
+    // Basic Validation
+    if (!email || !password || !confirmPassword) {
+      setError("Please fill out all required fields.");
       return;
     }
-    setError(null);
-    setSignupSuccess(false);
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await signIn("credentials", {
-        email: email.toLowerCase().trim(),
+      const res = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.message ?? "Failed to create an account. Please try again.");
+        setLoading(false);
+        return;
+      }
+
+      setSuccess(true);
+
+      // Auto Sign-in with the Credentials Provider
+      const signInRes = await signIn("credentials", {
+        email,
         password,
         redirect: false,
       });
 
-      if (res?.error) {
-        setError("Invalid email or password.");
+      if (signInRes?.error) {
+        // Fallback if auto-login fails: redirect to login
+        router.replace("/login?signup_success=true");
       } else {
-        router.replace(callbackUrl);
+        router.replace("/onboarding");
       }
     } catch (err) {
       setError("An error occurred. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -64,9 +80,9 @@ function LoginContent() {
         <div className="w-10 h-10 rounded-full border border-brass flex items-center justify-center mx-auto mb-6">
           <div className="w-2.5 h-2.5 rounded-full bg-brass" />
         </div>
-        <h1 className="font-display text-3xl mb-2">Welcome to Vyris</h1>
+        <h1 className="font-display text-3xl mb-2">Create your account</h1>
         <p className="text-sm text-muted mb-8">
-          Sign in to access your Command Center, calendar, and AI Chief of Staff.
+          Join Vyris to tailored automate your workflow and calendar.
         </p>
 
         {error && (
@@ -75,17 +91,30 @@ function LoginContent() {
           </div>
         )}
 
-        {signupSuccess && (
+        {success && (
           <div className="text-xs text-signal bg-signal/[0.1] border border-signal/20 rounded-lg p-3 text-center mb-4">
-            Account created successfully! Please sign in below.
+            Account created! Signing you in...
           </div>
         )}
 
-        {/* Credentials Form */}
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>
+            <label className="block text-xs font-medium text-ink-text mb-1.5" htmlFor="name">
+              Full Name (Optional)
+            </label>
+            <input
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Alex Morgan"
+              className="w-full px-3.5 py-2.5 bg-panel-2 border border-line rounded-lg text-sm text-ink-text placeholder-muted focus:outline-none focus:border-brass transition-colors"
+            />
+          </div>
+
+          <div>
             <label className="block text-xs font-medium text-ink-text mb-1.5" htmlFor="email">
-              Email Address
+              Email Address *
             </label>
             <input
               id="email"
@@ -97,9 +126,10 @@ function LoginContent() {
               className="w-full px-3.5 py-2.5 bg-panel-2 border border-line rounded-lg text-sm text-ink-text placeholder-muted focus:outline-none focus:border-brass transition-colors"
             />
           </div>
+
           <div>
             <label className="block text-xs font-medium text-ink-text mb-1.5" htmlFor="password">
-              Password
+              Password *
             </label>
             <input
               id="password"
@@ -107,16 +137,32 @@ function LoginContent() {
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="•••••••• (Min 8 chars)"
+              className="w-full px-3.5 py-2.5 bg-panel-2 border border-line rounded-lg text-sm text-ink-text placeholder-muted focus:outline-none focus:border-brass transition-colors"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-ink-text mb-1.5" htmlFor="confirm-password">
+              Confirm Password *
+            </label>
+            <input
+              id="confirm-password"
+              type="password"
+              required
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
               placeholder="••••••••"
               className="w-full px-3.5 py-2.5 bg-panel-2 border border-line rounded-lg text-sm text-ink-text placeholder-muted focus:outline-none focus:border-brass transition-colors"
             />
           </div>
+
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || success}
             className="w-full py-3 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity flex items-center justify-center"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Creating account..." : "Sign Up"}
           </button>
         </form>
 
@@ -126,9 +172,9 @@ function LoginContent() {
           <div className="flex-1 border-t border-line" />
         </div>
 
-        {/* OAuth Button */}
+        {/* OAuth Option */}
         <button
-          onClick={() => signIn("google", { callbackUrl })}
+          onClick={() => signIn("google", { callbackUrl: "/onboarding" })}
           className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg text-sm font-medium bg-panel-2 border border-line hover:bg-white/[0.04] transition-colors text-ink-text"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
@@ -153,27 +199,18 @@ function LoginContent() {
         </button>
 
         <p className="text-xs text-muted mt-6">
-          Don&apos;t have an account?{" "}
-          <Link href="/signup" className="text-brass hover:underline">
-            Create an account
+          Already have an account?{" "}
+          <Link href="/login" className="text-brass hover:underline">
+            Sign in
           </Link>
         </p>
 
-        <p className="text-[11px] text-muted mt-6 leading-relaxed">
-          Vyris requests read-only calendar access to populate your Command Center.
-          You can revoke access at any time from your Google account settings.{" "}
-          Read our <Link href="/privacy" className="text-brass hover:underline">Privacy Policy</Link> and{" "}
-          <Link href="/terms" className="text-brass hover:underline">Terms of Service</Link>.
+        <p className="text-[10px] text-muted mt-8 leading-relaxed">
+          By signing up, you agree to our{" "}
+          <Link href="/terms" className="text-brass hover:underline">Terms of Service</Link> and{" "}
+          <Link href="/privacy" className="text-brass hover:underline">Privacy Policy</Link>.
         </p>
       </div>
     </div>
-  );
-}
-
-export default function LoginPage() {
-  return (
-    <Suspense fallback={null}>
-      <LoginContent />
-    </Suspense>
   );
 }

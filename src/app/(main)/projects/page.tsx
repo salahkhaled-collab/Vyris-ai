@@ -67,6 +67,7 @@ export default function ProjectsPage() {
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [creating, setCreating] = useState(false);
   const [newTitle, setNewTitle] = useState("");
+  const [newDescription, setNewDescription] = useState("");
   const [shareWithTeam, setShareWithTeam] = useState(false);
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
 
@@ -93,12 +94,17 @@ export default function ProjectsPage() {
     const res = await fetch("/api/projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: newTitle.trim(), shareWithTeam }),
+      body: JSON.stringify({
+        title: newTitle.trim(),
+        description: newDescription.trim() || undefined,
+        shareWithTeam,
+      }),
     });
     if (res.ok) {
       const project = await res.json();
       setProjects((prev) => [project, ...prev]);
       setNewTitle("");
+      setNewDescription("");
       setShareWithTeam(false);
       setCreating(false);
       setExpanded((prev) => new Set(prev).add(project.id));
@@ -106,17 +112,31 @@ export default function ProjectsPage() {
   }
 
   async function updateProjectStatus(id: string, status: ProjectStatus) {
+    const previous = projects;
     setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, status } : p)));
-    await fetch(`/api/projects/${id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error(`Status update failed: ${res.status}`);
+    } catch (err) {
+      setProjects(previous);
+      console.error(err);
+    }
   }
 
   async function deleteProject(id: string) {
+    const previous = projects;
     setProjects((prev) => prev.filter((p) => p.id !== id));
-    await fetch(`/api/projects/${id}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+    } catch (err) {
+      setProjects(previous);
+      console.error(err);
+    }
   }
 
   async function addTask(projectId: string) {
@@ -137,6 +157,7 @@ export default function ProjectsPage() {
   }
 
   async function cycleTaskStatus(projectId: string, task: Task) {
+    const previous = projects;
     const status = nextTaskStatus(task.status);
     setProjects((prev) =>
       prev.map((p) =>
@@ -145,20 +166,33 @@ export default function ProjectsPage() {
           : p
       )
     );
-    await fetch(`/api/tasks/${task.id}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error(`Task status update failed: ${res.status}`);
+    } catch (err) {
+      setProjects(previous);
+      console.error(err);
+    }
   }
 
   async function deleteTask(projectId: string, taskId: string) {
+    const previous = projects;
     setProjects((prev) =>
       prev.map((p) =>
         p.id === projectId ? { ...p, tasks: p.tasks.filter((t) => t.id !== taskId) } : p
       )
     );
-    await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Task delete failed: ${res.status}`);
+    } catch (err) {
+      setProjects(previous);
+      console.error(err);
+    }
   }
 
   const activeCount = projects.filter((p) => p.status === "ACTIVE").length;
@@ -191,6 +225,13 @@ export default function ProjectsPage() {
               placeholder="Project title..."
               className="w-full bg-panel-2 border border-line rounded-lg px-4 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass mb-3"
             />
+            <textarea
+              value={newDescription}
+              onChange={(e) => setNewDescription(e.target.value)}
+              placeholder="Description (optional)..."
+              rows={2}
+              className="w-full bg-panel-2 border border-line rounded-lg px-4 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass mb-3 resize-none"
+            />
             <div className="flex items-center justify-between">
               {workspaceType === "TEAM" ? (
                 <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
@@ -210,6 +251,7 @@ export default function ProjectsPage() {
                   onClick={() => {
                     setCreating(false);
                     setNewTitle("");
+                    setNewDescription("");
                   }}
                   className="px-3 py-1.5 rounded-lg text-xs text-muted"
                 >
@@ -253,6 +295,11 @@ export default function ProjectsPage() {
                   )}
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium">{project.title}</div>
+                    {project.description && (
+                      <div className="text-xs text-muted mt-0.5 line-clamp-1">
+                        {project.description}
+                      </div>
+                    )}
                     <div className="text-xs text-muted mt-0.5">
                       {project.tasks.length === 0
                         ? "No tasks"

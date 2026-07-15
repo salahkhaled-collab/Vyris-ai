@@ -33,7 +33,8 @@ export const authOptions: NextAuthOptions = {
             "email",
             "profile",
             "https://www.googleapis.com/auth/calendar.readonly",
-            "https://www.googleapis.com/auth/gmail.readonly",
+            // gmail.readonly removed — restricted scope; re-add after Google
+            // security assessment passes. Calendar stays (sensitive, not restricted).
           ].join(" "),
           access_type: "offline", // required to receive a refresh_token
           prompt: "consent", // forces refresh_token on every login during testing

@@ -294,19 +294,54 @@ function ContactsTab() {
   const [shareWithTeam, setShareWithTeam] = useState(false);
   const [filterTag, setFilterTag] = useState<string | null>(null);
 
+  const [fetchError, setFetchError] = useState<string | null>(null);
+
   useEffect(() => {
     fetch("/api/contacts")
-      .then((r) => r.json())
-      .then((d) => setContacts(d.contacts ?? []))
+      .then(async (r) => {
+        const d = await r.json();
+        if (!r.ok) { setFetchError(d.message ?? "Could not load contacts."); return; }
+        setContacts(d.contacts ?? []);
+      })
+      .catch(() => setFetchError("Could not reach server."))
       .finally(() => setLoading(false));
   }, []);
 
+  const [mutateError, setMutateError] = useState<string | null>(null);
+
   async function createContact() {
     if (!form.name.trim()) return;
-    const res = await fetch("/api/contacts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...form, shareWithTeam }) });
-    if (res.ok) { const c = await res.json(); setContacts((p) => [...p, c].sort((a,b) => a.name.localeCompare(b.name))); setForm(emptyForm); setShareWithTeam(false); setCreating(false); }
+    setMutateError(null);
+    try {
+      const res = await fetch("/api/contacts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...form, shareWithTeam }),
+      });
+      if (!res.ok) { const d = await res.json(); throw new Error(d.message ?? `Server error ${res.status}`); }
+      const c = await res.json();
+      setContacts((p) => [...p, c].sort((a, b) => a.name.localeCompare(b.name)));
+      setForm(emptyForm);
+      setShareWithTeam(false);
+      setCreating(false);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Could not save contact.";
+      setMutateError(msg);
+      console.error("createContact:", err);
+    }
   }
-  async function deleteContact(id: string) { setContacts((p) => p.filter((c) => c.id !== id)); await fetch(`/api/contacts/${id}`, { method: "DELETE" }); }
+
+  async function deleteContact(id: string) {
+    const previous = contacts;
+    setContacts((p) => p.filter((c) => c.id !== id));
+    try {
+      const res = await fetch(`/api/contacts/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(`Delete failed: ${res.status}`);
+    } catch (err) {
+      setContacts(previous);
+      console.error("deleteContact:", err);
+    }
+  }
 
   const filtered = filterTag ? contacts.filter((c) => c.tag === filterTag) : contacts;
   const usedTags = Array.from(new Set(contacts.map((c) => c.tag).filter(Boolean))) as string[];
@@ -356,6 +391,8 @@ function ContactsTab() {
         </Panel>
       )}
 
+      {fetchError && <div className="text-sm text-signal/80 py-4">{fetchError}</div>}
+      {mutateError && <div className="text-sm text-signal/80 py-2">{mutateError}</div>}
       {loading && <div className="text-sm text-muted py-8 text-center">Loading contacts...</div>}
       {!loading && filtered.length === 0 && !creating && (
         <Panel className="p-10 text-center">
