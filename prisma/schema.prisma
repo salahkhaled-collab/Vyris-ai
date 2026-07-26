@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 // ── NextAuth required models ───────────────────────────────────
@@ -88,7 +89,10 @@ model User {
   ownedProjects Project[] @relation("ProjectOwner")
   ownedTasks    Task[]    @relation("TaskOwner")
   contacts      Contact[] @relation("ContactOwner")
-  documents     Document[] @relation("DocumentOwner")
+ documents     Document[] @relation("DocumentOwner")
+decisions     Decision[] @relation("DecisionOwner")
+objectives Objective[] @relation("ObjectiveOwner") 
+strategicBets StrategicBet[] @relation("StrategicBetOwner")
 }
 
 model Team {
@@ -102,6 +106,9 @@ model Team {
   projects Project[]
   contacts Contact[]
   documents Document[]
+decisions Decision[]
+objectives Objective[] 
+strategicBets StrategicBet[]
 }
 
 model TeamMessage {
@@ -169,6 +176,92 @@ model Project {
   documents Document[]
 }
 
+enum DecisionStatus {
+  OPEN
+  DECIDED
+}
+
+model Decision {
+  id             String         @id @default(cuid())
+  title          String
+  context        String         @db.Text
+  deadline       String
+  status         DecisionStatus @default(OPEN)
+  recommendation String?        @db.Text
+  chosenOptionId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("DecisionOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  options DecisionOption[]
+}
+
+model DecisionOption {
+  id    String @id @default(cuid())
+  label String
+  score Int
+  pros  String[]
+  cons  String[]
+
+  decisionId String
+  decision   Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+}
+
+model Objective {
+  id        String   @id @default(cuid())
+  title     String
+  quarter   String   // e.g. "Q3 2026" — matches your "Q3 · Jul – Sep" label
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("ObjectiveOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+
+  keyResults KeyResult[]
+}
+
+model KeyResult {
+  id      String @id @default(cuid())
+  label   String
+  current Float
+  target  Float
+  unit    String @default("")
+
+  objectiveId String
+  objective   Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+}
+enum BetStatus {
+  ON_TRACK
+  AT_RISK
+  OFF_TRACK
+}
+
+model StrategicBet {
+  id       String    @id @default(cuid())
+  title    String
+  signal   String    @db.Text
+  horizon  String    // e.g. "6 months" — free text, matches your mock data style
+  status   BetStatus @default(ON_TRACK)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("StrategicBetOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
+}
 model Task {
   id        String     @id @default(cuid())
   title     String

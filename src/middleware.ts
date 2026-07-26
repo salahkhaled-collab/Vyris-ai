@@ -1,15 +1,22 @@
+import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
-// DEV MODE: Auth is bypassed so all pages are accessible without signing in.
-// To restore auth protection, replace this file with the withAuth version.
-export function middleware(request: NextRequest) {
-  // Redirect root to dashboard
-  if (request.nextUrl.pathname === "/") {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+export default withAuth(
+  function middleware(request) {
+    if (request.nextUrl.pathname === "/") {
+      return NextResponse.redirect(new URL("/strategy", request.url));
+    }
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: ({ token }) => !!token,
+    },
+    pages: {
+      signIn: "/login",
+    },
   }
-  return NextResponse.next();
-}
+);
 
 export const config = {
   matcher: [

@@ -1,109 +1,157 @@
+"use client";
+
+import { useState, useEffect } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
-import { decisions } from "@/lib/mock-data";
+import { NewDecisionForm } from "@/components/decisions/NewDecisionForm";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Circle } from "lucide-react";
+import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+
+type DecisionOption = { id: string; label: string; score: number; pros: string[]; cons: string[] };
+type Decision = {
+  id: string; title: string; context: string; deadline: string;
+  status: "OPEN" | "DECIDED"; recommendation: string | null;
+  chosenOptionId: string | null;
+  options: DecisionOption[];
+};
 
 export default function DecisionsPage() {
-  const open = decisions.filter((d) => d.status === "open");
-  const decided = decisions.filter((d) => d.status === "decided");
+  const [decisions, setDecisions] = useState<Decision[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [decidingId, setDecidingId] = useState<string | null>(null);
+
+  function loadDecisions() {
+    setLoading(true);
+    fetch("/api/decisions")
+      .then((res) => (res.ok ? res.json() : Promise.reject()))
+      .then(setDecisions)
+      .catch(() => setError("Failed to load decisions"))
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    loadDecisions();
+  }, []);
+
+  async function makeDecision(decisionId: string, optionId: string) {
+    setDecidingId(decisionId);
+    try {
+      const res = await fetch(`/api/decisions/${decisionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chosenOptionId: optionId }),
+      });
+      if (!res.ok) throw new Error("Failed to save decision");
+      const updated = await res.json();
+      setDecisions((prev) => prev.map((d) => (d.id === updated.id ? updated : d)));
+    } catch (err) {
+      setError("Couldn't save that decision. Try again.");
+    } finally {
+      setDecidingId(null);
+    }
+  }
+
+  const open = decisions.filter((d) => d.status === "OPEN");
+  const decided = decisions.filter((d) => d.status === "DECIDED");
+
+  if (loading) {
+    return (
+      <>
+        <Topbar eyebrow="Direction" title="Decision Support" statusText="Loading…" />
+        <main className="flex-1 flex items-center justify-center py-20">
+          <Loader2 className="w-5 h-5 animate-spin text-muted" />
+        </main>
+      </>
+    );
+  }
+
+  if (error) {
+    return (
+      <>
+        <Topbar eyebrow="Direction" title="Decision Support" statusText="Error" />
+        <main className="flex-1 px-6 lg:px-10 py-8">
+          <Panel className="p-6 text-sm text-muted">{error}</Panel>
+        </main>
+      </>
+    );
+  }
 
   return (
     <>
-      <Topbar
-        eyebrow="Direction"
-        title="Decision Support"
-        statusText={`${open.length} open decisions`}
-      />
+      <Topbar eyebrow="Direction" title="Decision Support" statusText={`${open.length} open decision${open.length === 1 ? "" : "s"}`} />
+
+      <div className="px-6 lg:px-10 pt-6">
+        <NewDecisionForm onCreated={loadDecisions} />
+      </div>
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-10">
 
-        {/* Open decisions */}
-        <section className="space-y-6">
-          <div className="flex items-center gap-3">
-            <Circle className="w-4 h-4 text-brass" strokeWidth={1.75} />
-            <h2 className="font-display text-xl">Awaiting Your Call</h2>
-          </div>
+        {open.length === 0 && decided.length === 0 && (
+          <Panel className="p-8 text-center">
+            <p className="text-sm font-medium mb-1">No decisions yet</p>
+            <p className="text-xs text-muted">When a real decision needs your call, it'll show up here.</p>
+          </Panel>
+        )}
 
-          {open.map((d) => (
-            <Panel key={d.id} className="p-6 lg:p-8">
-              {/* Header */}
-              <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2 mb-3">
-                <h3 className="font-display text-2xl leading-snug max-w-2xl">{d.title}</h3>
-                <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
-                  {d.deadline}
-                </span>
-              </div>
-              <p className="text-sm text-muted leading-relaxed max-w-3xl mb-6">{d.context}</p>
+        {open.length > 0 && (
+          <section className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Circle className="w-4 h-4 text-brass" strokeWidth={1.75} />
+              <h2 className="font-display text-xl">Awaiting Your Call</h2>
+            </div>
 
-              {/* Options */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                {d.options.map((opt, idx) => {
-                  const scoreTone =
-                    opt.score >= 75 ? "text-signal" :
-                      opt.score >= 50 ? "text-brass" : "text-muted";
-
-                  return (
-                    <div
-                      key={opt.id}
-                      className="rounded-xl bg-panel-2 border border-line p-5 flex flex-col gap-3"
-                    >
-                      {/* Option label + score on same line */}
-                      <div className="flex items-center justify-between">
-                        <span className="font-mono text-xs text-muted">
-                          Option {String.fromCharCode(65 + idx)}
-                        </span>
-                        <span className={cn("font-mono text-sm font-medium", scoreTone)}>
-                          {opt.score}
-                        </span>
-                      </div>
-
-                      <div className="text-sm font-medium leading-snug">{opt.label}</div>
-
-                      {/* Pros + cons */}
-                      <div className="space-y-1.5 text-xs">
-                        {opt.pros.map((p, i) => (
-                          <div key={i} className="flex gap-2 text-muted">
-                            <span className="text-signal shrink-0">+</span>
-                            <span>{p}</span>
-                          </div>
-                        ))}
-                        {opt.cons.map((c, i) => (
-                          <div key={i} className="flex gap-2 text-muted">
-                            <span className="shrink-0">−</span>
-                            <span>{c}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Vyris recommendation */}
-              {d.recommendation && (
-                <div className="mt-6 flex gap-3 items-start rounded-xl bg-panel-2 border border-line p-4">
-                  <span className="text-[11px] uppercase tracking-[0.18em] text-brass pt-0.5 whitespace-nowrap">
-                    Vyris recommends
+            {open.map((d) => (
+              <Panel key={d.id} className="p-6 lg:p-8">
+                <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2 mb-3">
+                  <h3 className="font-display text-2xl leading-snug max-w-2xl">{d.title}</h3>
+                  <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
+                    {d.deadline}
                   </span>
-                  <p className="text-sm text-muted leading-relaxed">{d.recommendation}</p>
                 </div>
-              )}
+                <p className="text-sm text-muted leading-relaxed max-w-3xl mb-6">{d.context}</p>
 
-              {/* Actions */}
-              <div className="mt-6 flex gap-3">
-                <button className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity">
-                  Make decision
-                </button>
-                <button className="px-4 py-2 rounded-lg text-sm font-medium bg-panel-2 text-muted hover:text-ink-text transition-colors">
-                  Request more analysis
-                </button>
-              </div>
-            </Panel>
-          ))}
-        </section>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  {d.options.map((opt, idx) => {
+                    const scoreTone = opt.score >= 75 ? "text-signal" : opt.score >= 50 ? "text-brass" : "text-muted";
+                    return (
+                      <div key={opt.id} className="rounded-xl bg-panel-2 border border-line p-5 flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
+                          <span className="font-mono text-xs text-muted">Option {String.fromCharCode(65 + idx)}</span>
+                          <span className={cn("font-mono text-sm font-medium", scoreTone)}>{opt.score}</span>
+                        </div>
+                        <div className="text-sm font-medium leading-snug">{opt.label}</div>
+                        <div className="space-y-1.5 text-xs">
+                          {opt.pros.map((p, i) => (
+                            <div key={i} className="flex gap-2 text-muted"><span className="text-signal shrink-0">+</span><span>{p}</span></div>
+                          ))}
+                          {opt.cons.map((c, i) => (
+                            <div key={i} className="flex gap-2 text-muted"><span className="shrink-0">−</span><span>{c}</span></div>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => makeDecision(d.id, opt.id)}
+                          disabled={decidingId === d.id}
+                          className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {decidingId === d.id ? "Saving…" : "Choose this option"}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
 
-        {/* Resolved */}
+                {d.recommendation && (
+                  <div className="mt-6 flex gap-3 items-start rounded-xl bg-panel-2 border border-line p-4">
+                    <span className="text-[11px] uppercase tracking-[0.18em] text-brass pt-0.5 whitespace-nowrap">Vyris recommends</span>
+                    <p className="text-sm text-muted leading-relaxed">{d.recommendation}</p>
+                  </div>
+                )}
+              </Panel>
+            ))}
+          </section>
+        )}
+
         {decided.length > 0 && (
           <section className="space-y-4">
             <div className="flex items-center gap-3">
@@ -111,16 +159,16 @@ export default function DecisionsPage() {
               <h2 className="font-display text-xl">Resolved</h2>
             </div>
             {decided.map((d) => (
-              <Panel key={d.id} className="p-5 flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-sm font-medium">{d.title}</div>
-                  <div className="text-xs text-muted mt-1">{d.recommendation}</div>
-                </div>
-                <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
-                  {d.deadline}
-                </span>
-              </Panel>
-            ))}
+  <Panel key={d.id} className="p-5 flex items-center justify-between gap-4">
+    <div>
+      <div className="text-sm font-medium">{d.title}</div>
+      <div className="text-xs text-muted mt-1">
+        Chose: {d.options.find((o) => o.id === d.chosenOptionId)?.label ?? "—"}
+      </div>
+    </div>
+    <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">{d.deadline}</span>
+  </Panel>
+))}
           </section>
         )}
       </main>
