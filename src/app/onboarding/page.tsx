@@ -21,7 +21,7 @@ export default function OnboardingWelcomePage() {
           Get started
         </Link>
         <Link
-          href="/dashboard"
+          href="/strategy"
           className="block mt-4 text-xs text-muted hover:text-ink-text transition-colors"
         >
           Skip for now

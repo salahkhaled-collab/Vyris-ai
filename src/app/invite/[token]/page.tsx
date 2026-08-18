@@ -28,7 +28,7 @@ export default function InvitePage() {
       }
       setTeamName(data.teamName);
       setState("success");
-      setTimeout(() => router.push("/dashboard"), 1500);
+      setTimeout(() => router.push("/strategy"), 1500);
     } catch {
       setState("error");
       setMessage("Something went wrong. Try again.");
@@ -83,7 +83,7 @@ export default function InvitePage() {
             <h1 className="font-display text-2xl mb-2">Couldn&apos;t join</h1>
             <p className="text-sm text-muted mb-6">{message}</p>
             <button
-              onClick={() => router.push("/dashboard")}
+              onClick={() => router.push("/strategy")}
               className="w-full px-6 py-3 rounded-lg text-sm font-medium bg-panel-2"
             >
               Go to Command Center

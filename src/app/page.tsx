@@ -9,7 +9,7 @@ export default function Home() {
   const { onboarded } = useUser();
 
   useEffect(() => {
-    router.replace(onboarded ? "/dashboard" : "/onboarding");
+    router.replace(onboarded ? "/strategy" : "/onboarding");
   }, [onboarded, router]);
 
   return null;

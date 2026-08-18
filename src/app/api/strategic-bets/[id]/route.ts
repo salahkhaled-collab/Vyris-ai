@@ -42,3 +42,18 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+  }
+
+  const { bet, allowed } = await canAccessBet(session.user.id, params.id);
+  if (!bet) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  await prisma.strategicBet.delete({ where: { id: params.id } });
+
+  return NextResponse.json({ deleted: true });
+}

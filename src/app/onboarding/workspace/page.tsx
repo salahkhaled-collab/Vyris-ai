@@ -37,7 +37,7 @@ export default function WorkspacePage() {
 
   async function finish() {
     await completeOnboarding();
-    router.push("/dashboard");
+    router.push("/strategy");
   }
 
   return (

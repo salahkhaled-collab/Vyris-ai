@@ -11,19 +11,19 @@ datasource db {
 // ── NextAuth required models ───────────────────────────────────
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token              String? @db.Text
-  access_token               String? @db.Text
-  expires_at                 Int?
-  refresh_token_expires_in   Int?
-  token_type                 String?
-  scope                      String?
-  id_token                   String? @db.Text
-  session_state              String?
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  refresh_token_expires_in Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -86,13 +86,13 @@ model User {
   sentMessages TeamMessage[] @relation("MessageAuthor")
   sentInvites  Invite[]      @relation("InviteSender")
 
-  ownedProjects Project[] @relation("ProjectOwner")
-  ownedTasks    Task[]    @relation("TaskOwner")
-  contacts      Contact[] @relation("ContactOwner")
- documents     Document[] @relation("DocumentOwner")
-decisions     Decision[] @relation("DecisionOwner")
-objectives Objective[] @relation("ObjectiveOwner") 
-strategicBets StrategicBet[] @relation("StrategicBetOwner")
+  ownedProjects Project[]      @relation("ProjectOwner")
+  ownedTasks    Task[]         @relation("TaskOwner")
+  contacts      Contact[]      @relation("ContactOwner")
+  documents     Document[]     @relation("DocumentOwner")
+  decisions     Decision[]     @relation("DecisionOwner")
+  objectives    Objective[]    @relation("ObjectiveOwner")
+  strategicBets StrategicBet[] @relation("StrategicBetOwner")
 }
 
 model Team {
@@ -100,15 +100,15 @@ model Team {
   name      String
   createdAt DateTime @default(now())
 
-  members  User[]
-  messages TeamMessage[]
-  invites  Invite[]
-  projects Project[]
-  contacts Contact[]
-  documents Document[]
-decisions Decision[]
-objectives Objective[] 
-strategicBets StrategicBet[]
+  members       User[]
+  messages      TeamMessage[]
+  invites       Invite[]
+  projects      Project[]
+  contacts      Contact[]
+  documents     Document[]
+  decisions     Decision[]
+  objectives    Objective[]
+  strategicBets StrategicBet[]
 }
 
 model TeamMessage {
@@ -127,20 +127,19 @@ model TeamMessage {
 }
 
 model Invite {
-  id        String   @id @default(cuid())
-  token     String   @unique @default(cuid())
+  id        String @id @default(cuid())
+  token     String @unique @default(cuid())
   teamId    String
-  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team      Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
   invitedBy String
-  inviter   User     @relation("InviteSender", fields: [invitedBy], references: [id], onDelete: Cascade)
+  inviter   User   @relation("InviteSender", fields: [invitedBy], references: [id], onDelete: Cascade)
 
-  // Optional — set when sent via email, null for shareable-link-only invites
   email String?
 
-  status    String   @default("pending") // "pending" | "accepted" | "revoked"
-  createdAt DateTime @default(now())
-  expiresAt DateTime
-  acceptedBy String?  // userId of whoever accepted, once used
+  status     String   @default("pending")
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  acceptedBy String?
 }
 
 enum ProjectStatus {
@@ -167,12 +166,10 @@ model Project {
   ownerId String
   owner   User   @relation("ProjectOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  // Optional team scoping — null means a personal project, visible only
-  // to the owner; set means visible to the whole team.
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
 
-  tasks Task[]
+  tasks     Task[]
   documents Document[]
 }
 
@@ -203,7 +200,7 @@ model Decision {
 }
 
 model DecisionOption {
-  id    String @id @default(cuid())
+  id    String   @id @default(cuid())
   label String
   score Int
   pros  String[]
@@ -214,9 +211,9 @@ model DecisionOption {
 }
 
 model Objective {
-  id        String   @id @default(cuid())
-  title     String
-  quarter   String   // e.g. "Q3 2026" — matches your "Q3 · Jul – Sep" label
+  id      String @id @default(cuid())
+  title   String
+  quarter String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -228,6 +225,7 @@ model Objective {
   team   Team?   @relation(fields: [teamId], references: [id])
 
   keyResults KeyResult[]
+  tasks      Task[]
 }
 
 model KeyResult {
@@ -240,6 +238,7 @@ model KeyResult {
   objectiveId String
   objective   Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
 }
+
 enum BetStatus {
   ON_TRACK
   AT_RISK
@@ -247,11 +246,11 @@ enum BetStatus {
 }
 
 model StrategicBet {
-  id       String    @id @default(cuid())
-  title    String
-  signal   String    @db.Text
-  horizon  String    // e.g. "6 months" — free text, matches your mock data style
-  status   BetStatus @default(ON_TRACK)
+  id      String    @id @default(cuid())
+  title   String
+  signal  String    @db.Text
+  horizon String
+  status  BetStatus @default(ON_TRACK)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -261,12 +260,15 @@ model StrategicBet {
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
+
+  tasks Task[]
 }
+
 model Task {
-  id        String     @id @default(cuid())
-  title     String
-  status    TaskStatus @default(TODO)
-  dueDate   DateTime?
+  id      String     @id @default(cuid())
+  title   String
+  status  TaskStatus @default(TODO)
+  dueDate DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -276,17 +278,25 @@ model Task {
 
   ownerId String
   owner   User   @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  // Drift Signals: a task optionally points at ONE of these two —
+  // enforced in the API layer, not the DB (Prisma has no native XOR constraint).
+  objectiveId String?
+  objective   Objective? @relation(fields: [objectiveId], references: [id], onDelete: SetNull)
+
+  strategicBetId String?
+  strategicBet   StrategicBet? @relation(fields: [strategicBetId], references: [id], onDelete: SetNull)
 }
 
 model Contact {
-  id        String   @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  company   String?
-  role      String?
-  notes     String?  @db.Text
-  tag       String?  // e.g. "Investor", "Press", "Client", "Partner"
+  id      String  @id @default(cuid())
+  name    String
+  email   String?
+  phone   String?
+  company String?
+  role    String?
+  notes   String? @db.Text
+  tag     String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -299,26 +309,20 @@ model Contact {
 }
 
 model Document {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
   filename  String
   mimeType  String
   sizeBytes Int
-  data      Bytes    // file content stored directly in Postgres
+  data      Bytes
 
   createdAt DateTime @default(now())
 
   ownerId String
   owner   User   @relation("DocumentOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
-  // Optional: attach to a project, or leave standalone
   projectId String?
   project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
 }
-
-// Note: Gmail messages are NOT stored here — the Inbox page fetches
-// them live from Google's API on each load (read-only, no persistence),
-// same pattern as Calendar events. This avoids storing third-party
-// email content in our own database.

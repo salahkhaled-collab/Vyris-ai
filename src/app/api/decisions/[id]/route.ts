@@ -52,3 +52,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json(updated);
 }
+export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+  }
+
+  const { decision, allowed } = await canAccessDecision(session.user.id, params.id);
+  if (!decision) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  if (!allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+
+  await prisma.decision.delete({ where: { id: params.id } });
+
+  return NextResponse.json({ deleted: true });
+}

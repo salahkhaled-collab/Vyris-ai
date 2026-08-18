@@ -5,21 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
-/**
- * NextAuth configuration for Vyris.
- *
- * Uses the Prisma adapter for account/session storage. Session
- * STRATEGY is JWT, not database — CredentialsProvider requires this,
- * NextAuth does not support database sessions with credentials auth.
- * Google OAuth tokens are still stored in the `Account` table by the
- * adapter automatically — see src/lib/google-token.ts to read them
- * back for API calls (Calendar, Gmail). The adapter still works fine
- * for that under JWT strategy; only the SESSION lookup changed.
- *
- * Scopes requested:
- *  - calendar.readonly — populates the Command Center schedule panel
- *  - gmail.readonly    — populates the Inbox page with real email
- */
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   providers: [
@@ -33,11 +19,10 @@ export const authOptions: NextAuthOptions = {
             "email",
             "profile",
             "https://www.googleapis.com/auth/calendar.readonly",
-            // gmail.readonly removed — restricted scope; re-add after Google
-            // security assessment passes. Calendar stays (sensitive, not restricted).
+            
           ].join(" "),
-          access_type: "offline", // required to receive a refresh_token
-          prompt: "consent", // forces refresh_token on every login during testing
+          access_type: "offline",
+          prompt: "consent", 
         },
       },
     }),

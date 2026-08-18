@@ -5,7 +5,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { NewDecisionForm } from "@/components/decisions/NewDecisionForm";
 import { cn } from "@/lib/utils";
-import { CheckCircle2, Circle, Loader2 } from "lucide-react";
+import { CheckCircle2, Circle, Loader2, Trash2 } from "lucide-react";
 
 type DecisionOption = { id: string; label: string; score: number; pros: string[]; cons: string[] };
 type Decision = {
@@ -14,6 +14,41 @@ type Decision = {
   chosenOptionId: string | null;
   options: DecisionOption[];
 };
+
+function DeleteButton({ onConfirm, small }: { onConfirm: () => Promise<void>; small?: boolean }) {
+  const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  async function handleClick() {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      await onConfirm();
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={deleting}
+      onBlur={() => setConfirming(false)}
+      className={cn(
+        "rounded-full transition-colors shrink-0",
+        small ? "text-[11px] px-2 py-1" : "text-xs px-2.5 py-1.5",
+        confirming ? "bg-red-500/20 text-red-400" : "text-muted hover:text-red-400"
+      )}
+      title={confirming ? "Click again to confirm" : "Delete this decision"}
+    >
+      {deleting ? "…" : confirming ? "Confirm?" : <Trash2 className={small ? "w-3 h-3" : "w-3.5 h-3.5"} />}
+    </button>
+  );
+}
 
 export default function DecisionsPage() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
@@ -50,6 +85,12 @@ export default function DecisionsPage() {
     } finally {
       setDecidingId(null);
     }
+  }
+
+  async function deleteDecision(decisionId: string) {
+    const res = await fetch(`/api/decisions/${decisionId}`, { method: "DELETE" });
+    if (!res.ok) throw new Error("Failed to delete");
+    setDecisions((prev) => prev.filter((d) => d.id !== decisionId));
   }
 
   const open = decisions.filter((d) => d.status === "OPEN");
@@ -105,9 +146,12 @@ export default function DecisionsPage() {
               <Panel key={d.id} className="p-6 lg:p-8">
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2 mb-3">
                   <h3 className="font-display text-2xl leading-snug max-w-2xl">{d.title}</h3>
-                  <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
-                    {d.deadline}
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
+                      {d.deadline}
+                    </span>
+                    <DeleteButton onConfirm={() => deleteDecision(d.id)} />
+                  </div>
                 </div>
                 <p className="text-sm text-muted leading-relaxed max-w-3xl mb-6">{d.context}</p>
 
@@ -159,16 +203,19 @@ export default function DecisionsPage() {
               <h2 className="font-display text-xl">Resolved</h2>
             </div>
             {decided.map((d) => (
-  <Panel key={d.id} className="p-5 flex items-center justify-between gap-4">
-    <div>
-      <div className="text-sm font-medium">{d.title}</div>
-      <div className="text-xs text-muted mt-1">
-        Chose: {d.options.find((o) => o.id === d.chosenOptionId)?.label ?? "—"}
-      </div>
-    </div>
-    <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">{d.deadline}</span>
-  </Panel>
-))}
+              <Panel key={d.id} className="p-5 flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-sm font-medium">{d.title}</div>
+                  <div className="text-xs text-muted mt-1">
+                    Chose: {d.options.find((o) => o.id === d.chosenOptionId)?.label ?? "—"}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">{d.deadline}</span>
+                  <DeleteButton onConfirm={() => deleteDecision(d.id)} small />
+                </div>
+              </Panel>
+            ))}
           </section>
         )}
       </main>

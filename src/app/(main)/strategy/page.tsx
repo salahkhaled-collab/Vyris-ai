@@ -6,7 +6,7 @@ import { Panel } from "@/components/ui/Panel";
 import { NewObjectiveForm } from "@/components/strategy/NewObjectiveForm";
 import { NewStrategicBetForm } from "@/components/strategy/NewStrategicBetForm";
 import { cn } from "@/lib/utils";
-import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
+import { Loader2, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
 
 type KeyResult = { id: string; label: string; current: number; target: number; unit: string };
 type Objective = {
@@ -111,10 +111,19 @@ const betStatusConfig = {
   OFF_TRACK: { label: "Off track", color: "text-red-400", bg: "bg-red-500/10", icon: AlertCircle },
 };
 
-function BetRow({ bet, onUpdated }: { bet: StrategicBet; onUpdated: (updated: StrategicBet) => void }) {
+function BetRow({
+  bet,
+  onUpdated,
+  onDeleted,
+}: {
+  bet: StrategicBet;
+  onUpdated: (updated: StrategicBet) => void;
+  onDeleted: (id: string) => void;
+}) {
   const [changing, setChanging] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const cfg = betStatusConfig[bet.status];
-  const StatusIcon = cfg.icon;
 
   async function setStatus(status: StrategicBet["status"]) {
     setChanging(true);
@@ -134,6 +143,22 @@ function BetRow({ bet, onUpdated }: { bet: StrategicBet; onUpdated: (updated: St
     }
   }
 
+  async function handleDelete() {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/strategic-bets/${bet.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      onDeleted(bet.id);
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  }
+
   return (
     <div className="px-6 py-5 hover:bg-white/[0.02] transition-colors">
       <div className="flex items-start gap-4">
@@ -142,20 +167,95 @@ function BetRow({ bet, onUpdated }: { bet: StrategicBet; onUpdated: (updated: St
           <p className="text-xs text-muted mt-1.5 leading-relaxed">{bet.signal}</p>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">
-          <select
-            value={bet.status}
-            disabled={changing}
-            onChange={(e) => setStatus(e.target.value as StrategicBet["status"])}
-            className={cn("flex items-center gap-1 text-xs px-2 py-1 rounded-full border-none cursor-pointer", cfg.bg, cfg.color)}
-          >
-            <option value="ON_TRACK">On track</option>
-            <option value="AT_RISK">At risk</option>
-            <option value="OFF_TRACK">Off track</option>
-          </select>
+          <div className="flex items-center gap-2">
+            <select
+              value={bet.status}
+              disabled={changing}
+              onChange={(e) => setStatus(e.target.value as StrategicBet["status"])}
+              className={cn("flex items-center gap-1 text-xs px-2 py-1 rounded-full border-none cursor-pointer", cfg.bg, cfg.color)}
+            >
+              <option value="ON_TRACK">On track</option>
+              <option value="AT_RISK">At risk</option>
+              <option value="OFF_TRACK">Off track</option>
+            </select>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              onBlur={() => setConfirming(false)}
+              className={cn(
+                "text-[11px] px-2 py-1 rounded-full transition-colors",
+                confirming ? "bg-red-500/20 text-red-400" : "text-muted hover:text-red-400"
+              )}
+              title={confirming ? "Click again to confirm" : "Delete this bet"}
+            >
+              {deleting ? "…" : confirming ? "Confirm?" : <Trash2 className="w-3 h-3" />}
+            </button>
+          </div>
           <span className="text-[11px] text-muted font-mono">{bet.horizon}</span>
         </div>
       </div>
     </div>
+  );
+}
+
+function ObjectiveCard({
+  o,
+  onKRUpdated,
+  onDeleted,
+}: {
+  o: Objective;
+  onKRUpdated: (updated: KeyResult) => void;
+  onDeleted: (id: string) => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+
+  async function handleDelete() {
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/objectives/${o.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      onDeleted(o.id);
+    } catch {
+      setDeleting(false);
+      setConfirming(false);
+    }
+  }
+
+  return (
+    <Panel className="p-6 space-y-5">
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{o.quarter}</span>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-brass">{o.progress}%</span>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              onBlur={() => setConfirming(false)}
+              className={cn(
+                "text-[11px] px-1.5 py-0.5 rounded transition-colors",
+                confirming ? "bg-red-500/20 text-red-400" : "text-muted hover:text-red-400"
+              )}
+              title={confirming ? "Click again to confirm" : "Delete this objective"}
+            >
+              {deleting ? "…" : confirming ? "Confirm?" : <Trash2 className="w-3 h-3" />}
+            </button>
+          </div>
+        </div>
+        <p className="text-sm font-medium text-ink-text leading-snug">{o.title}</p>
+        <ProgressBar value={o.progress} className="mt-3" />
+      </div>
+      <div className="space-y-3 pt-1 border-t border-line">
+        {o.keyResults.map((kr) => (
+          <KRRow key={kr.id} kr={kr} onUpdated={onKRUpdated} />
+        ))}
+      </div>
+    </Panel>
   );
 }
 
@@ -199,8 +299,16 @@ export default function StrategyPage() {
     );
   }
 
+  function handleObjectiveDeleted(id: string) {
+    setObjectives((prev) => prev.filter((o) => o.id !== id));
+  }
+
   function handleBetUpdated(updated: StrategicBet) {
     setBets((prev) => prev.map((b) => (b.id === updated.id ? updated : b)));
+  }
+
+  function handleBetDeleted(id: string) {
+    setBets((prev) => prev.filter((b) => b.id !== id));
   }
 
   if (loading) {
@@ -249,21 +357,12 @@ export default function StrategyPage() {
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               {objectives.map((o) => (
-                <Panel key={o.id} className="p-6 space-y-5">
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{o.quarter}</span>
-                      <span className="font-mono text-xs text-brass">{o.progress}%</span>
-                    </div>
-                    <p className="text-sm font-medium text-ink-text leading-snug">{o.title}</p>
-                    <ProgressBar value={o.progress} className="mt-3" />
-                  </div>
-                  <div className="space-y-3 pt-1 border-t border-line">
-                    {o.keyResults.map((kr) => (
-                      <KRRow key={kr.id} kr={kr} onUpdated={(updated) => handleKRUpdated(o.id, updated)} />
-                    ))}
-                  </div>
-                </Panel>
+                <ObjectiveCard
+                  key={o.id}
+                  o={o}
+                  onKRUpdated={(updated) => handleKRUpdated(o.id, updated)}
+                  onDeleted={handleObjectiveDeleted}
+                />
               ))}
             </div>
           )}
@@ -284,7 +383,7 @@ export default function StrategyPage() {
             <Panel className="overflow-hidden">
               <div className="divide-y divide-line">
                 {bets.map((bet) => (
-                  <BetRow key={bet.id} bet={bet} onUpdated={handleBetUpdated} />
+                  <BetRow key={bet.id} bet={bet} onUpdated={handleBetUpdated} onDeleted={handleBetDeleted} />
                 ))}
               </div>
             </Panel>

@@ -32,7 +32,7 @@ export const navigation: NavGroup[] = [
 // export const workNavigation: NavGroup = {
 //   label: "Work",
 //   items: [
-//     { label: "Command Center", href: "/dashboard", icon: LayoutDashboard, primary: true },
+//     { label: "Command Center", href: "/strategy", icon: LayoutStrategy, primary: true },
 //     { label: "Inbox", href: "/inbox", icon: Bell },
 //     { label: "Projects", href: "/projects", icon: FolderKanban },
 //     { label: "Calendar", href: "/calendar", icon: Calendar },
