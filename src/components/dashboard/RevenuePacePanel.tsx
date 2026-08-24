@@ -5,20 +5,17 @@ import { TrendingUp, TrendingDown } from "lucide-react";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
-// Last 30 days of daily revenue (in $k).
-// Day 18 is "today" — subsequent days are projected (lighter).
 const DAILY = [
   41, 38, 52, 47, 61, 44, 39, 55, 63, 48,
-  57, 71, 66, 49, 58, 74, 69, 82, // ← today (index 17)
-  // projected:
+  57, 71, 66, 49, 58, 74, 69, 82,
   78, 84, 76, 91, 88, 80, 95, 90, 86, 98, 102, 97,
 ];
 
 const TODAY_IDX   = 17;
-const MONTHLY_TARGET = 2_100; // $k
-const MTD_ACTUAL     = DAILY.slice(0, TODAY_IDX + 1).reduce((s, v) => s + v, 0); // $k
+const MONTHLY_TARGET = 2_100;
+const MTD_ACTUAL     = DAILY.slice(0, TODAY_IDX + 1).reduce((s, v) => s + v, 0);
 const PROJECTED_EOD  = (MTD_ACTUAL / (TODAY_IDX + 1)) * 30;
-const PREV_MTD       = 1_047; // same period last month ($k)
+const PREV_MTD       = 1_047;
 
 const pacePercent  = Math.round((MTD_ACTUAL / MONTHLY_TARGET) * 100);
 const vsTarget     = MTD_ACTUAL - (MONTHLY_TARGET * ((TODAY_IDX + 1) / 30));
@@ -30,7 +27,9 @@ function fmt(k: number) {
   return `$${Math.round(k)}K`;
 }
 
-// ── Sparkline ─────────────────────────────────────────────────────────────────
+// Token-matched colors for raw SVG (can't use Tailwind classes on fill/stroke)
+const BRASS = "#a89478";
+const SIGNAL = "#5a9e7a";
 
 function Sparkline() {
   const W = 440;
@@ -43,19 +42,15 @@ function Sparkline() {
   const x = (i: number) => PAD + (i / (all.length - 1)) * (W - PAD * 2);
   const y = (v: number) => H - PAD - ((v - min) / (max - min)) * (H - PAD * 2);
 
-  // Build path for actual days
   const actualPts = all.slice(0, TODAY_IDX + 1).map((v, i) => `${x(i)},${y(v)}`).join(" L ");
   const actualPath = `M ${actualPts}`;
 
-  // Projected path starts at today's point
   const projStart = { x: x(TODAY_IDX), y: y(all[TODAY_IDX]) };
   const projPts = all.slice(TODAY_IDX).map((v, i) => `${x(TODAY_IDX + i)},${y(v)}`).join(" L ");
   const projPath = `M ${projPts}`;
 
-  // Area fill for actual
   const areaPath = `M ${actualPts} L ${x(TODAY_IDX)},${H - PAD} L ${PAD},${H - PAD} Z`;
 
-  // Target line
   const targetY = y((MONTHLY_TARGET / 30) * (TODAY_IDX + 1));
 
   return (
@@ -67,60 +62,53 @@ function Sparkline() {
     >
       <defs>
         <linearGradient id="rev-area" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#C9A66B" stopOpacity="0.25" />
-          <stop offset="100%" stopColor="#C9A66B" stopOpacity="0" />
+          <stop offset="0%" stopColor={BRASS} stopOpacity="0.25" />
+          <stop offset="100%" stopColor={BRASS} stopOpacity="0" />
         </linearGradient>
       </defs>
 
-      {/* Area fill */}
       <path d={areaPath} fill="url(#rev-area)" />
 
-      {/* Projected line (dashed) */}
       <path
         d={projPath}
         fill="none"
-        stroke="#C9A66B"
+        stroke={BRASS}
         strokeWidth="1.5"
         strokeDasharray="4 3"
         strokeOpacity="0.4"
       />
 
-      {/* Actual line */}
       <path
         d={actualPath}
         fill="none"
-        stroke="#C9A66B"
+        stroke={BRASS}
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
-      {/* Target reference line */}
       <line
         x1={PAD}
         y1={targetY}
         x2={x(TODAY_IDX)}
         y2={targetY}
-        stroke="#7FE0C8"
+        stroke={SIGNAL}
         strokeWidth="1"
         strokeDasharray="3 3"
         strokeOpacity="0.5"
       />
 
-      {/* Today dot */}
-      <circle cx={projStart.x} cy={projStart.y} r="4" fill="#C9A66B" />
-      <circle cx={projStart.x} cy={projStart.y} r="7" fill="#C9A66B" fillOpacity="0.2" />
+      <circle cx={projStart.x} cy={projStart.y} r="4" fill={BRASS} />
+      <circle cx={projStart.x} cy={projStart.y} r="7" fill={BRASS} fillOpacity="0.2" />
     </svg>
   );
 }
-
-// ── Bar sparkline (last 7 days) ────────────────────────────────────────────────
 
 function WeekBars() {
   const last7 = DAILY.slice(TODAY_IDX - 6, TODAY_IDX + 1);
   const max7   = Math.max(...last7);
   const days   = ["M", "T", "W", "T", "F", "S", "S"];
-  const today  = 6; // index in last7
+  const today  = 6;
 
   return (
     <div className="flex items-end gap-1 h-10">
@@ -137,12 +125,9 @@ function WeekBars() {
   );
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
-
 export function RevenuePacePanel() {
   return (
     <Panel className="p-6 space-y-5">
-      {/* Header */}
       <div className="flex items-start justify-between">
         <div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted">Revenue Pace</div>
@@ -151,7 +136,6 @@ export function RevenuePacePanel() {
         </div>
 
         <div className="flex flex-col items-end gap-1">
-          {/* vs target badge */}
           <div
             className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full ${
               onTrack ? "bg-signal/10 text-signal" : "bg-signal/5 text-muted"
@@ -164,7 +148,6 @@ export function RevenuePacePanel() {
             )}
             {onTrack ? "+" : ""}{fmt(Math.abs(vsTarget))} vs pace
           </div>
-          {/* vs last month */}
           <div className="text-[11px] text-muted">
             <span className={vsLastMonth >= 0 ? "text-signal" : "text-signal/50"}>
               {vsLastMonth >= 0 ? "▲" : "▼"} {Math.abs(vsLastMonth).toFixed(1)}%
@@ -174,7 +157,6 @@ export function RevenuePacePanel() {
         </div>
       </div>
 
-      {/* Progress bar */}
       <div className="space-y-1.5">
         <div className="flex justify-between text-[11px]">
           <span className="text-muted">{pacePercent}% of monthly target</span>
@@ -188,7 +170,6 @@ export function RevenuePacePanel() {
             style={{ width: `${Math.min(pacePercent, 100)}%` }}
           />
         </div>
-        {/* Pace marker — where we SHOULD be at this day of month */}
         <div className="relative h-1">
           <div
             className="absolute -top-3 w-0.5 h-4 bg-signal/50 rounded-full"
@@ -197,7 +178,6 @@ export function RevenuePacePanel() {
         </div>
       </div>
 
-      {/* Sparkline */}
       <div className="pt-1">
         <Sparkline />
         <div className="flex justify-between text-[10px] text-muted mt-1 font-mono">
@@ -207,10 +187,8 @@ export function RevenuePacePanel() {
         </div>
       </div>
 
-      {/* Divider */}
       <div className="border-t border-line" />
 
-      {/* Last 7 days + projection */}
       <div className="flex gap-6">
         <div className="flex-1">
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted mb-2">Last 7 Days</div>
