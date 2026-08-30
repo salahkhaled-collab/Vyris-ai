@@ -3,8 +3,8 @@
 @tailwind utilities;
 
 body {
-  background-color: #111114;
-  color: #e8e8ed;
+  background-color: #f5f2ed;
+  color: #1e1a15;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -14,7 +14,7 @@ body {
   height: 6px;
 }
 .scroll-thin::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 194, 0.12);
+  background: rgba(30, 26, 21, 0.14);
   border-radius: 3px;
 }
 

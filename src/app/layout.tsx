@@ -66,7 +66,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${fraunces.variable} ${inter.variable} ${plexMono.variable}`}
+      className={`${fraunces.variable} ${inter.variable} ${plexMono.variable}`}
     >
       <body className="min-h-screen">
         <AuthProvider>

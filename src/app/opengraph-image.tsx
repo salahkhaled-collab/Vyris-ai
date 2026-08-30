@@ -16,8 +16,8 @@ export default function Image() {
           flexDirection: "column",
           justifyContent: "center",
           padding: "80px",
-          backgroundColor: "#111114",
-          color: "#e8e8ed",
+          backgroundColor: "#f5f2ed",
+          color: "#1e1a15",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", marginBottom: 32 }}>
@@ -26,7 +26,7 @@ export default function Image() {
               width: 40,
               height: 40,
               borderRadius: "50%",
-              border: "2px solid #a89478",
+              border: "2px solid #6e2f3a",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -38,7 +38,7 @@ export default function Image() {
                 width: 12,
                 height: 12,
                 borderRadius: "50%",
-                backgroundColor: "#a89478",
+                backgroundColor: "#6e2f3a",
               }}
             />
           </div>
@@ -47,7 +47,7 @@ export default function Image() {
         <div style={{ fontSize: 56, lineHeight: 1.15, maxWidth: 900, display: "flex" }}>
           The AI Chief of Staff for solo operators
         </div>
-        <div style={{ fontSize: 28, color: "#a89478", marginTop: 24, display: "flex" }}>
+        <div style={{ fontSize: 28, color: "#6e2f3a", marginTop: 24, display: "flex" }}>
           Strategic planning and decision support in one place
         </div>
       </div>
