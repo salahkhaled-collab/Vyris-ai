@@ -7,6 +7,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { navigation, settingsItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { Target, GitBranch, Menu, X } from "lucide-react";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 const advisoryGroup = navigation.find((g) => g.label === "Advisory");
 const strategyItem = advisoryGroup?.items.find((i) => i.href === "/strategy");
@@ -71,9 +72,7 @@ export function MobileNav() {
         <div className="lg:hidden fixed inset-0 z-50 bg-ink flex flex-col">
           <div className="px-6 py-5 flex items-center justify-between border-b border-line">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full border border-brass flex items-center justify-center">
-                <div className="w-2 h-2 rounded-full bg-brass" />
-              </div>
+              <VyrisMark size="md" />
               <span className="font-display text-lg tracking-wide">Vyris</span>
             </div>
             <button onClick={() => setDrawerOpen(false)} aria-label="Close menu">

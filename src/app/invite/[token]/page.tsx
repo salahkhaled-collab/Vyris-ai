@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 export default function InvitePage() {
   const params = useParams<{ token: string }>();
@@ -46,9 +47,7 @@ export default function InvitePage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-sm w-full text-center">
-        <div className="w-10 h-10 rounded-full border border-brass flex items-center justify-center mx-auto mb-6">
-          <div className="w-2.5 h-2.5 rounded-full bg-brass" />
-        </div>
+        <VyrisMark size="lg" className="mx-auto mb-6" />
 
         {status === "loading" && <p className="text-sm text-muted">Loading...</p>}
 

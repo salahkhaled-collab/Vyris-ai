@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { navigation, settingsItem } from "@/lib/navigation";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 import { cn } from "@/lib/utils";
 import { useSession, signIn, signOut } from "next-auth/react";
 
@@ -13,9 +14,7 @@ export function Sidebar() {
   return (
     <aside className="hidden lg:flex w-64 flex-col bg-panel border-r border-line">
       <div className="px-6 py-6 flex items-center gap-3">
-        <div className="w-8 h-8 rounded-full border border-brass flex items-center justify-center">
-          <div className="w-2 h-2 rounded-full bg-brass" />
-        </div>
+        <VyrisMark size="md" />
         <div>
           <div className="font-display text-lg tracking-wide">Vyris</div>
           <div className="text-[10px] uppercase tracking-[0.18em] text-muted">
