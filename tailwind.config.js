@@ -5,22 +5,22 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ── Core surfaces — neutral charcoal, no blue tint ──
-        ink: "#111114",              // deepest background
-        panel: "#16161a",            // card / sidebar surface
-        "panel-2": "#1a1a1f",        // elevated surface (inputs, badges)
-        line: "rgba(255,255,255,0.06)", // neutral border
+        // ── Core surfaces — warm ivory, no stark white/blue-gray ──
+        ink: "#f5f2ed",               // page background
+        panel: "#ffffff",             // card / sidebar surface
+        "panel-2": "#ece6dc",         // elevated surface (inputs, badges)
+        line: "rgba(20,16,10,0.10)",  // neutral border
 
-        // ── Accent: warm taupe/bronze ──────────────────────
-        brass: "#a89478",            // primary accent
-        "brass-soft": "rgba(168,148,120,0.15)", // accent surface
+        // ── Accent: deep burgundy ──────────────────────────
+        brass: "#6e2f3a",             // primary accent
+        "brass-soft": "rgba(110,47,58,0.10)", // accent surface
 
-        // ── Signal: muted emerald, kept distinct from brass ──
-        signal: "#5a9e7a",
+        // ── Signal: deep emerald, kept distinct from brass ──
+        signal: "#2f7d54",
 
         // ── Typography ──────────────────────────────────────
-        "ink-text": "#e8e8ed",
-        muted: "#9a9aa4",
+        "ink-text": "#1e1a15",
+        muted: "#6b645a",
       },
       fontFamily: {
         display: ["var(--font-display)", "serif"],
