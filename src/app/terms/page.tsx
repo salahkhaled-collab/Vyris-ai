@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Terms of Service — Vyris",
+  title: "Terms of Service",
   description: "Terms of Service governing the use of the Vyris platform.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
@@ -11,7 +12,7 @@ export default function TermsPage() {
     <div className="min-h-screen bg-ink text-ink-text">
       {/* Premium Header */}
       <header className="max-w-4xl mx-auto pt-12 pb-6 px-6 flex items-center justify-between border-b border-line">
-        <Link href="/login" className="flex items-center gap-3 group">
+        <Link href="/" className="flex items-center gap-3 group">
           <div className="w-8 h-8 rounded-full border border-brass flex items-center justify-center transition-transform group-hover:scale-105">
             <div className="w-2 h-2 rounded-full bg-brass" />
           </div>

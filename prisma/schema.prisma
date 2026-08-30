@@ -93,6 +93,7 @@ model User {
   decisions     Decision[]     @relation("DecisionOwner")
   objectives    Objective[]    @relation("ObjectiveOwner")
   strategicBets StrategicBet[] @relation("StrategicBetOwner")
+  automationRules AutomationRule[] @relation("AutomationRuleOwner")
 }
 
 model Team {
@@ -262,6 +263,25 @@ model StrategicBet {
   team   Team?   @relation(fields: [teamId], references: [id])
 
   tasks Task[]
+}
+
+enum RuleStatus {
+  ACTIVE
+  PAUSED
+}
+
+model AutomationRule {
+  id      String     @id @default(cuid())
+  name    String
+  trigger String     @db.Text
+  action  String     @db.Text
+  status  RuleStatus @default(ACTIVE)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("AutomationRuleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 }
 
 model Task {

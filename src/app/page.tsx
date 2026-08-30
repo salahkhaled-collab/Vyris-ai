@@ -1,16 +1,15 @@
-"use client";
+import type { Metadata } from "next";
+import { LandingPage } from "@/components/marketing/LandingPage";
 
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
-import { useUser } from "@/lib/user-context";
+export const metadata: Metadata = {
+  title: "AI Chief of Staff for solo operators",
+  description:
+    "Vyris is the AI Chief of Staff for solo operators running e-commerce, agency, or content businesses — one place for your goals, your bigger bets, and the decisions you're weighing right now.",
+  alternates: {
+    canonical: "/",
+  },
+};
 
 export default function Home() {
-  const router = useRouter();
-  const { onboarded } = useUser();
-
-  useEffect(() => {
-    router.replace(onboarded ? "/strategy" : "/onboarding");
-  }, [onboarded, router]);
-
-  return null;
+  return <LandingPage />;
 }

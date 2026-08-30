@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { DictationButton } from "@/components/ui/DictationButton";
 
 type NewOption = { label: string; score: number; pros: string; cons: string };
 
@@ -80,13 +81,19 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
-      <textarea
-        className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
-        placeholder="Context — what's the situation?"
-        rows={3}
-        value={context}
-        onChange={(e) => setContext(e.target.value)}
-      />
+      <div className="relative">
+        <textarea
+          className="w-full bg-panel rounded-lg px-3 py-2 pr-12 text-sm border border-line resize-none"
+          placeholder="Context — what's the situation?"
+          rows={3}
+          value={context}
+          onChange={(e) => setContext(e.target.value)}
+        />
+        <DictationButton
+          onTranscript={(text) => setContext((prev) => (prev ? `${prev} ${text}` : text))}
+          className="absolute top-2 right-2"
+        />
+      </div>
       <input
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Deadline (e.g. Fri, Jul 24)"

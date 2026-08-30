@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import Anthropic from "@anthropic-ai/sdk";
-import { priorityLedger, decisions, automationRules } from "@/lib/mock-data";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth-options";
+import { prisma } from "@/lib/prisma";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOKENS = 800;
@@ -18,20 +20,35 @@ interface DraftContext {
 
 // ── System prompts ────────────────────────────────────────────────────────────
 
-function buildChiefOfStaffPrompt(): string {
-  const ledgerSummary = priorityLedger
-    .map((p) => `${p.rank}. ${p.title} (${p.context}, ${p.due})`)
-    .join("\n");
+async function buildChiefOfStaffPrompt(userId: string): Promise<string> {
+  const [objectives, openDecisions, activeRules] = await Promise.all([
+    prisma.objective.findMany({
+      where: { ownerId: userId },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    prisma.decision.findMany({
+      where: { ownerId: userId, status: "OPEN" },
+      orderBy: { createdAt: "desc" },
+      take: 5,
+    }),
+    prisma.automationRule.findMany({
+      where: { ownerId: userId, status: "ACTIVE" },
+      take: 5,
+    }),
+  ]);
 
-  const openDecisions = decisions
-    .filter((d) => d.status === "open")
-    .map((d) => `- ${d.title} — deadline: ${d.deadline}`)
-    .join("\n");
+  const objectivesSummary = objectives.length
+    ? objectives.map((o: { title: string; quarter: string }) => `- ${o.title} (${o.quarter})`).join("\n")
+    : "No objectives set yet.";
 
-  const activeRules = automationRules
-    .filter((r) => r.status === "active")
-    .map((r) => `- ${r.name}: ${r.trigger} → ${r.action}`)
-    .join("\n");
+  const decisionsSummary = openDecisions.length
+    ? openDecisions.map((d: { title: string; deadline: string }) => `- ${d.title} — deadline: ${d.deadline}`).join("\n")
+    : "No open decisions.";
+
+  const rulesSummary = activeRules.length
+    ? activeRules.map((r: { name: string; trigger: string; action: string }) => `- ${r.name}: ${r.trigger} → ${r.action}`).join("\n")
+    : "No active automation rules.";
 
   return `You are Vyris, an AI Chief of Staff embedded in a premium executive productivity app.
 Your tone is calm, precise, and direct — like a trusted senior aide, not a chatty assistant.
@@ -39,16 +56,16 @@ Keep responses concise (a few sentences to a short paragraph) unless asked for d
 
 Current context for this user:
 
-PRIORITY LEDGER (today):
-${ledgerSummary}
+OBJECTIVES:
+${objectivesSummary}
 
 OPEN DECISIONS:
-${openDecisions}
+${decisionsSummary}
 
 ACTIVE AUTOMATION RULES:
-${activeRules}
+${rulesSummary}
 
-When relevant, reference this context naturally.`;
+When relevant, reference this context naturally. Do not invent context you were not given above.`;
 }
 
 function buildDraftCommsPrompt(ctx: DraftContext): string {
@@ -91,6 +108,14 @@ export async function POST(req: NextRequest) {
           "ANTHROPIC_API_KEY is not set on the server. Add it to .env.local to enable real AI.",
       },
       { status: 500 }
+    );
+  }
+
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "not_authenticated", message: "Sign in to talk to Vyris." },
+      { status: 401 }
     );
   }
 
@@ -170,7 +195,7 @@ export async function POST(req: NextRequest) {
     const response = await anthropic.messages.create({
       model: "claude-sonnet-4-6",
       max_tokens: MAX_TOKENS,
-      system: buildChiefOfStaffPrompt(),
+      system: await buildChiefOfStaffPrompt(session.user.id),
       messages: trimmed.map((m) => ({ role: m.role, content: m.content })),
     });
 

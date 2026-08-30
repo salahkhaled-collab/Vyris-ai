@@ -5,7 +5,8 @@ import { useSession } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
-import { Mail, MessageSquare, Bot, Inbox as InboxIcon, Sparkles, Copy, Check } from "lucide-react";
+import { Mail, MessageSquare, Sparkles, Copy, Check } from "lucide-react";
+import { DictationButton } from "@/components/ui/DictationButton";
 import Link from "next/link";
 
 interface TeamMsg {
@@ -154,13 +155,19 @@ function DraftPanel() {
           <label className="text-[11px] uppercase tracking-[0.14em] text-muted block mb-1.5">
             What do you want to say?
           </label>
-          <textarea
-            value={draftNote}
-            onChange={(e) => setDraftNote(e.target.value)}
-            placeholder="e.g. Follow up on the Q3 partnership terms we discussed last week. Friendly but push for a decision by Friday."
-            rows={3}
-            className="w-full bg-panel-2 border border-line rounded-lg px-4 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass resize-none"
-          />
+          <div className="relative">
+            <textarea
+              value={draftNote}
+              onChange={(e) => setDraftNote(e.target.value)}
+              placeholder="e.g. Follow up on the Q3 partnership terms we discussed last week. Friendly but push for a decision by Friday."
+              rows={3}
+              className="w-full bg-panel-2 border border-line rounded-lg px-4 py-2.5 pr-12 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass resize-none"
+            />
+            <DictationButton
+              onTranscript={(text) => setDraftNote((prev) => (prev ? `${prev} ${text}` : text))}
+              className="absolute top-2 right-2"
+            />
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
@@ -250,35 +257,11 @@ export default function CommsPage() {
           <Link href="/inbox" className="text-brass hover:underline">
             Inbox
           </Link>
-          ; for direct conversations, see{" "}
-          <Link href="/team" className="text-brass hover:underline">
-            Team
-          </Link>
           .
         </p>
 
         {/* ── Draft with Vyris ── */}
         <DraftPanel />
-
-        {/* ── Vyris Drafts ── */}
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Bot className="w-4 h-4 text-signal" strokeWidth={1.75} />
-            <h2 className="font-display text-lg">Vyris Drafts</h2>
-          </div>
-          <Panel className="p-6">
-            <div className="flex items-center gap-3 text-sm text-muted">
-              <InboxIcon className="w-4 h-4" strokeWidth={1.75} />
-              <span>
-                11 draft replies are waiting for your approval in{" "}
-                <Link href="/automation" className="text-brass hover:underline">
-                  AI &amp; Automation
-                </Link>
-                .
-              </span>
-            </div>
-          </Panel>
-        </section>
 
         {/* ── Sent from Team ── */}
         <section className="space-y-3">
@@ -303,11 +286,8 @@ export default function CommsPage() {
 
           {status === "authenticated" && !loading && !error && sentByMe.length === 0 && (
             <Panel className="p-6 text-sm text-muted">
-              Nothing sent yet — messages and emails you send from{" "}
-              <Link href="/team" className="text-brass hover:underline">
-                Team
-              </Link>{" "}
-              will show up here.
+              Nothing sent yet — messages and emails sent from Team will show up here
+              once Team is available.
             </Panel>
           )}
 

@@ -4,26 +4,8 @@ import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
-import { notifications as initialNotifications } from "@/lib/mock-data";
-import { Notification } from "@/types";
 import { cn } from "@/lib/utils";
-import { GitBranch, Bot, FolderKanban, Video, MessageSquare, Check, Mail } from "lucide-react";
-
-const typeIcon: Record<Notification["type"], typeof GitBranch> = {
-  decision: GitBranch,
-  ai: Bot,
-  task: FolderKanban,
-  meeting: Video,
-  message: MessageSquare,
-};
-
-const typeTone: Record<Notification["type"], string> = {
-  decision: "text-brass bg-brass-soft",
-  ai: "text-signal bg-signal/[0.12]",
-  task: "text-muted bg-panel-2",
-  meeting: "text-brass bg-brass-soft",
-  message: "text-muted bg-panel-2",
-};
+import { Mail } from "lucide-react";
 
 interface GmailMessage {
   id: string;
@@ -47,7 +29,6 @@ function relativeTime(iso: string): string {
 
 export default function InboxPage() {
   const { status } = useSession();
-  const [items, setItems] = useState<Notification[]>(initialNotifications);
 
   const [emails, setEmails] = useState<GmailMessage[] | null>(null);
   const [emailLoading, setEmailLoading] = useState(false);
@@ -76,16 +57,7 @@ export default function InboxPage() {
     };
   }, [status]);
 
-  const unreadCount = items.filter((n) => !n.read).length;
   const unreadEmailCount = emails?.filter((e) => e.unread).length ?? 0;
-
-  function markAllRead() {
-    setItems((prev) => prev.map((n) => ({ ...n, read: true })));
-  }
-
-  function toggleRead(id: string) {
-    setItems((prev) => prev.map((n) => (n.id === id ? { ...n, read: !n.read } : n)));
-  }
 
   return (
     <>
@@ -94,10 +66,10 @@ export default function InboxPage() {
         title="Inbox"
         statusText={
           status === "authenticated"
-            ? `${unreadEmailCount + unreadCount} unread`
-            : unreadCount > 0
-            ? `${unreadCount} unread`
-            : "All caught up"
+            ? unreadEmailCount > 0
+              ? `${unreadEmailCount} unread`
+              : "All caught up"
+            : undefined
         }
       />
 
@@ -175,54 +147,6 @@ export default function InboxPage() {
               </div>
             </Panel>
           )}
-        </section>
-
-        {/* System notifications (Vyris-generated, not email) */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="font-display text-xl">Notifications</h2>
-            {unreadCount > 0 && (
-              <button
-                onClick={markAllRead}
-                className="flex items-center gap-2 text-sm text-muted hover:text-ink-text transition-colors"
-              >
-                <Check className="w-4 h-4" strokeWidth={1.75} />
-                Mark all as read
-              </button>
-            )}
-          </div>
-
-          <Panel className="overflow-hidden">
-            <div className="divide-y divide-line">
-              {items.map((n) => {
-                const Icon = typeIcon[n.type];
-                return (
-                  <button
-                    key={n.id}
-                    onClick={() => toggleRead(n.id)}
-                    className={cn(
-                      "w-full flex items-start gap-4 px-6 py-4 text-left transition-colors hover:bg-white/[0.02]",
-                      !n.read && "bg-white/[0.015]"
-                    )}
-                  >
-                    <div className={cn("shrink-0 rounded-lg p-2", typeTone[n.type])}>
-                      <Icon className="w-4 h-4" strokeWidth={1.75} />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        {!n.read && <span className="w-1.5 h-1.5 rounded-full bg-signal shrink-0" />}
-                        <div className="text-sm font-medium truncate">{n.title}</div>
-                      </div>
-                      <div className="text-xs text-muted mt-1 leading-relaxed">{n.detail}</div>
-                      <div className="text-[11px] text-muted mt-1.5 font-mono">
-                        {n.source} · {n.time}
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </Panel>
         </section>
       </main>
     </>
