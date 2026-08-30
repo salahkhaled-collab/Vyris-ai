@@ -2,10 +2,7 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
 export default withAuth(
-  function middleware(request) {
-    if (request.nextUrl.pathname === "/") {
-      return NextResponse.redirect(new URL("/strategy", request.url));
-    }
+  function middleware() {
     return NextResponse.next();
   },
   {
@@ -32,9 +29,9 @@ export const config = {
     "/contacts/:path*",
     "/documents/:path*",
     "/strategy/:path*",
+    "/settings/:path*",
     "/biz-dev/:path*",
     "/brand/:path*",
     "/onboarding/:path*",
-    "/",
   ],
 };

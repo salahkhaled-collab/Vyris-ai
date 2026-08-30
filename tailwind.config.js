@@ -20,12 +20,12 @@ module.exports = {
 
         // ── Typography ──────────────────────────────────────
         "ink-text": "#e8e8ed",
-        muted: "#4a4a52",
+        muted: "#9a9aa4",
       },
       fontFamily: {
-        display: ["Fraunces", "serif"],
-        sans: ["Inter", "sans-serif"],
-        mono: ["IBM Plex Mono", "monospace"],
+        display: ["var(--font-display)", "serif"],
+        sans: ["var(--font-sans)", "sans-serif"],
+        mono: ["var(--font-mono)", "monospace"],
       },
       keyframes: {
         "orbit-drift": {

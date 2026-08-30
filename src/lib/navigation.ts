@@ -2,6 +2,14 @@ import {
   Target,
   GitBranch,
   Settings,
+  Bell,
+  FolderKanban,
+  Calendar,
+  Video,
+  MessageSquare,
+  Bot,
+  Users,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -25,30 +33,33 @@ export const navigation: NavGroup[] = [
       { label: "Decision Support", href: "/decisions", icon: GitBranch },
     ],
   },
+  {
+    label: "Work",
+    items: [
+      { label: "Inbox", href: "/inbox", icon: Bell },
+      { label: "Projects", href: "/projects", icon: FolderKanban },
+      { label: "Calendar", href: "/calendar", icon: Calendar },
+      { label: "Meetings", href: "/meetings", icon: Video },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      { label: "Communications", href: "/comms", icon: MessageSquare },
+      { label: "AI & Automation", href: "/automation", icon: Bot },
+      { label: "Contacts", href: "/contacts", icon: Users },
+      { label: "Documents", href: "/documents", icon: FileText },
+    ],
+  },
 ];
 
-// Hidden until Strategic Planning + Decision Support have real users.
+// Still deferred — no real backend/UI yet (see /areas/vyris.md audit notes).
 // Code and routes still exist — just not linked from nav.
-// export const workNavigation: NavGroup = {
-//   label: "Work",
-//   items: [
-//     { label: "Command Center", href: "/strategy", icon: LayoutStrategy, primary: true },
-//     { label: "Inbox", href: "/inbox", icon: Bell },
-//     { label: "Projects", href: "/projects", icon: FolderKanban },
-//     { label: "Calendar", href: "/calendar", icon: Calendar },
-//   ],
-// };
-
 // export const secondaryNavigation: NavGroup = {
 //   label: "More",
 //   items: [
 //     { label: "Business Development", href: "/biz-dev", icon: TrendingUp },
 //     { label: "Personal Brand", href: "/brand", icon: User },
-//     { label: "Meetings", href: "/meetings", icon: Video },
-//     { label: "Communications", href: "/comms", icon: MessageSquare },
-//     { label: "AI & Automation", href: "/automation", icon: Bot },
-//     { label: "Contacts", href: "/contacts", icon: Users },
-//     { label: "Documents", href: "/documents", icon: FileText },
 //   ],
 // };
 
