@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 export default function OnboardingWelcomePage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6">
       <div className="max-w-md w-full text-center">
-        <div className="w-10 h-10 rounded-full border border-brass flex items-center justify-center mx-auto mb-6">
-          <div className="w-2.5 h-2.5 rounded-full bg-brass" />
-        </div>
+        <VyrisMark size="lg" className="mx-auto mb-6" />
         <h1 className="font-display text-3xl mb-3">Welcome to vyris</h1>
         <p className="text-sm text-muted leading-relaxed mb-8">
           Before we set up your Command Center, a couple of quick questions

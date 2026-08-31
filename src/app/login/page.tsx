@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from "react";
 import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 function LoginContent() {
   const { status } = useSession();
@@ -61,9 +62,7 @@ function LoginContent() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-ink text-ink-text">
       <div className="max-w-sm w-full text-center">
-        <div className="w-10 h-10 rounded-full border border-brass flex items-center justify-center mx-auto mb-6">
-          <div className="w-2.5 h-2.5 rounded-full bg-brass" />
-        </div>
+        <VyrisMark size="lg" className="mx-auto mb-6" />
         <h1 className="font-display text-3xl mb-2">Welcome to Vyris</h1>
         <p className="text-sm text-muted mb-8">
           Sign in to access your Command Center, calendar, and AI Chief of Staff.
