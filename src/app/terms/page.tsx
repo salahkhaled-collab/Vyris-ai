@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 export const metadata: Metadata = {
   title: "Terms of Service",
@@ -13,9 +14,7 @@ export default function TermsPage() {
       {/* Premium Header */}
       <header className="max-w-4xl mx-auto pt-12 pb-6 px-6 flex items-center justify-between border-b border-line">
         <Link href="/" className="flex items-center gap-3 group">
-          <div className="w-8 h-8 rounded-full border border-brass flex items-center justify-center transition-transform group-hover:scale-105">
-            <div className="w-2 h-2 rounded-full bg-brass" />
-          </div>
+          <VyrisMark size="md" className="transition-transform group-hover:scale-105" />
           <span className="font-display text-lg tracking-wide text-ink-text group-hover:text-brass transition-colors">
             Vyris
           </span>

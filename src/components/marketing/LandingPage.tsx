@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { Target, Split, TrendingUp, ArrowRight, Check } from "lucide-react";
 import { useUser } from "@/lib/user-context";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 function DecisionDemoCard() {
   const [resolved, setResolved] = useState<string | null>(null);
@@ -115,9 +116,7 @@ export function LandingPage() {
       <header className="sticky top-0 z-40 backdrop-blur-md bg-ink/80 border-b border-line">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 rounded-full border border-brass flex items-center justify-center transition-transform group-hover:scale-105">
-              <div className="w-2 h-2 rounded-full bg-brass" />
-            </div>
+            <VyrisMark size="md" className="transition-transform group-hover:scale-105" />
             <span className="font-display text-lg tracking-wide">Vyris</span>
           </Link>
           <nav className="hidden md:flex items-center gap-8 text-sm text-muted">
@@ -314,9 +313,7 @@ export function LandingPage() {
       <footer className="border-t border-line">
         <div className="max-w-6xl mx-auto px-6 py-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-muted">
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full border border-brass flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-brass" />
-            </div>
+            <VyrisMark size="sm" />
             <span>&copy; {new Date().getFullYear()} Vyris</span>
           </div>
           <div className="flex items-center gap-6">

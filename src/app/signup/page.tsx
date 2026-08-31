@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { VyrisMark } from "@/components/ui/VyrisMark";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -77,9 +78,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-6 bg-ink text-ink-text">
       <div className="max-w-sm w-full text-center">
-        <div className="w-10 h-10 rounded-full border border-brass flex items-center justify-center mx-auto mb-6">
-          <div className="w-2.5 h-2.5 rounded-full bg-brass" />
-        </div>
+        <VyrisMark size="lg" className="mx-auto mb-6" />
         <h1 className="font-display text-3xl mb-2">Create your account</h1>
         <p className="text-sm text-muted mb-8">
           Join Vyris to tailored automate your workflow and calendar.
