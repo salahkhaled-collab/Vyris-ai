@@ -77,7 +77,7 @@ export function InvitePanel({ onClose }: { onClose: () => void }) {
                 disabled={sending || !email.trim()}
                 className={cn(
                   "w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium",
-                  email.trim() ? "bg-brass text-[#1a140a]" : "bg-panel-2 text-muted cursor-not-allowed"
+                  email.trim() ? "bg-brass text-white" : "bg-panel-2 text-muted cursor-not-allowed"
                 )}
               >
                 <Mail className="w-4 h-4" strokeWidth={2} />
@@ -128,7 +128,7 @@ export function InvitePanel({ onClose }: { onClose: () => void }) {
               />
               <button
                 onClick={copyLink}
-                className="shrink-0 p-2 rounded-lg bg-brass text-[#1a140a]"
+                className="shrink-0 p-2 rounded-lg bg-brass text-white"
                 aria-label="Copy link"
               >
                 {copied ? <Check className="w-4 h-4" strokeWidth={2} /> : <LinkIcon className="w-4 h-4" strokeWidth={2} />}

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, Role } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
@@ -15,9 +16,19 @@ const roles: { id: Role; label: string; description: string }[] = [
 export default function RolePage() {
   const router = useRouter();
   const { role, setRole } = useUser();
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
 
   async function selectRole(r: Role) {
-    await setRole(r);
+    setSaving(true);
+    setError(null);
+    try {
+      await setRole(r);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save your role. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function continueNext() {
@@ -40,11 +51,12 @@ export default function RolePage() {
             <button
               key={r.id}
               onClick={() => selectRole(r.id)}
+              disabled={saving}
               className={cn(
-                "w-full text-left rounded-xl border px-5 py-4 transition-colors",
+                "w-full text-left rounded-xl border px-5 py-4 transition-colors disabled:opacity-60",
                 role === r.id
                   ? "border-brass bg-brass-soft"
-                  : "border-line bg-panel hover:bg-white/[0.02]"
+                  : "border-line bg-panel hover:bg-brass-soft/40"
               )}
             >
               <div className="flex items-center justify-between">
@@ -63,12 +75,16 @@ export default function RolePage() {
           ))}
         </div>
 
+        {error && (
+          <div className="mt-4 text-sm text-signal">{error}</div>
+        )}
+
         <button
           onClick={continueNext}
           disabled={!role}
           className={cn(
             "w-full mt-8 px-6 py-3 rounded-lg text-sm font-medium transition-opacity",
-            role ? "bg-brass text-[#1a140a]" : "bg-panel-2 text-muted cursor-not-allowed opacity-60"
+            role ? "bg-brass text-white" : "bg-panel-2 text-muted cursor-not-allowed opacity-60"
           )}
         >
           Continue

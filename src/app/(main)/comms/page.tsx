@@ -176,7 +176,7 @@ function DraftPanel() {
           <button
             onClick={handleDraft}
             disabled={!draftNote.trim() || pending}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] disabled:opacity-50 hover:opacity-90 transition-opacity"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50 hover:opacity-90 transition-opacity"
           >
             <Sparkles className="w-3.5 h-3.5" strokeWidth={2} />
             {pending ? "Drafting…" : "Draft"}

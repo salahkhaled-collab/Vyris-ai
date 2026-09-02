@@ -91,7 +91,7 @@ export default function InboxPage() {
               </div>
               <button
                 onClick={() => signIn("google")}
-                className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a]"
+                className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
               >
                 Connect
               </button>
@@ -123,7 +123,7 @@ export default function InboxPage() {
                     key={e.id}
                     className={cn(
                       "flex items-start gap-4 px-6 py-4",
-                      e.unread && "bg-white/[0.015]"
+                      e.unread && "bg-brass-soft/50"
                     )}
                   >
                     <div className="shrink-0 rounded-lg p-2 bg-panel-2 text-muted">

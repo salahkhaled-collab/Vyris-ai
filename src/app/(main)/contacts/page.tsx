@@ -103,13 +103,13 @@ export default function ContactsPage() {
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
-            <button onClick={() => setFilterTag(null)} className={cn("text-xs px-3 py-1.5 rounded-full", !filterTag ? "bg-brass text-[#1a140a]" : "bg-panel-2 text-muted")}>All</button>
+            <button onClick={() => setFilterTag(null)} className={cn("text-xs px-3 py-1.5 rounded-full", !filterTag ? "bg-brass text-white" : "bg-panel-2 text-muted")}>All</button>
             {usedTags.map((tag) => (
-              <button key={tag} onClick={() => setFilterTag(tag)} className={cn("text-xs px-3 py-1.5 rounded-full", filterTag === tag ? "bg-brass text-[#1a140a]" : "bg-panel-2 text-muted")}>{tag}</button>
+              <button key={tag} onClick={() => setFilterTag(tag)} className={cn("text-xs px-3 py-1.5 rounded-full", filterTag === tag ? "bg-brass text-white" : "bg-panel-2 text-muted")}>{tag}</button>
             ))}
           </div>
           {!creating && (
-            <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a]">
+            <button onClick={() => setCreating(true)} className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white">
               <Plus className="w-4 h-4" strokeWidth={2}/> New contact
             </button>
           )}
@@ -139,7 +139,7 @@ export default function ContactsPage() {
                   <input type="checkbox" checked={shareWithTeam} onChange={(e) => setShareWithTeam(e.target.checked)} className="accent-brass"/> Share with team
                 </label>
               ) : <span/>}
-              <button onClick={createContact} disabled={!form.name.trim()} className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] disabled:opacity-50">Save contact</button>
+              <button onClick={createContact} disabled={!form.name.trim()} className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50">Save contact</button>
             </div>
           </Panel>
         )}

@@ -113,7 +113,7 @@ function LoginContent() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity flex items-center justify-center"
+            className="w-full py-3 rounded-lg text-sm font-medium bg-brass text-white hover:opacity-90 transition-opacity flex items-center justify-center"
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -128,7 +128,7 @@ function LoginContent() {
         {/* OAuth Button */}
         <button
           onClick={() => signIn("google", { callbackUrl })}
-          className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg text-sm font-medium bg-panel-2 border border-line hover:bg-white/[0.04] transition-colors text-ink-text"
+          className="w-full flex items-center justify-center gap-3 px-6 py-3 rounded-lg text-sm font-medium bg-panel-2 border border-line hover:bg-black/[0.05] transition-colors text-ink-text"
         >
           <svg width="18" height="18" viewBox="0 0 18 18" xmlns="http://www.w3.org/2000/svg">
             <path

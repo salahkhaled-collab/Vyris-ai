@@ -59,7 +59,7 @@ export default function InvitePage() {
             </p>
             <button
               onClick={() => signIn("google", { callbackUrl: `/invite/${params.token}` })}
-              className="w-full px-6 py-3 rounded-lg text-sm font-medium bg-brass text-[#1a140a]"
+              className="w-full px-6 py-3 rounded-lg text-sm font-medium bg-brass text-white"
             >
               Continue with Google
             </button>

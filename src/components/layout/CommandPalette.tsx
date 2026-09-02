@@ -112,7 +112,7 @@ export function CommandPalette() {
                   "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-left transition-colors",
                   i === activeIndex
                     ? "bg-brass-soft text-brass"
-                    : "text-ink-text hover:bg-white/[0.03]"
+                    : "text-ink-text hover:bg-black/[0.04]"
                 )}
               >
                 <Icon className="w-4 h-4" strokeWidth={1.75} />

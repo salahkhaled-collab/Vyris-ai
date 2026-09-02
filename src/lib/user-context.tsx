@@ -72,6 +72,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     if (res.ok) {
       const updated = await res.json();
       setProfile((p) => ({ ...p, ...updated }));
+    } else {
+      const data = await res.json().catch(() => ({}));
+      console.error("Profile update failed:", res.status, data);
+      throw new Error(data.message ?? `Could not save (${res.status}). Try again.`);
     }
   }, []);
 

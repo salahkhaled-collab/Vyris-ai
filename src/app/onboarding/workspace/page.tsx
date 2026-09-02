@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, WorkspaceType } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
@@ -30,14 +31,32 @@ const options: {
 export default function WorkspacePage() {
   const router = useRouter();
   const { workspaceType, setWorkspaceType, completeOnboarding, role } = useUser();
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [finishing, setFinishing] = useState(false);
 
   async function selectType(t: WorkspaceType) {
-    await setWorkspaceType(t);
+    setSaving(true);
+    setError(null);
+    try {
+      await setWorkspaceType(t);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not save. Try again.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function finish() {
-    await completeOnboarding();
-    router.push("/strategy");
+    setFinishing(true);
+    setError(null);
+    try {
+      await completeOnboarding();
+      router.push("/strategy");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not finish setup. Try again.");
+      setFinishing(false);
+    }
   }
 
   return (
@@ -61,9 +80,10 @@ export default function WorkspacePage() {
               <button
                 key={opt.id}
                 onClick={() => selectType(opt.id)}
+                disabled={saving}
                 className={cn(
-                  "w-full text-left rounded-xl border px-5 py-5 transition-colors flex gap-4",
-                  active ? "border-brass bg-brass-soft" : "border-line bg-panel hover:bg-white/[0.02]"
+                  "w-full text-left rounded-xl border px-5 py-5 transition-colors flex gap-4 disabled:opacity-60",
+                  active ? "border-brass bg-brass-soft" : "border-line bg-panel hover:bg-brass-soft/40"
                 )}
               >
                 <div
@@ -85,15 +105,19 @@ export default function WorkspacePage() {
           })}
         </div>
 
+        {error && (
+          <div className="mt-4 text-sm text-signal">{error}</div>
+        )}
+
         <button
           onClick={finish}
-          disabled={!workspaceType}
+          disabled={!workspaceType || finishing}
           className={cn(
             "w-full mt-8 px-6 py-3 rounded-lg text-sm font-medium transition-opacity",
-            workspaceType ? "bg-brass text-[#1a140a]" : "bg-panel-2 text-muted cursor-not-allowed opacity-60"
+            workspaceType && !finishing ? "bg-brass text-white" : "bg-panel-2 text-muted cursor-not-allowed opacity-60"
           )}
         >
-          Enter Vyris
+          {finishing ? "Setting up..." : "Enter Vyris"}
         </button>
       </div>
     </div>

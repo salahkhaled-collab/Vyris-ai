@@ -176,7 +176,7 @@ export default function DecisionsPage() {
                         <button
                           onClick={() => makeDecision(d.id, opt.id)}
                           disabled={decidingId === d.id}
-                          className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity disabled:opacity-50"
+                          className="mt-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-brass text-white hover:opacity-90 transition-opacity disabled:opacity-50"
                         >
                           {decidingId === d.id ? "Saving…" : "Choose this option"}
                         </button>

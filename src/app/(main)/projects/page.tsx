@@ -207,7 +207,7 @@ export default function ProjectsPage() {
           {!creating && (
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a]"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
             >
               <Plus className="w-4 h-4" strokeWidth={2} />
               New project
@@ -260,7 +260,7 @@ export default function ProjectsPage() {
                 <button
                   onClick={createProject}
                   disabled={!newTitle.trim()}
-                  className="px-4 py-1.5 rounded-lg text-xs font-medium bg-brass text-[#1a140a] disabled:opacity-50"
+                  className="px-4 py-1.5 rounded-lg text-xs font-medium bg-brass text-white disabled:opacity-50"
                 >
                   Create
                 </button>
@@ -327,7 +327,7 @@ export default function ProjectsPage() {
                           onClick={() => updateProjectStatus(project.id, s)}
                           className={cn(
                             "text-[11px] px-2.5 py-1 rounded-full",
-                            project.status === s ? statusTone[s] : "text-muted hover:bg-white/[0.03]"
+                            project.status === s ? statusTone[s] : "text-muted hover:bg-black/[0.04]"
                           )}
                         >
                           {statusLabel[s]}
