@@ -43,7 +43,7 @@ export function Sidebar() {
                       item.primary && !active && "font-medium",
                       active
                         ? "bg-brass-soft text-brass font-medium"
-                        : "text-muted hover:text-ink-text hover:bg-white/[0.03]"
+                        : "text-muted hover:text-ink-text hover:bg-black/[0.04]"
                     )}
                   >
                     <Icon className="w-4 h-4" strokeWidth={1.75} />
@@ -63,7 +63,7 @@ export function Sidebar() {
             "flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors",
             pathname === settingsItem.href
               ? "bg-brass-soft text-brass font-medium"
-              : "text-muted hover:text-ink-text hover:bg-white/[0.03]"
+              : "text-muted hover:text-ink-text hover:bg-black/[0.04]"
           )}
         >
           <settingsItem.icon className="w-4 h-4" strokeWidth={1.75} />

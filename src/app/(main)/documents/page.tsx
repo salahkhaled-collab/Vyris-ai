@@ -104,7 +104,7 @@ export default function DocumentsPage() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] disabled:opacity-60"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-60"
               >
                 <Upload className="w-4 h-4" strokeWidth={2} />
                 {uploading ? "Uploading..." : "Choose file"}
@@ -152,7 +152,7 @@ export default function DocumentsPage() {
                   <a
                     href={`/api/documents/${d.id}`}
                     download={d.filename}
-                    className="shrink-0 p-2 rounded-lg bg-panel-2 hover:bg-white/[0.05] transition-colors"
+                    className="shrink-0 p-2 rounded-lg bg-panel-2 hover:bg-black/[0.06] transition-colors"
                     aria-label="Download"
                   >
                     <Download className="w-4 h-4" strokeWidth={1.75} />

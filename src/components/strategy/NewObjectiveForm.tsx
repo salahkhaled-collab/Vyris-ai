@@ -64,7 +64,7 @@ export function NewObjectiveForm({ onCreated }: { onCreated: () => void }) {
     return (
       <button
         onClick={() => setOpen(true)}
-        className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity"
+        className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white hover:opacity-90 transition-opacity"
       >
         New objective
       </button>
@@ -125,7 +125,7 @@ export function NewObjectiveForm({ onCreated }: { onCreated: () => void }) {
         <button
           onClick={handleSubmit}
           disabled={saving}
-          className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] hover:opacity-90 transition-opacity disabled:opacity-50"
+          className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white hover:opacity-90 transition-opacity disabled:opacity-50"
         >
           {saving ? "Saving…" : "Create objective"}
         </button>

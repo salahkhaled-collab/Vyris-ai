@@ -15,7 +15,7 @@ export default function OnboardingWelcomePage() {
         </p>
         <Link
           href="/onboarding/role"
-          className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-sm font-medium bg-brass text-[#1a140a] w-full"
+          className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-sm font-medium bg-brass text-white w-full"
         >
           Get started
         </Link>

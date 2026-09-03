@@ -85,7 +85,7 @@ export default function CalendarPage() {
             <div className="text-xs text-muted mb-4">See your month at a glance.</div>
             <button
               onClick={() => signIn("google")}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a]"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
             >
               Connect
             </button>
@@ -101,20 +101,20 @@ export default function CalendarPage() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setCursor(new Date(year, month - 1, 1))}
-                  className="p-2 rounded-lg bg-panel-2 hover:bg-white/[0.05]"
+                  className="p-2 rounded-lg bg-panel-2 hover:bg-black/[0.06]"
                   aria-label="Previous month"
                 >
                   <ChevronLeft className="w-4 h-4" strokeWidth={1.75} />
                 </button>
                 <button
                   onClick={() => setCursor(new Date())}
-                  className="px-3 py-2 rounded-lg text-xs bg-panel-2 hover:bg-white/[0.05]"
+                  className="px-3 py-2 rounded-lg text-xs bg-panel-2 hover:bg-black/[0.06]"
                 >
                   Today
                 </button>
                 <button
                   onClick={() => setCursor(new Date(year, month + 1, 1))}
-                  className="p-2 rounded-lg bg-panel-2 hover:bg-white/[0.05]"
+                  className="p-2 rounded-lg bg-panel-2 hover:bg-black/[0.06]"
                   aria-label="Next month"
                 >
                   <ChevronRight className="w-4 h-4" strokeWidth={1.75} />
@@ -152,7 +152,7 @@ export default function CalendarPage() {
                         key={key}
                         onClick={() => setSelectedDay(key)}
                         className={cn(
-                          "min-h-[88px] border-b border-r border-line p-2 text-left transition-colors hover:bg-white/[0.02]",
+                          "min-h-[88px] border-b border-r border-line p-2 text-left transition-colors hover:bg-black/[0.03]",
                           !inMonth && "opacity-40",
                           selectedDay === key && "bg-brass-soft"
                         )}
@@ -160,7 +160,7 @@ export default function CalendarPage() {
                         <div
                           className={cn(
                             "text-xs font-mono w-5 h-5 flex items-center justify-center rounded-full",
-                            isToday && "bg-brass text-[#1a140a]"
+                            isToday && "bg-brass text-white"
                           )}
                         >
                           {day.getDate()}

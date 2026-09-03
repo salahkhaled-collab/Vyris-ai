@@ -86,7 +86,7 @@ export default function MeetingsPage() {
             </div>
             <button
               onClick={() => signIn("google")}
-              className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a]"
+              className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
             >
               Connect
             </button>
@@ -140,7 +140,7 @@ export default function MeetingsPage() {
                           href={e.videoLink}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-panel-2 hover:bg-white/[0.05] transition-colors"
+                          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-panel-2 hover:bg-black/[0.06] transition-colors"
                         >
                           <Video className="w-3.5 h-3.5" strokeWidth={1.75} />
                           Join

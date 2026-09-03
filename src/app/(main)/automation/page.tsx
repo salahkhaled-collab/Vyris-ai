@@ -218,7 +218,7 @@ export default function AutomationPage() {
             <button
               onClick={handleSend}
               disabled={pending}
-              className="p-2.5 rounded-lg bg-brass text-[#1a140a] disabled:opacity-60"
+              className="p-2.5 rounded-lg bg-brass text-white disabled:opacity-60"
               aria-label="Send message"
             >
               <Send className="w-4 h-4" strokeWidth={2} />
@@ -278,7 +278,7 @@ export default function AutomationPage() {
                 <button
                   onClick={createRule}
                   disabled={!form.name.trim() || !form.trigger.trim() || !form.action.trim() || saving}
-                  className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-brass text-[#1a140a] disabled:opacity-50"
+                  className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save rule"}
                 </button>
@@ -329,7 +329,7 @@ export default function AutomationPage() {
             <div className="px-6 py-4 border-t border-line">
               <button
                 onClick={() => setCreating(true)}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-panel-2 hover:bg-white/[0.05] transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-panel-2 hover:bg-black/[0.06] transition-colors"
               >
                 <Plus className="w-3.5 h-3.5" strokeWidth={2} />
                 New automation rule

@@ -160,7 +160,7 @@ function BetRow({
   }
 
   return (
-    <div className="px-6 py-5 hover:bg-white/[0.02] transition-colors">
+    <div className="px-6 py-5 hover:bg-black/[0.03] transition-colors">
       <div className="flex items-start gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-ink-text">{bet.title}</p>
