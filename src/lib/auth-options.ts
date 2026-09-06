@@ -63,6 +63,27 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt",
   },
   callbacks: {
+    async signIn({ account }) {
+      // NextAuth's adapter only writes tokens on the FIRST link of an
+      // account - subsequent sign-ins verify identity but don't refresh
+      // the stored access/refresh token, even through a full consent
+      // screen. Force an update here so "Reconnect" actually works when
+      // a token has expired or been revoked.
+      if (account?.provider === "google" && account.access_token) {
+        await prisma.account.updateMany({
+          where: { provider: "google", providerAccountId: account.providerAccountId },
+          data: {
+            access_token: account.access_token,
+            refresh_token: account.refresh_token ?? undefined,
+            expires_at: account.expires_at,
+            token_type: account.token_type,
+            scope: account.scope,
+            id_token: account.id_token,
+          },
+        });
+      }
+      return true;
+    },
     async jwt({ token, user, trigger, session }) {
       // Initial sign-in: `user` is populated (from adapter for Google,
       // from authorize() return value for credentials). Copy the
