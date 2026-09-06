@@ -1,6 +1,7 @@
 import {
   Target,
   GitBranch,
+  AlertTriangle,
   Settings,
   Bell,
   FolderKanban,
@@ -31,6 +32,7 @@ export const navigation: NavGroup[] = [
     items: [
       { label: "Strategic Planning", href: "/strategy", icon: Target, primary: true },
       { label: "Decision Support", href: "/decisions", icon: GitBranch },
+      { label: "Risks", href: "/risks", icon: AlertTriangle },
     ],
   },
   {
