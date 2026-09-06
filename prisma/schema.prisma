@@ -94,6 +94,7 @@ model User {
   objectives    Objective[]    @relation("ObjectiveOwner")
   strategicBets StrategicBet[] @relation("StrategicBetOwner")
   automationRules AutomationRule[] @relation("AutomationRuleOwner")
+  risks Risk[] @relation("RiskOwner")
 }
 
 model Team {
@@ -110,6 +111,7 @@ model Team {
   decisions     Decision[]
   objectives    Objective[]
   strategicBets StrategicBet[]
+  risks         Risk[]
 }
 
 model TeamMessage {
@@ -263,6 +265,36 @@ model StrategicBet {
   team   Team?   @relation(fields: [teamId], references: [id])
 
   tasks Task[]
+}
+
+enum RiskSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum RiskStatus {
+  OPEN
+  MITIGATING
+  RESOLVED
+}
+
+model Risk {
+  id          String       @id @default(cuid())
+  title       String
+  description String       @db.Text
+  severity    RiskSeverity @default(MEDIUM)
+  status      RiskStatus   @default(OPEN)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownerId String
+  owner   User   @relation("RiskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  teamId String?
+  team   Team?   @relation(fields: [teamId], references: [id])
 }
 
 enum RuleStatus {
