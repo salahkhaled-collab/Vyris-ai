@@ -12,6 +12,7 @@ type Decision = {
   id: string; title: string; context: string; deadline: string;
   status: "OPEN" | "DECIDED"; recommendation: string | null;
   chosenOptionId: string | null;
+  teamId: string | null;
   options: DecisionOption[];
 };
 
@@ -93,8 +94,16 @@ export default function DecisionsPage() {
     setDecisions((prev) => prev.filter((d) => d.id !== decisionId));
   }
 
-  const open = decisions.filter((d) => d.status === "OPEN");
-  const decided = decisions.filter((d) => d.status === "DECIDED");
+  const [filter, setFilter] = useState<"all" | "personal" | "team">("all");
+
+  const scoped = decisions.filter((d) => {
+    if (filter === "personal") return !d.teamId;
+    if (filter === "team") return !!d.teamId;
+    return true;
+  });
+
+  const open = scoped.filter((d) => d.status === "OPEN");
+  const decided = scoped.filter((d) => d.status === "DECIDED");
 
   if (loading) {
     return (
@@ -122,16 +131,36 @@ export default function DecisionsPage() {
     <>
       <Topbar eyebrow="Direction" title="Decision Support" statusText={`${open.length} open decision${open.length === 1 ? "" : "s"}`} />
 
-      <div className="px-6 lg:px-10 pt-6">
+      <div className="px-6 lg:px-10 pt-6 flex items-center justify-between flex-wrap gap-3">
         <NewDecisionForm onCreated={loadDecisions} />
+        <div className="flex items-center gap-2 bg-panel-2 rounded-full p-1 w-fit">
+          {(["all", "personal", "team"] as const).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={cn(
+                "px-4 py-1.5 rounded-full text-sm capitalize transition-colors",
+                filter === f ? "bg-panel shadow-sm text-ink-text" : "text-muted hover:text-ink-text"
+              )}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
       </div>
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-10">
 
         {open.length === 0 && decided.length === 0 && (
           <Panel className="p-8 text-center">
-            <p className="text-sm font-medium mb-1">No decisions yet</p>
-            <p className="text-xs text-muted">When a real decision needs your call, it'll show up here.</p>
+            <p className="text-sm font-medium mb-1">
+              {filter === "all" ? "No decisions yet" : `No ${filter} decisions`}
+            </p>
+            <p className="text-xs text-muted">
+              {filter === "all"
+                ? "When a real decision needs your call, it'll show up here."
+                : "Try a different filter, or create one from this view."}
+            </p>
           </Panel>
         )}
 
@@ -147,6 +176,9 @@ export default function DecisionsPage() {
                 <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-2 mb-3">
                   <h3 className="font-display text-2xl leading-snug max-w-2xl">{d.title}</h3>
                   <div className="flex items-center gap-2 shrink-0">
+                    {d.teamId && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-panel-2 text-muted">Team</span>
+                    )}
                     <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
                       {d.deadline}
                     </span>
@@ -211,6 +243,9 @@ export default function DecisionsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
+                  {d.teamId && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-panel-2 text-muted">Team</span>
+                  )}
                   <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">{d.deadline}</span>
                   <DeleteButton onConfirm={() => deleteDecision(d.id)} small />
                 </div>
