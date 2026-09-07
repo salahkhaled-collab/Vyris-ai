@@ -137,7 +137,7 @@ export async function POST(req: NextRequest) {
   const mode = body.mode ?? "chat";
   const ctx = body.context ?? {};
 
-  // ── Draft comms mode: single-turn, system prompt carries all context ──────
+
   if (mode === "draft_comms") {
     const draftNote = ctx.draftNote?.trim();
     if (!draftNote) {

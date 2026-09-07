@@ -65,11 +65,6 @@ export const authOptions: NextAuthOptions = {
   },
   callbacks: {
     async signIn({ account }) {
-      // NextAuth's adapter only writes tokens on the FIRST link of an
-      // account - subsequent sign-ins verify identity but don't refresh
-      // the stored access/refresh token, even through a full consent
-      // screen. Force an update here so "Reconnect" actually works when
-      // a token has expired or been revoked.
       if (account?.provider === "google" && account.access_token) {
         await prisma.account.updateMany({
           where: { provider: "google", providerAccountId: account.providerAccountId },
@@ -86,10 +81,6 @@ export const authOptions: NextAuthOptions = {
       return true;
     },
     async jwt({ token, user, trigger, session }) {
-      // Initial sign-in: `user` is populated (from adapter for Google,
-      // from authorize() return value for credentials). Copy the
-      // fields we need onto the token since they won't be passed
-      // again on subsequent requests.
       if (user) {
         const u = user as typeof user & {
           role: import("@prisma/client").Role | null;
@@ -102,9 +93,6 @@ export const authOptions: NextAuthOptions = {
         token.onboarded = u.onboarded;
       }
 
-      // Manual refresh path: call `session.update()` client-side after
-      // onboarding completes (or role changes) to re-sync the token
-      // without forcing a full re-login.
       if (trigger === "update" && session) {
         if (session.onboarded !== undefined) token.onboarded = session.onboarded;
         if (session.role !== undefined) token.role = session.role;
