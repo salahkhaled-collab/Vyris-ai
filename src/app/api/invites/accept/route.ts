@@ -58,15 +58,18 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Join the team and mark workspaceType as TEAM so onboarding's
-  // workspace-choice step is skipped for invited members — they don't
-  // get asked "personal or team?" since that was decided by the invite.
-  // They may still need the role step if they haven't done it yet;
-  // that's handled by the existing onboarding flow reading `onboarded`.
+  // Join the team, mark workspaceType as TEAM so onboarding's workspace
+  // step is skipped (decided by the invite), and apply whatever
+  // role/accessLevel the inviter chose for this person.
   await prisma.$transaction([
     prisma.user.update({
       where: { id: session.user.id },
-      data: { teamId: invite.teamId, workspaceType: "TEAM" },
+      data: {
+        teamId: invite.teamId,
+        workspaceType: "TEAM",
+        role: invite.role ?? undefined,
+        accessLevel: invite.accessLevel,
+      },
     }),
     prisma.invite.update({
       where: { id: invite.id },

@@ -28,7 +28,7 @@ export async function GET() {
   const invites = await prisma.invite.findMany({
     where: { teamId: user.teamId, status: "pending" },
     orderBy: { createdAt: "desc" },
-    select: { id: true, token: true, email: true, createdAt: true, expiresAt: true },
+    select: { id: true, token: true, email: true, createdAt: true, expiresAt: true, role: true, accessLevel: true },
   });
 
   return NextResponse.json({ invites });
@@ -36,7 +36,12 @@ export async function GET() {
 
 interface CreateInviteBody {
   email?: string; // omit for a link-only invite
+  role?: string;
+  accessLevel?: string;
 }
+
+const VALID_ROLES = ["CEO", "FOUNDER", "EXECUTIVE", "MANAGER", "OTHER"];
+const VALID_ACCESS_LEVELS = ["ADMIN", "MEMBER"];
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -63,6 +68,14 @@ export async function POST(req: NextRequest) {
     // empty body is fine — link-only invite
   }
 
+  if (body.role !== undefined && body.role !== null && !VALID_ROLES.includes(body.role)) {
+    return NextResponse.json({ error: "invalid_role" }, { status: 400 });
+  }
+
+  if (body.accessLevel !== undefined && !VALID_ACCESS_LEVELS.includes(body.accessLevel)) {
+    return NextResponse.json({ error: "invalid_access_level" }, { status: 400 });
+  }
+
   const team = await prisma.team.findUnique({ where: { id: user.teamId } });
   if (!team) {
     return NextResponse.json({ error: "team_not_found" }, { status: 404 });
@@ -75,6 +88,8 @@ export async function POST(req: NextRequest) {
       teamId: user.teamId,
       invitedBy: session.user.id,
       email: body.email?.trim() || null,
+      role: (body.role as "CEO" | "FOUNDER" | "EXECUTIVE" | "MANAGER" | "OTHER" | undefined) ?? null,
+      accessLevel: (body.accessLevel as "ADMIN" | "MEMBER" | undefined) ?? "MEMBER",
       expiresAt,
     },
   });
