@@ -8,6 +8,18 @@ import { prisma } from "@/lib/prisma";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+  events: {
+    async createUser({ user }) {
+      // Role selection was removed from onboarding - every new account
+      // starts as CEO. This only fires once, on first-time account
+      // creation via the adapter (covers Google sign-up; email/password
+      // signup sets this directly in /api/auth/signup).
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { role: "CEO" },
+      });
+    },
+  },
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID as string,

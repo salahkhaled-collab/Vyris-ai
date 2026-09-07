@@ -57,6 +57,11 @@ enum Role {
   OTHER
 }
 
+enum AccessLevel {
+  ADMIN
+  MEMBER
+}
+
 enum WorkspaceType {
   PERSONAL
   TEAM
@@ -71,6 +76,7 @@ model User {
   password      String? //new
 
   role          Role?
+  accessLevel   AccessLevel @default(ADMIN)
   workspaceType WorkspaceType?
   onboarded     Boolean        @default(false)
 
@@ -138,6 +144,8 @@ model Invite {
   inviter   User   @relation("InviteSender", fields: [invitedBy], references: [id], onDelete: Cascade)
 
   email String?
+  role        Role?
+  accessLevel AccessLevel @default(MEMBER)
 
   status     String   @default("pending")
   createdAt  DateTime @default(now())
