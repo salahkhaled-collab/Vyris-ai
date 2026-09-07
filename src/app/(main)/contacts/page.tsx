@@ -48,6 +48,8 @@ interface PendingInvite {
   email: string | null;
   createdAt: string;
   expiresAt: string;
+  role: string | null;
+  accessLevel: "ADMIN" | "MEMBER";
 }
 
 type Tab = "team" | "personal";
@@ -100,6 +102,8 @@ function TeamTab() {
   const [error, setError] = useState<string | null>(null);
 
   const [inviteEmail, setInviteEmail] = useState("");
+  const [inviteRole, setInviteRole] = useState<string>("");
+  const [inviteAccessLevel, setInviteAccessLevel] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [inviting, setInviting] = useState(false);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
@@ -150,15 +154,21 @@ function TeamTab() {
       const res = await fetch("/api/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: inviteEmail.trim() }),
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          role: inviteRole || null,
+          accessLevel: inviteAccessLevel,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Could not send invite.");
       setInvites((prev) => [
-        { id: data.id, email: data.email, createdAt: new Date().toISOString(), expiresAt: data.expiresAt },
+        { id: data.id, email: data.email, createdAt: new Date().toISOString(), expiresAt: data.expiresAt, role: data.role ?? null, accessLevel: data.accessLevel ?? "MEMBER" },
         ...prev,
       ]);
       setInviteEmail("");
+      setInviteRole("");
+      setInviteAccessLevel("MEMBER");
     } catch (err) {
       setInviteError(err instanceof Error ? err.message : "Could not send invite.");
     } finally {
@@ -195,20 +205,40 @@ function TeamTab() {
 
       <Panel className="p-5">
         <h3 className="font-display text-lg mb-3">Invite someone</h3>
-        <div className="flex gap-2">
+        <div className="space-y-2.5">
           <input
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="teammate@company.com"
-            className="flex-1 bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
+            className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
           />
+          <div className="grid grid-cols-2 gap-2.5">
+            <select
+              value={inviteRole}
+              onChange={(e) => setInviteRole(e.target.value)}
+              className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm text-muted focus:outline-none focus:ring-1 focus:ring-brass"
+            >
+              <option value="">Role — optional</option>
+              <option value="EXECUTIVE">Executive</option>
+              <option value="MANAGER">Manager</option>
+              <option value="OTHER">Other</option>
+            </select>
+            <select
+              value={inviteAccessLevel}
+              onChange={(e) => setInviteAccessLevel(e.target.value as "ADMIN" | "MEMBER")}
+              className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm text-muted focus:outline-none focus:ring-1 focus:ring-brass"
+            >
+              <option value="MEMBER">Member access</option>
+              <option value="ADMIN">Admin access</option>
+            </select>
+          </div>
           <button
             onClick={sendInvite}
             disabled={!inviteEmail.trim() || inviting}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
           >
             <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
-            {inviting ? "Sending..." : "Invite"}
+            {inviting ? "Sending..." : "Send invite"}
           </button>
         </div>
         {inviteError && <div className="text-xs text-signal/80 mt-2">{inviteError}</div>}
@@ -249,7 +279,11 @@ function TeamTab() {
                 </div>
                 <div className="min-w-0">
                   <div className="text-sm font-medium truncate">{inv.email ?? "Link invite"}</div>
-                  <div className="text-xs text-muted">Pending</div>
+                  <div className="text-xs text-muted">
+                    Pending
+                    {inv.role && ` · ${inv.role.charAt(0)}${inv.role.slice(1).toLowerCase()}`}
+                    {" · "}{inv.accessLevel === "ADMIN" ? "Admin" : "Member"}
+                  </div>
                 </div>
               </Panel>
             ))}

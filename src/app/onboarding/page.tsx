@@ -14,7 +14,7 @@ export default function OnboardingWelcomePage() {
           help vyris tailor itself to how you work.
         </p>
         <Link
-          href="/onboarding/role"
+          href="/onboarding/workspace"
           className="inline-flex items-center justify-center px-6 py-3 rounded-lg text-sm font-medium bg-brass text-white w-full"
         >
           Get started
