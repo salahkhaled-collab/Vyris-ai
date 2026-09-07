@@ -37,7 +37,6 @@ export default function RisksPage() {
   const [form, setForm] = useState(emptyForm);
   const [shareWithTeam, setShareWithTeam] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [filter, setFilter] = useState<"all" | "personal" | "team">("all");
 
   useEffect(() => {
     fetch("/api/risks")
@@ -97,11 +96,10 @@ export default function RisksPage() {
     }
   }
 
-  const filtered = risks.filter((r) => {
-    if (filter === "personal") return !r.teamId;
-    if (filter === "team") return !!r.teamId;
-    return true;
-  });
+  // Personal mode: only your own private risks. Team mode: everything the
+  // API already returns (your own + team-shared), matching the global
+  // Personal/Team choice made in Settings.
+  const filtered = workspaceType === "PERSONAL" ? risks.filter((r) => !r.teamId) : risks;
 
   const openCount = risks.filter((r) => r.status !== "RESOLVED").length;
 
@@ -114,21 +112,7 @@ export default function RisksPage() {
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2 bg-panel-2 rounded-full p-1 w-fit">
-            {(["all", "personal", "team"] as const).map((f) => (
-              <button
-                key={f}
-                onClick={() => setFilter(f)}
-                className={cn(
-                  "px-4 py-1.5 rounded-full text-sm capitalize transition-colors",
-                  filter === f ? "bg-panel shadow-sm text-ink-text" : "text-muted hover:text-ink-text"
-                )}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
+        <div className="flex items-center justify-end">
           {!creating && (
             <button
               onClick={() => setCreating(true)}
