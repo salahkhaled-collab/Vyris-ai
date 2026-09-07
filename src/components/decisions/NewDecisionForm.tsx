@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { DictationButton } from "@/components/ui/DictationButton";
+import { useUser } from "@/lib/user-context";
 
 type NewOption = { label: string; score: number; pros: string; cons: string };
 
 const emptyOption = (): NewOption => ({ label: "", score: 50, pros: "", cons: "" });
 
 export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
+  const { workspaceType } = useUser();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [context, setContext] = useState("");
   const [deadline, setDeadline] = useState("");
   const [options, setOptions] = useState<NewOption[]>([emptyOption(), emptyOption()]);
+  const [shareWithTeam, setShareWithTeam] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -23,6 +26,7 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
   function reset() {
     setTitle(""); setContext(""); setDeadline("");
     setOptions([emptyOption(), emptyOption()]);
+    setShareWithTeam(false);
     setError(null);
   }
 
@@ -41,6 +45,7 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
           title,
           context,
           deadline,
+          shareWithTeam,
           options: options
             .filter((o) => o.label.trim())
             .map((o) => ({
@@ -137,6 +142,18 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
       </div>
 
       {error && <p className="text-xs text-red-400">{error}</p>}
+
+      {workspaceType === "TEAM" && (
+        <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">
+          <input
+            type="checkbox"
+            checked={shareWithTeam}
+            onChange={(e) => setShareWithTeam(e.target.checked)}
+            className="accent-brass"
+          />
+          Share with team
+        </label>
+      )}
 
       <div className="flex gap-3">
         <button
