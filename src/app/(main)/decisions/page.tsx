@@ -5,6 +5,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { NewDecisionForm } from "@/components/decisions/NewDecisionForm";
 import { cn } from "@/lib/utils";
+import { useUser } from "@/lib/user-context";
 import { CheckCircle2, Circle, Loader2, Trash2 } from "lucide-react";
 
 type DecisionOption = { id: string; label: string; score: number; pros: string[]; cons: string[] };
@@ -52,6 +53,7 @@ function DeleteButton({ onConfirm, small }: { onConfirm: () => Promise<void>; sm
 }
 
 export default function DecisionsPage() {
+  const { workspaceType } = useUser();
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,13 +96,10 @@ export default function DecisionsPage() {
     setDecisions((prev) => prev.filter((d) => d.id !== decisionId));
   }
 
-  const [filter, setFilter] = useState<"all" | "personal" | "team">("all");
-
-  const scoped = decisions.filter((d) => {
-    if (filter === "personal") return !d.teamId;
-    if (filter === "team") return !!d.teamId;
-    return true;
-  });
+  // Personal mode: only your own private decisions (no team-shared clutter).
+  // Team mode: everything the API already returns (your own + team-shared),
+  // matching the global Personal/Team choice made in Settings.
+  const scoped = workspaceType === "PERSONAL" ? decisions.filter((d) => !d.teamId) : decisions;
 
   const open = scoped.filter((d) => d.status === "OPEN");
   const decided = scoped.filter((d) => d.status === "DECIDED");
@@ -131,35 +130,19 @@ export default function DecisionsPage() {
     <>
       <Topbar eyebrow="Direction" title="Decision Support" statusText={`${open.length} open decision${open.length === 1 ? "" : "s"}`} />
 
-      <div className="px-6 lg:px-10 pt-6 flex items-center justify-between flex-wrap gap-3">
+      <div className="px-6 lg:px-10 pt-6">
         <NewDecisionForm onCreated={loadDecisions} />
-        <div className="flex items-center gap-2 bg-panel-2 rounded-full p-1 w-fit">
-          {(["all", "personal", "team"] as const).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                "px-4 py-1.5 rounded-full text-sm capitalize transition-colors",
-                filter === f ? "bg-panel shadow-sm text-ink-text" : "text-muted hover:text-ink-text"
-              )}
-            >
-              {f}
-            </button>
-          ))}
-        </div>
       </div>
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-10">
 
         {open.length === 0 && decided.length === 0 && (
           <Panel className="p-8 text-center">
-            <p className="text-sm font-medium mb-1">
-              {filter === "all" ? "No decisions yet" : `No ${filter} decisions`}
-            </p>
+            <p className="text-sm font-medium mb-1">No decisions yet</p>
             <p className="text-xs text-muted">
-              {filter === "all"
+              {workspaceType === "PERSONAL"
                 ? "When a real decision needs your call, it'll show up here."
-                : "Try a different filter, or create one from this view."}
+                : "No decisions yet for you or your team."}
             </p>
           </Panel>
         )}
