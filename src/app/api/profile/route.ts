@@ -84,3 +84,37 @@ export async function PATCH(req: NextRequest) {
 
   return NextResponse.json(updated);
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+  }
+
+  let body: { confirmEmail?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { email: true },
+  });
+
+  if (!user?.email || body.confirmEmail?.trim().toLowerCase() !== user.email.toLowerCase()) {
+    return NextResponse.json(
+      { error: "email_mismatch", message: "Type your email exactly to confirm deletion." },
+      { status: 400 }
+    );
+  }
+
+  // Cascade deletes (already configured in schema) remove everything
+  // this user owns: Decisions, Objectives, StrategicBets, Risks,
+  // AutomationRules, Contacts, Documents, Projects, Tasks, sent Invites,
+  // and their Account/Session records.
+  await prisma.user.delete({ where: { id: session.user.id } });
+
+  return NextResponse.json({ deleted: true });
+}
