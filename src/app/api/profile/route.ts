@@ -15,7 +15,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, workspaceType: true, onboarded: true },
+    select: { role: true, workspaceType: true, onboarded: true, dashboardLayout: true },
   });
 
   return NextResponse.json(user);
@@ -25,6 +25,7 @@ interface ProfilePatchBody {
   role?: Role;
   workspaceType?: WorkspaceType;
   onboarded?: boolean;
+  dashboardLayout?: string[];
 }
 
 export async function PATCH(req: NextRequest) {
@@ -76,10 +77,17 @@ export async function PATCH(req: NextRequest) {
     data.onboarded = body.onboarded;
   }
 
+  if (body.dashboardLayout !== undefined) {
+    if (!Array.isArray(body.dashboardLayout) || !body.dashboardLayout.every((w) => typeof w === "string")) {
+      return NextResponse.json({ error: "invalid_dashboard_layout" }, { status: 400 });
+    }
+    data.dashboardLayout = body.dashboardLayout;
+  }
+
   const updated = await prisma.user.update({
     where: { id: session.user.id },
     data,
-    select: { role: true, workspaceType: true, onboarded: true },
+    select: { role: true, workspaceType: true, onboarded: true, dashboardLayout: true },
   });
 
   return NextResponse.json(updated);

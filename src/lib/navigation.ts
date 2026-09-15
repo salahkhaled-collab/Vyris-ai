@@ -2,6 +2,7 @@ import {
   Target,
   GitBranch,
   AlertTriangle,
+  LayoutGrid,
   Settings,
   Bell,
   FolderKanban,
@@ -28,9 +29,15 @@ export interface NavGroup {
 
 export const navigation: NavGroup[] = [
   {
+    label: "Overview",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutGrid, primary: true },
+    ],
+  },
+  {
     label: "Advisory",
     items: [
-      { label: "Strategic Planning", href: "/strategy", icon: Target, primary: true },
+      { label: "Strategic Planning", href: "/strategy", icon: Target },
       { label: "Decision Support", href: "/decisions", icon: GitBranch },
       { label: "Risks", href: "/risks", icon: AlertTriangle },
     ],

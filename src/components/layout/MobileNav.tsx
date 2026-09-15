@@ -6,11 +6,12 @@ import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { navigation, settingsItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
-import { Target, GitBranch, Menu, X } from "lucide-react";
+import { LayoutGrid, GitBranch, Menu, X } from "lucide-react";
 import { VyrisMark } from "@/components/ui/VyrisMark";
 
+const overviewGroup = navigation.find((g) => g.label === "Overview");
 const advisoryGroup = navigation.find((g) => g.label === "Advisory");
-const strategyItem = advisoryGroup?.items.find((i) => i.href === "/strategy");
+const dashboardItem = overviewGroup?.items.find((i) => i.href === "/dashboard");
 const decisionsItem = advisoryGroup?.items.find((i) => i.href === "/decisions");
 
 export function MobileNav() {
@@ -22,7 +23,7 @@ export function MobileNav() {
   // "More" is active whenever we're on a page that isn't one of the two
   // primary bottom-bar destinations — covers everything the drawer holds.
   const moreActive =
-    pathname !== strategyItem?.href && pathname !== decisionsItem?.href;
+    pathname !== dashboardItem?.href && pathname !== decisionsItem?.href;
 
   return (
     <>
@@ -31,16 +32,16 @@ export function MobileNav() {
         className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-panel border-t border-line flex items-stretch h-16"
         style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
       >
-        {strategyItem && (
+        {dashboardItem && (
           <Link
-            href={strategyItem.href}
+            href={dashboardItem.href}
             className={cn(
               "flex-1 flex flex-col items-center justify-center gap-1 text-[11px]",
-              bottomBarActive(strategyItem.href) ? "text-brass" : "text-muted"
+              bottomBarActive(dashboardItem.href) ? "text-brass" : "text-muted"
             )}
           >
-            <Target className="w-5 h-5" strokeWidth={1.75} />
-            Strategy
+            <LayoutGrid className="w-5 h-5" strokeWidth={1.75} />
+            Dashboard
           </Link>
         )}
         {decisionsItem && (

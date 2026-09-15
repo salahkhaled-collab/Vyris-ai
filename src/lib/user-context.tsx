@@ -10,6 +10,7 @@ interface UserProfile {
   role: Role | null;
   workspaceType: WorkspaceType | null;
   onboarded: boolean;
+  dashboardLayout: string[];
 }
 
 interface UserContextValue extends UserProfile {
@@ -17,12 +18,14 @@ interface UserContextValue extends UserProfile {
   setRole: (role: Role) => Promise<void>;
   setWorkspaceType: (type: WorkspaceType) => Promise<void>;
   completeOnboarding: () => Promise<void>;
+  setDashboardLayout: (order: string[]) => Promise<void>;
 }
 
 const defaultProfile: UserProfile = {
   role: null,
   workspaceType: null,
   onboarded: false,
+  dashboardLayout: [],
 };
 
 const UserContext = createContext<UserContextValue | null>(null);
@@ -49,6 +52,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           role: data.role ?? null,
           workspaceType: data.workspaceType ?? null,
           onboarded: data.onboarded ?? false,
+          dashboardLayout: data.dashboardLayout ?? [],
         });
       })
       .catch(() => {
@@ -85,6 +89,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     setRole: (role) => patch({ role }),
     setWorkspaceType: (workspaceType) => patch({ workspaceType }),
     completeOnboarding: () => patch({ onboarded: true }),
+    setDashboardLayout: (dashboardLayout) => patch({ dashboardLayout }),
   };
 
   return <UserContext.Provider value={value}>{children}</UserContext.Provider>;
