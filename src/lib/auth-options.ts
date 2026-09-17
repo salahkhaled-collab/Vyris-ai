@@ -31,7 +31,7 @@ export const authOptions: NextAuthOptions = {
   "openid",
   "email",
   "profile",
-  "<a href="https://www.googleapis.com/auth/calendar.readonly&quot;," target="_blank" ...
+  "<a 
       ].join(" "),
           access_type: "offline",
           prompt: "consent", 
