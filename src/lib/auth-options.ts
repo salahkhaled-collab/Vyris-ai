@@ -21,30 +21,24 @@ export const authOptions: NextAuthOptions = {
     },
   },
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID as string,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          scope: [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/calendar.readonly",
-            
-          ].join(" "),
+  GoogleProvider({
+  clientId: process.env.GOOGLE_CLIENT_ID as string,
+  clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
+  allowDangerousEmailAccountLinking: true,
+  authorization: {
+    params: {
+      scope: [
+        "openid",
+        "email",
+        "profile",
+        "https://www.googleapis.com/auth/calendar.readonly",
+      ].join
           access_type: "offline",
           prompt: "consent", 
         },
       },
     }),
-    CredentialsProvider({
-      name: "credentials",
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" },
-      },
+  
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
@@ -129,13 +123,15 @@ export const authOptions: NextAuthOptions = {
 };
 
 
-CredentialsProvider({
-  name: "credentials",
-  credentials: {
-    email: { label: "Email", type: "email" },
-    password: { label: "Password", type: "password" },
-  },
 
+  async authorize(credentials) {
+    try {
+      console.log("=== LOGIN ATTEMPT ===");
+
+      if (!credentials?.email || !credentials?.password) {
+        console.log("❌ Missing email or password");
+        return null;
+      }
 
       const user = await prisma.user.findUnique({
         where: {
@@ -150,11 +146,8 @@ CredentialsProvider({
         return null;
       }
 
-      console.log("User ID:", user.id);
-      console.log("Has password:", !!user.password);
-
       if (!user.password) {
-        console.log("❌ User has no password (Google account?)");
+        console.log("❌ User has no password (likely Google account)");
         return null;
       }
 
@@ -182,7 +175,7 @@ CredentialsProvider({
         onboarded: user.onboarded,
       };
     } catch (error) {
-      console.error("❌ Authorize error:", error);
+      console.error("❌ Authorization error:", error);
       return null;
     }
   },
