@@ -31,14 +31,19 @@ export const authOptions: NextAuthOptions = {
         "openid",
         "email",
         "profile",
-        "https://www.googleapis.com/auth/calendar.readonly",
-      ].join
+      "https://www.googleapis.com/auth/calendar.readonly",
+      ].join(" "),
           access_type: "offline",
           prompt: "consent", 
         },
       },
     }),
-  
+  CredentialsProvider({
+  name: "credentials",
+  credentials: {
+    email: { label: "Email", type: "email" },
+    password: { label: "Password", type: "password" },
+  },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
 
@@ -52,8 +57,9 @@ export const authOptions: NextAuthOptions = {
         const valid = await compare(credentials.password, user.password);
         if (!valid) return null;
 
-        // Return everything the jwt callback needs — this object
-        // becomes the `user` param on initial sign-in only.
+      
+      },
+    }),
         return {
           id: user.id,
           email: user.email,
@@ -124,59 +130,4 @@ export const authOptions: NextAuthOptions = {
 
 
 
-  async authorize(credentials) {
-    try {
-      console.log("=== LOGIN ATTEMPT ===");
-
-      if (!credentials?.email || !credentials?.password) {
-        console.log("❌ Missing email or password");
-        return null;
-      }
-
-      const user = await prisma.user.findUnique({
-        where: {
-          email: credentials.email,
-        },
-      });
-
-      console.log("User found:", !!user);
-
-      if (!user) {
-        console.log("❌ User not found");
-        return null;
-      }
-
-      if (!user.password) {
-        console.log("❌ User has no password (likely Google account)");
-        return null;
-      }
-
-      const validPassword = await compare(
-        credentials.password,
-        user.password
-      );
-
-      console.log("Password valid:", validPassword);
-
-      if (!validPassword) {
-        console.log("❌ Invalid password");
-        return null;
-      }
-
-      console.log("✅ Login successful");
-
-      return {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        image: user.image,
-        role: user.role,
-        workspaceType: user.workspaceType,
-        onboarded: user.onboarded,
-      };
-    } catch (error) {
-      console.error("❌ Authorization error:", error);
-      return null;
-    }
-  },
-})
+ 
