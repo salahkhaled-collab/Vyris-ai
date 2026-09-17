@@ -27,50 +27,54 @@ export const authOptions: NextAuthOptions = {
   allowDangerousEmailAccountLinking: true,
   authorization: {
     params: {
-      scope: [
-        "openid",
-        "email",
-        "profile",
-      "https://www.googleapis.com/auth/calendar.readonly",
+     scope: [
+  "openid",
+  "email",
+  "profile",
+  "<a href="https://www.googleapis.com/auth/calendar.readonly&quot;," target="_blank" ...
       ].join(" "),
           access_type: "offline",
           prompt: "consent", 
         },
       },
     }),
-  CredentialsProvider({
+ CredentialsProvider({
   name: "credentials",
   credentials: {
     email: { label: "Email", type: "email" },
     password: { label: "Password", type: "password" },
   },
-      async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) return null;
 
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email },
-        });
+  async authorize(credentials) {
+    if (!credentials?.email || !credentials?.password) {
+      return null;
+    }
 
-        // No user, or a Google-only account with no password set
-        if (!user || !user.password) return null;
+    const user = await prisma.user.findUnique({
+      where: { email: credentials.email },
+    });
 
-        const valid = await compare(credentials.password, user.password);
-        if (!valid) return null;
+    if (!user || !user.password) {
+      return null;
+    }
 
-      
-      },
-    }),
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-          workspaceType: user.workspaceType,
-          onboarded: user.onboarded,
-        };
-      },
-    }),
+    const valid = await compare(credentials.password, user.password);
+
+    if (!valid) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      image: user.image,
+      role: user.role,
+      workspaceType: user.workspaceType,
+      onboarded: user.onboarded,
+    };
+  },
+}),
   ],
   session: {
     strategy: "jwt",
