@@ -51,39 +51,36 @@ export const authOptions: NextAuthOptions = {
       },
 
       async authorize(credentials) {
-  if (!credentials?.email || !credentials?.password) {
-    return null;
-  }
+        if (!credentials?.email || !credentials?.password) {
+          return null;
+        }
 
-  const user = await prisma.user.findUnique({
-    where: {
-      email: credentials.email,
-    },
-  });
+        const user = await prisma.user.findUnique({
+          where: {
+            email: credentials.email,
+          },
+        });
 
-  if (!user || !user.password) {
-    return null;
-  }
+        if (!user || !user.password) {
+          return null;
+        }
 
-  const valid = await compare(
-    credentials.password,
-    user.password
-  );
+        const valid = await compare(credentials.password, user.password);
 
-  if (!valid) {
-    return null;
-  }
+        if (!valid) {
+          return null;
+        }
 
-  return {
-    id: user.id,
-    email: user.email,
-    name: user.name,
-    image: user.image,
-    role: user.role,
-    workspaceType: user.workspaceType,
-    onboarded: user.onboarded,
-  };
-},
+        return {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          image: user.image,
+          role: user.role,
+          workspaceType: user.workspaceType,
+          onboarded: user.onboarded,
+        };
+      },
     }),
   ],
 
