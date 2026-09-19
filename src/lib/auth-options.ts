@@ -38,48 +38,48 @@ export const authOptions: NextAuthOptions = {
 
     CredentialsProvider({
       name: "credentials",
-
       credentials: {
-        email: {
-          label: "Email",
-          type: "email",
-        },
-        password: {
-          label: "Password",
-          type: "password",
-        },
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" },
       },
-
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
+          console.log("[auth] no credentials");
           return null;
         }
 
-        const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
-        });
+        try {
+          const email = credentials.email.toLowerCase().trim();
+          const user = await prisma.user.findUnique({ where: { email } });
 
-        if (!user || !user.password) {
+          if (!user) {
+            console.log("[auth] no user for", email);
+            return null;
+          }
+          if (!user.password) {
+            console.log("[auth] user has no password hash");
+            return null;
+          }
+
+          const valid = await compare(credentials.password, user.password);
+          if (!valid) {
+            console.log("[auth] password mismatch");
+            return null;
+          }
+
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+            workspaceType: user.workspaceType,
+            onboarded: user.onboarded,
+          };
+        } catch (e) {
+          console.error("[auth] authorize threw:", e);
           return null;
         }
-
-        const valid = await compare(credentials.password, user.password);
-
-        if (!valid) {
-          return null;
-        }
-
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-          workspaceType: user.workspaceType,
-          onboarded: user.onboarded,
-        };
       },
     }),
   ],
@@ -128,11 +128,9 @@ export const authOptions: NextAuthOptions = {
         if (session.onboarded !== undefined) {
           token.onboarded = session.onboarded;
         }
-
         if (session.role !== undefined) {
           token.role = session.role;
         }
-
         if (session.workspaceType !== undefined) {
           token.workspaceType = session.workspaceType;
         }
