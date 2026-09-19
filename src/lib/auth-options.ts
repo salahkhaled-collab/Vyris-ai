@@ -44,7 +44,6 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
-          console.log("[auth] no credentials");
           return null;
         }
 
@@ -53,17 +52,14 @@ export const authOptions: NextAuthOptions = {
           const user = await prisma.user.findUnique({ where: { email } });
 
           if (!user) {
-            console.log("[auth] no user for", email);
             return null;
           }
           if (!user.password) {
-            console.log("[auth] user has no password hash");
             return null;
           }
 
           const valid = await compare(credentials.password, user.password);
           if (!valid) {
-            console.log("[auth] password mismatch");
             return null;
           }
 
