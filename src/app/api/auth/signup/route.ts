@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         name: name?.trim() || null,
         email: emailLower,
         password: hashedPassword,
-        role: "CEO",
+        role: "CEO", accessLevel: "ADMIN",
         onboarded: false, // Forces onboarding on first login
       },
     });

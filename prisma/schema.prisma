@@ -76,7 +76,7 @@ model User {
   password      String? //new
 
   role          Role?
-  accessLevel   AccessLevel @default(ADMIN)
+  accessLevel   AccessLevel @default(MEMBER)
   dashboardLayout String[] @default([])
   workspaceType WorkspaceType?
   onboarded     Boolean        @default(false)

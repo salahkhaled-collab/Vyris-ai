@@ -12,7 +12,7 @@ export const authOptions: NextAuthOptions = {
     async createUser({ user }) {
       await prisma.user.update({
         where: { id: user.id },
-        data: { role: "CEO" },
+        data: { role: "CEO", accessLevel: "ADMIN" },
       });
     },
   },
