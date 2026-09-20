@@ -43,4 +43,4 @@ export async function GET() {
   }
 
   return NextResponse.json({ counts, weeks });
-}``
+}
