@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { Role, WorkspaceType } from "@prisma/client";
+import { isValidLayout } from "@/lib/dashboard-layout";
 
 const VALID_ROLES: Role[] = ["CEO", "FOUNDER", "EXECUTIVE", "MANAGER", "OTHER"];
 const VALID_WORKSPACES: WorkspaceType[] = ["PERSONAL", "TEAM"];
@@ -78,7 +79,7 @@ export async function PATCH(req: NextRequest) {
   }
 
   if (body.dashboardLayout !== undefined) {
-    if (!Array.isArray(body.dashboardLayout) || !body.dashboardLayout.every((w) => typeof w === "string")) {
+    if (!isValidLayout(body.dashboardLayout)) {
       return NextResponse.json({ error: "invalid_dashboard_layout" }, { status: 400 });
     }
     data.dashboardLayout = body.dashboardLayout;
