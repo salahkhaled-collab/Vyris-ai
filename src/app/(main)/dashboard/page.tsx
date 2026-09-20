@@ -6,8 +6,8 @@ import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 import {
-  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X, Activity,
-} from "lucide-react";  
+  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X,
+} from "lucide-react";
 import Link from "next/link";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor,
@@ -25,7 +25,6 @@ const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: st
   risks:      { label: "Risks", icon: AlertTriangle, href: "/risks" },
   bets:       { label: "Strategic Bets", icon: TrendingUp, href: "/strategy" },
   projects:   { label: "Projects", icon: FolderKanban, href: "/projects" },
-    progress:   { label: "Progress", icon: Activity, href: "/projects" },
 };
 
 function computeProgress(keyResults: { current: number; target: number }[]) {
@@ -38,7 +37,7 @@ function computeProgress(keyResults: { current: number; target: number }[]) {
 
 function ObjectivesWidget() {
   const [items, setItems] = useState<{ id: string; title: string; keyResults: { current: number; target: number }[] }[] | null>(null);
-  useEffect(() => { fetch("/api/objectives").then((r) => r.json()).then((d) => setItems(Array.isArray(d) ? d.slice(0, 4) : [])).catch(() =>setItems([])); }, []);
+  useEffect(() => { fetch("/api/objectives").then((r) => r.json()).then((d) => setItems(Array.isArray(d) ? d.slice(0, 4) : [])).catch(() => setItems([])); }, []);
   if (items === null) return <p className="text-xs text-muted">Loading...</p>;
   if (items.length === 0) return <p className="text-xs text-muted">No objectives yet.</p>;
   return (
@@ -122,23 +121,6 @@ function BetsWidget() {
           <span className={cn("text-xs shrink-0 ml-2", BET_COLOR[b.status] ?? "text-muted")}>
             {b.status.replace("_", " ").toLowerCase()}
           </span>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function ProjectsWidget() {
-  const [items, setItems] = useState<{ id: string; title?: string; name?: string; status: string }[] | null>(null);
-  useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setItems((d.projects ?? []).slice(0, 4))).catch(() => setItems([])); }, []);
-  if (items === null) return <p className="text-xs text-muted">Loading...</p>;
-  if (items.length === 0) return <p className="text-xs text-muted">No projects yet.</p>;
-  return (
-    <div className="space-y-2">
-      {items.map((p) => (
-        <div key={p.id} className="flex items-center justify-between text-sm">
-          <span className="truncate">{p.title ?? p.name}</span>
-          <span className="text-muted text-xs shrink-0 ml-2 capitalize">{p.status.toLowerCase()}</span>
         </div>
       ))}
     </div>
@@ -232,7 +214,6 @@ const WIDGET_BODY: Record<string, () => JSX.Element> = {
   risks: RisksWidget,
   bets: BetsWidget,
   projects: ProjectsWidget,
-    progress: ProgressWidget,
 };
 
 // ── Sortable card ────────────────────────────────────────────────────────
