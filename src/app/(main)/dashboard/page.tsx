@@ -150,66 +150,78 @@ type ProgressData = {
   weeks: { start: string; done: number }[];
 };
 
-function ProgressWidget() {
+function ProgressChart() {
   const [data, setData] = useState<ProgressData | null>(null);
-  const [failed, setFailed] = useState(false);
 
   useEffect(() => {
     fetch("/api/dashboard/progress")
-      .then((r) => {
-        if (!r.ok) throw new Error(String(r.status));
-        return r.json();
-      })
+      .then((r) => (r.ok ? r.json() : null))
       .then(setData)
-      .catch(() => setFailed(true));
+      .catch(() => setData(null));
   }, []);
 
-  if (failed) return <p className="text-xs text-muted">Couldn't load progress.</p>;
-  if (!data) return <p className="text-xs text-muted">Loading...</p>;
-
+  if (!data) return null;
   const { counts, weeks } = data;
   const total = counts.TODO + counts.IN_PROGRESS + counts.DONE;
-  if (total === 0) return <p className="text-xs text-muted">No tasks yet.</p>;
+  if (total === 0) return null;
 
   const pct = Math.round((counts.DONE / total) * 100);
   const max = Math.max(1, ...weeks.map((w) => w.done));
   const seg = (n: number) => `${(n / total) * 100}%`;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-baseline gap-2">
-        <span className="font-display text-3xl">{pct}%</span>
-        <span className="text-xs text-muted">{counts.DONE} of {total} tasks done</span>
-      </div>
-
-      <div>
-        <div className="flex h-2 rounded-full overflow-hidden bg-panel-2">
-          <div className="bg-brass" style={{ width: seg(counts.DONE) }} />
-          <div className="bg-brass" style={{ width: seg(counts.IN_PROGRESS), opacity: 0.45 }} />
+    <div className="mb-4 pb-4 border-b border-panel-2">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <span className="font-display text-2xl">{pct}%</span>
+          <p className="text-xs text-muted">{counts.DONE} of {total} tasks done</p>
         </div>
-        <div className="flex justify-between text-xs text-muted mt-1.5">
-          <span>{counts.DONE} done</span>
-          <span>{counts.IN_PROGRESS} in progress</span>
-          <span>{counts.TODO} to do</span>
-        </div>
-      </div>
-
-      <div>
-        <div className="flex items-end gap-1 h-16">
+        <div className="flex items-end gap-1 h-10 flex-1 max-w-[140px]">
           {weeks.map((w) => (
             <div
               key={w.start}
               title={`Week of ${w.start}: ${w.done} done`}
               className="flex-1 bg-brass rounded-sm"
-              style={{ height: `${Math.max((w.done / max) * 100, w.done > 0 ? 8 : 3)}%`, opacity: w.done > 0 ? 1 : 0.25 }}
+              style={{
+                height: `${Math.max((w.done / max) * 100, w.done > 0 ? 8 : 3)}%`,
+                opacity: w.done > 0 ? 1 : 0.25,
+              }}
             />
           ))}
         </div>
-        <div className="flex justify-between text-xs text-muted mt-1.5">
-          <span>8 weeks ago</span>
-          <span>this week</span>
-        </div>
       </div>
+      <div className="flex h-1.5 rounded-full overflow-hidden bg-panel-2 mt-3">
+        <div className="bg-brass" style={{ width: seg(counts.DONE) }} />
+        <div className="bg-brass" style={{ width: seg(counts.IN_PROGRESS), opacity: 0.45 }} />
+      </div>
+    </div>
+  );
+}
+
+function ProjectsWidget() {
+  const [items, setItems] = useState<{ id: string; title?: string; name?: string; status: string }[] | null>(null);
+  useEffect(() => {
+    fetch("/api/projects")
+      .then((r) => r.json())
+      .then((d) => setItems((d.projects ?? []).slice(0, 3)))
+      .catch(() => setItems([]));
+  }, []);
+  if (items === null) return <p className="text-xs text-muted">Loading...</p>;
+  return (
+    <div>
+      <ProgressChart />
+      {items.length === 0 ? (
+        <p className="text-xs text-muted">No projects yet.</p>
+      ) : (
+        <div className="space-y-2">
+          {items.map((p) => (
+            <div key={p.id} className="flex items-center justify-between text-sm">
+              <span className="truncate">{p.title ?? p.name}</span>
+              <span className="text-muted text-xs shrink-0 ml-2 capitalize">{p.status.toLowerCase()}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
