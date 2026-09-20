@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useShowCharts } from "@/lib/use-show-charts";
 
 type Bet = { id: string; title: string; status: string };
 
@@ -20,6 +21,7 @@ const TEXT: Record<string, string> = {
 const label = (s: string) => s.replace("_", " ").toLowerCase();
 
 export function BetsCard() {
+  const [showCharts] = useShowCharts();
   const [items, setItems] = useState<Bet[] | null>(null);
 
   useEffect(() => {
@@ -36,12 +38,12 @@ export function BetsCard() {
 
   return (
     <div>
-      <div className="flex h-1.5 rounded-full overflow-hidden bg-panel-2 mb-1.5">
+      <div className={cn("flex h-1.5 rounded-full overflow-hidden bg-panel-2 mb-1.5", !showCharts && "hidden")}>
         {counts.map(({ s, n }) =>
           n > 0 ? <div key={s} className={BAR[s]} style={{ width: `${(n / items.length) * 100}%` }} /> : null
         )}
       </div>
-      <p className="text-xs text-muted mb-4">
+      <p className={cn("text-xs text-muted mb-4", !showCharts && "hidden")}>
         {counts.filter((c) => c.n > 0).map((c) => `${c.n} ${label(c.s)}`).join(" · ")}
       </p>
       <div className="space-y-2">

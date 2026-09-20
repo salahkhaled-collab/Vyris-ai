@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useShowCharts } from "@/lib/use-show-charts";
 
 type ProgressData = {
   counts: { TODO: number; IN_PROGRESS: number; DONE: number };
@@ -56,6 +57,7 @@ function ProgressChart() {
 }
 
 export function ProjectsCard() {
+  const [showCharts] = useShowCharts();
   const [items, setItems] = useState<{ id: string; title?: string; name?: string; status: string }[] | null>(null);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function ProjectsCard() {
 
   return (
     <div>
-      <ProgressChart />
+      {showCharts && <ProgressChart />}
       {items.length === 0 ? (
         <p className="text-xs text-muted">No projects yet.</p>
       ) : (

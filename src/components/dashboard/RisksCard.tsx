@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
+import { useShowCharts } from "@/lib/use-show-charts";
 
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 type Risk = { id: string; title: string; severity: Severity; status: string };
@@ -15,6 +16,7 @@ const COLOR: Record<Severity, string> = {
 };
 
 export function RisksCard() {
+  const [showCharts] = useShowCharts();
   const [items, setItems] = useState<Risk[] | null>(null);
 
   useEffect(() => {
@@ -34,12 +36,12 @@ export function RisksCard() {
 
   return (
     <div>
-      <div className="flex h-1.5 rounded-full overflow-hidden bg-panel-2 mb-1.5">
+      <div className={cn("flex h-1.5 rounded-full overflow-hidden bg-panel-2 mb-1.5", !showCharts && "hidden")}>
         {counts.map(({ s, n }) =>
           n > 0 ? <div key={s} className={COLOR[s]} style={{ width: `${(n / items.length) * 100}%` }} /> : null
         )}
       </div>
-      <p className="text-xs text-muted mb-4">
+      <p className={cn("text-xs text-muted mb-4", !showCharts && "hidden")}>
         {counts.filter((c) => c.n > 0).map((c) => `${c.n} ${c.s.toLowerCase()}`).join(" · ")}
       </p>
       <div className="space-y-2">

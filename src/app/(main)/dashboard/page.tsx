@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { parseLayout, serializeLayout, DEFAULT_ORDER } from "@/lib/dashboard-layout";
+import { ChartsToggle } from "@/components/dashboard/ChartsToggle";
 import { BetsCard } from "@/components/dashboard/BetsCard";
 import { RisksCard } from "@/components/dashboard/RisksCard";
 import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
@@ -301,6 +302,7 @@ export default function DashboardPage() {
             {editing ? "Drag the handle to reorder. Use × to hide a card." : ""}
           </p>
           <div className="flex items-center gap-2">
+            <ChartsToggle show={editing} />
             {editing && (
               <button onClick={reset} className="text-xs text-muted hover:text-ink-text px-2 py-1">
                 Reset
