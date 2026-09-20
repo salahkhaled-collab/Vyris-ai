@@ -6,8 +6,8 @@ import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 import {
-  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X,
-} from "lucide-react";
+  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X, Activity,
+} from "lucide-react";  
 import Link from "next/link";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor,
