@@ -128,7 +128,7 @@ function BetsWidget() {
 }
 
 function ProjectsWidget() {
-  const [items, setItems] = useState<{ id: string; name: string; status: string }[] | null>(null);
+  const [items, setItems] = useState<{ id: string; title?: string; name?: string; status: string }[] | null>(null);
   useEffect(() => { fetch("/api/projects").then((r) => r.json()).then((d) => setItems((d.projects ?? []).slice(0, 4))).catch(() => setItems([])); }, []);
   if (items === null) return <p className="text-xs text-muted">Loading...</p>;
   if (items.length === 0) return <p className="text-xs text-muted">No projects yet.</p>;
@@ -136,7 +136,7 @@ function ProjectsWidget() {
     <div className="space-y-2">
       {items.map((p) => (
         <div key={p.id} className="flex items-center justify-between text-sm">
-          <span className="truncate">{p.name}</span>
+          <span className="truncate">{p.title ?? p.name}</span>
           <span className="text-muted text-xs shrink-0 ml-2 capitalize">{p.status.toLowerCase()}</span>
         </div>
       ))}
