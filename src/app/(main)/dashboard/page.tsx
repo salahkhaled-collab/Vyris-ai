@@ -18,6 +18,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { parseLayout, serializeLayout, DEFAULT_ORDER } from "@/lib/dashboard-layout";
+import { BetsCard } from "@/components/dashboard/BetsCard";
+import { RisksCard } from "@/components/dashboard/RisksCard";
 import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
 
 const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: string }> = {
@@ -148,8 +150,8 @@ function ProjectsWidget() {
 const WIDGET_BODY: Record<string, () => JSX.Element> = {
   objectives: ObjectivesWidget,
   decisions: DecisionsWidget,
-  risks: RisksWidget,
-  bets: BetsWidget,
+  risks: RisksCard,
+  bets: BetsCard,
   projects: ProjectsCard,
 };
 
