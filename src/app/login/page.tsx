@@ -5,6 +5,7 @@ import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { VyrisMark } from "@/components/ui/VyrisMark";
+import { AuthErrorNotice } from "@/components/auth/AuthErrorNotice";
 
 function LoginContent() {
   const { status } = useSession();
@@ -68,6 +69,7 @@ function LoginContent() {
           Sign in to access your Command Center, calendar, and AI Chief of Staff.
         </p>
 
+        <AuthErrorNotice />
         {error && (
           <div className="text-xs text-[#ff5555] bg-red-950/20 border border-red-500/10 rounded-lg p-3 text-center mb-4">
             {error}
