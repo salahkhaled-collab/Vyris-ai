@@ -1,16 +1,23 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 import {
-  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban,
+  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X,
 } from "lucide-react";
 import Link from "next/link";
-
-const DEFAULT_ORDER = ["objectives", "decisions", "risks", "bets", "projects"];
+import {
+  DndContext, closestCenter, PointerSensor, TouchSensor, KeyboardSensor,
+  useSensor, useSensors, type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, rectSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { parseLayout, serializeLayout, DEFAULT_ORDER } from "@/lib/dashboard-layout";
 
 const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: string }> = {
   objectives: { label: "Objectives", icon: Target, href: "/strategy" },
@@ -30,7 +37,7 @@ function computeProgress(keyResults: { current: number; target: number }[]) {
 
 function ObjectivesWidget() {
   const [items, setItems] = useState<{ id: string; title: string; keyResults: { current: number; target: number }[] }[] | null>(null);
-  useEffect(() => { fetch("/api/objectives").then((r) => r.json()).then((d) => setItems(Array.isArray(d) ? d.slice(0, 4) : [])).catch(() => setItems([])); }, []);
+  useEffect(() => { fetch("/api/objectives").then((r) => r.json()).then((d) => setItems(Array.isArray(d) ? d.slice(0, 4) : [])).catch(() =>setItems([])); }, []);
   if (items === null) return <p className="text-xs text-muted">Loading...</p>;
   if (items.length === 0) return <p className="text-xs text-muted">No objectives yet.</p>;
   return (
@@ -145,80 +152,197 @@ const WIDGET_BODY: Record<string, () => JSX.Element> = {
   projects: ProjectsWidget,
 };
 
+// ── Sortable card ────────────────────────────────────────────────────────
+
+function SortableWidget({
+  id, editing, onHide,
+}: { id: string; editing: boolean; onHide: (id: string) => void }) {
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging,
+  } = useSortable({ id, disabled: !editing });
+
+  const meta = WIDGET_META[id];
+  const Body = WIDGET_BODY[id];
+  if (!meta || !Body) return null;
+  const Icon = meta.icon;
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Panel className={cn("p-5", editing && "ring-1 ring-brass")}>
+        <div className="flex items-center justify-between mb-4">
+          <Link href={meta.href} className="flex items-center gap-2 hover:text-brass transition-colors">
+            <Icon className="w-4 h-4 text-brass" strokeWidth={1.75} />
+            <h3 className="font-display text-lg">{meta.label}</h3>
+          </Link>
+          {editing && (
+            <div className="flex items-center gap-1">
+              <button
+                ref={setActivatorNodeRef}
+                {...attributes}
+                {...listeners}
+                className="cursor-grab active:cursor-grabbing touch-none p-1 text-muted hover:text-ink-text"
+                aria-label="Drag to reorder"
+              >
+                <GripVertical className="w-4 h-4" strokeWidth={1.75} />
+              </button>
+              <button
+                onClick={() => onHide(id)}
+                className="p-1 text-muted hover:text-ink-text"
+                aria-label={`Hide ${meta.label}`}
+              >
+                <X className="w-4 h-4" strokeWidth={1.75} />
+              </button>
+            </div>
+          )}
+        </div>
+        <Body />
+      </Panel>
+    </div>
+  );
+}
+
 // ── Page ─────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const { dashboardLayout, setDashboardLayout, loading } = useUser();
   const [order, setOrder] = useState<string[]>(DEFAULT_ORDER);
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
-  const [saving, setSaving] = useState(false);
+  const [hidden, setHidden] = useState<string[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const seq = useRef(0);
+  const dirty = useRef(false);
 
   useEffect(() => {
-    if (loading) return;
-    if (dashboardLayout.length === 0) {
-      setOrder(DEFAULT_ORDER);
-    } else {
-      const missing = DEFAULT_ORDER.filter((w) => !dashboardLayout.includes(w));
-      setOrder([...dashboardLayout, ...missing]);
-    }
+    if (loading || dirty.current) return; // a stale server response must not overwrite newer local edits
+    const p = parseLayout(dashboardLayout);
+    setOrder(p.order);
+    setHidden(p.hidden);
   }, [dashboardLayout, loading]);
 
-  const persist = useCallback(async (next: string[]) => {
-    setSaving(true);
-    try {
-      await setDashboardLayout(next);
-    } catch {
-      // keep local order even if save failed - not worth blocking the UI
-    } finally {
-      setSaving(false);
-    }
-  }, [setDashboardLayout]);
+  const save = useCallback(
+    (o: string[], h: string[]) => {
+      const mine = ++seq.current;
+      dirty.current = true;
+      clearTimeout(timer.current);
+      timer.current = setTimeout(async () => {
+        setStatus("saving");
+        try {
+          await setDashboardLayout(serializeLayout(o, h));
+          setStatus("idle");
+        } catch {
+          setStatus("error");
+        } finally {
+          if (mine === seq.current) dirty.current = false;
+        }
+      }, 500);
+    },
+    [setDashboardLayout]
+  );
 
-  function handleDrop(targetIndex: number) {
-    if (dragIndex === null || dragIndex === targetIndex) return;
-    const next = [...order];
-    const [moved] = next.splice(dragIndex, 1);
-    next.splice(targetIndex, 0, moved);
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  function onDragEnd(e: DragEndEvent) {
+    const { active, over } = e;
+    if (!over || active.id === over.id) return;
+    const next = arrayMove(order, order.indexOf(String(active.id)), order.indexOf(String(over.id)));
     setOrder(next);
-    setDragIndex(null);
-    persist(next);
+    save(next, hidden);
+  }
+
+  function hide(id: string) {
+    const o = order.filter((x) => x !== id);
+    const h = [...hidden, id];
+    setOrder(o);
+    setHidden(h);
+    save(o, h);
+  }
+
+  function show(id: string) {
+    const h = hidden.filter((x) => x !== id);
+    const o = [...order, id];
+    setOrder(o);
+    setHidden(h);
+    save(o, h);
+  }
+
+  function reset() {
+    setOrder([...DEFAULT_ORDER]);
+    setHidden([]);
+    save([...DEFAULT_ORDER], []);
   }
 
   return (
     <>
-      <Topbar eyebrow="Overview" title="Dashboard" statusText={saving ? "Saving layout..." : undefined} />
+      <Topbar
+        eyebrow="Overview"
+        title="Dashboard"
+        statusText={
+          status === "saving" ? "Saving layout..." : status === "error" ? "Couldn't save layout" : undefined
+        }
+      />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8">
-        <p className="text-xs text-muted mb-4">Drag any card by its handle to reorder your dashboard.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {order.map((key, index) => {
-            const meta = WIDGET_META[key];
-            const Body = WIDGET_BODY[key];
-            if (!meta || !Body) return null;
-            const Icon = meta.icon;
-            return (
-              <Panel
-                key={key}
-                draggable
-                onDragStart={() => setDragIndex(index)}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={() => handleDrop(index)}
-                className={cn("p-5 cursor-default transition-opacity", dragIndex === index && "opacity-40")}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <Link href={meta.href} className="flex items-center gap-2 hover:text-brass transition-colors">
-                    <Icon className="w-4 h-4 text-brass" strokeWidth={1.75} />
-                    <h3 className="font-display text-lg">{meta.label}</h3>
-                  </Link>
-                  <span className="cursor-grab active:cursor-grabbing text-muted hover:text-ink-text" title="Drag to reorder">
-                    <GripVertical className="w-4 h-4" strokeWidth={1.75} />
-                  </span>
-                </div>
-                <Body />
-              </Panel>
-            );
-          })}
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-xs text-muted">
+            {editing ? "Drag the handle to reorder. Use × to hide a card." : ""}
+          </p>
+          <div className="flex items-center gap-2">
+            {editing && (
+              <button onClick={reset} className="text-xs text-muted hover:text-ink-text px-2 py-1">
+                Reset
+              </button>
+            )}
+            <button
+              onClick={() => setEditing((e) => !e)}
+              className="text-xs px-3 py-1.5 rounded-md bg-panel-2 hover:text-brass transition-colors"
+            >
+              {editing ? "Done" : "Customize"}
+            </button>
+          </div>
         </div>
+
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <SortableContext items={order} strategy={rectSortingStrategy}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {order.map((id) => (
+                <SortableWidget key={id} id={id} editing={editing} onHide={hide} />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+
+        {order.length === 0 && (
+          <p className="text-sm text-muted">Every card is hidden. Click Customize to add some back.</p>
+        )}
+
+        {editing && hidden.length > 0 && (
+          <section className="mt-8">
+            <h4 className="text-xs text-muted mb-3">Hidden</h4>
+            <div className="flex flex-wrap gap-2">
+              {hidden.map((id) => (
+                <button
+                  key={id}
+                  onClick={() => show(id)}
+                  className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-md bg-panel-2 hover:text-brass transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" strokeWidth={1.75} />
+                  {WIDGET_META[id]?.label ?? id}
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
     </>
   );
