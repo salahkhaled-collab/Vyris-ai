@@ -1,4 +1,4 @@
-export const WIDGET_IDS = ["objectives", "decisions", "risks", "bets", "projects"] as const;
+export const WIDGET_IDS = ["progress", "objectives", "decisions", "risks", "bets", "projects"] as const;
 export const DEFAULT_ORDER: string[] = [...WIDGET_IDS];
 
 const isWidgetId = (s: string) => (WIDGET_IDS as readonly string[]).includes(s);

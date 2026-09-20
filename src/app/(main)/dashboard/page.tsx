@@ -25,6 +25,7 @@ const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: st
   risks:      { label: "Risks", icon: AlertTriangle, href: "/risks" },
   bets:       { label: "Strategic Bets", icon: TrendingUp, href: "/strategy" },
   projects:   { label: "Projects", icon: FolderKanban, href: "/projects" },
+    progress:   { label: "Progress", icon: Activity, href: "/projects" },
 };
 
 function computeProgress(keyResults: { current: number; target: number }[]) {
@@ -144,12 +145,82 @@ function ProjectsWidget() {
   );
 }
 
+type ProgressData = {
+  counts: { TODO: number; IN_PROGRESS: number; DONE: number };
+  weeks: { start: string; done: number }[];
+};
+
+function ProgressWidget() {
+  const [data, setData] = useState<ProgressData | null>(null);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/dashboard/progress")
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
+      .then(setData)
+      .catch(() => setFailed(true));
+  }, []);
+
+  if (failed) return <p className="text-xs text-muted">Couldn't load progress.</p>;
+  if (!data) return <p className="text-xs text-muted">Loading...</p>;
+
+  const { counts, weeks } = data;
+  const total = counts.TODO + counts.IN_PROGRESS + counts.DONE;
+  if (total === 0) return <p className="text-xs text-muted">No tasks yet.</p>;
+
+  const pct = Math.round((counts.DONE / total) * 100);
+  const max = Math.max(1, ...weeks.map((w) => w.done));
+  const seg = (n: number) => `${(n / total) * 100}%`;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-baseline gap-2">
+        <span className="font-display text-3xl">{pct}%</span>
+        <span className="text-xs text-muted">{counts.DONE} of {total} tasks done</span>
+      </div>
+
+      <div>
+        <div className="flex h-2 rounded-full overflow-hidden bg-panel-2">
+          <div className="bg-brass" style={{ width: seg(counts.DONE) }} />
+          <div className="bg-brass" style={{ width: seg(counts.IN_PROGRESS), opacity: 0.45 }} />
+        </div>
+        <div className="flex justify-between text-xs text-muted mt-1.5">
+          <span>{counts.DONE} done</span>
+          <span>{counts.IN_PROGRESS} in progress</span>
+          <span>{counts.TODO} to do</span>
+        </div>
+      </div>
+
+      <div>
+        <div className="flex items-end gap-1 h-16">
+          {weeks.map((w) => (
+            <div
+              key={w.start}
+              title={`Week of ${w.start}: ${w.done} done`}
+              className="flex-1 bg-brass rounded-sm"
+              style={{ height: `${Math.max((w.done / max) * 100, w.done > 0 ? 8 : 3)}%`, opacity: w.done > 0 ? 1 : 0.25 }}
+            />
+          ))}
+        </div>
+        <div className="flex justify-between text-xs text-muted mt-1.5">
+          <span>8 weeks ago</span>
+          <span>this week</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const WIDGET_BODY: Record<string, () => JSX.Element> = {
   objectives: ObjectivesWidget,
   decisions: DecisionsWidget,
   risks: RisksWidget,
   bets: BetsWidget,
   projects: ProjectsWidget,
+    progress: ProgressWidget,
 };
 
 // ── Sortable card ────────────────────────────────────────────────────────
