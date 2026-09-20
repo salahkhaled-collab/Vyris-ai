@@ -18,6 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { parseLayout, serializeLayout, DEFAULT_ORDER } from "@/lib/dashboard-layout";
+import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
 
 const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: string }> = {
   objectives: { label: "Objectives", icon: Target, href: "/strategy" },
@@ -149,7 +150,7 @@ const WIDGET_BODY: Record<string, () => JSX.Element> = {
   decisions: DecisionsWidget,
   risks: RisksWidget,
   bets: BetsWidget,
-  projects: ProjectsWidget,
+  projects: ProjectsCard,
 };
 
 // ── Sortable card ────────────────────────────────────────────────────────
