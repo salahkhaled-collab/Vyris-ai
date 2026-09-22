@@ -24,12 +24,12 @@ export const authOptions: NextAuthOptions = {
       allowDangerousEmailAccountLinking: false,
       authorization: {
         params: {
-          scope: [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/calendar.readonly",
-          ].join(" "),
+        scope: [
+  "openid",
+  "email",
+  "profile",
+  "https://www.googleapis.com/auth/calendar",
+].join(" "),
           access_type: "offline",
           prompt: "consent",
         },
