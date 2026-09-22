@@ -299,9 +299,6 @@ const [deletingId, setDeletingId] = useState<string | null>(null);
       <span>{e.title}</span>
     </div>
   ))}
-</div>
-                      </div>
-                    ))}
                   </div>
                 )}
               </Panel>
