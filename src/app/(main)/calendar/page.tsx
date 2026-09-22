@@ -297,7 +297,7 @@ export default function CalendarPage() {
                     {selectedEvents.map((e) => (
                       <div
                         key={e.id}
-                        className="flex items-center justify-between gap-3 text-sm group"
+                        className="flex items-center justify-between gap-3 text-sm"
                       >
                         <div className="flex gap-3">
                           <span className="font-mono text-xs text-muted w-16">{e.time}</span>
@@ -323,7 +323,7 @@ export default function CalendarPage() {
                         ) : (
                           <button
                             onClick={() => setConfirmDeleteId(e.id)}
-                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/[0.06] transition-opacity"
+                            className="p-1.5 rounded hover:bg-black/[0.06] border border-line"
                             aria-label="Delete event"
                           >
                             <Trash2 className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />

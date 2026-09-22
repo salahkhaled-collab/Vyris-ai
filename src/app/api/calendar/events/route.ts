@@ -90,3 +90,82 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+export async function DELETE(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user?.id) {
+    return NextResponse.json(
+      { error: "not_authenticated", message: "Sign in with Google to delete events." },
+      { status: 401 }
+    );
+  }
+
+  const { accessToken, error } = await getGoogleAccessToken(session.user.id);
+
+  if (!accessToken) {
+    const message =
+      error === "no_refresh_token" || error === "refresh_failed"
+        ? "Your Google session expired. Please sign in again."
+        : "Connect Google Calendar to delete events.";
+    return NextResponse.json({ error: error ?? "not_authenticated", message }, { status: 401 });
+  }
+
+  const eventId = req.nextUrl.searchParams.get("eventId");
+
+  if (!eventId) {
+    return NextResponse.json(
+      { error: "invalid_input", message: "eventId is required." },
+      { status: 400 }
+    );
+  }
+
+  try {
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/primary/events/${encodeURIComponent(eventId)}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      }
+    );
+
+    // Google returns 204 No Content on success, and 410 Gone if it was already deleted —
+    // treat both as success so a double-click or stale UI doesn't surface a false error.
+    if (!res.ok && res.status !== 410) {
+      const errBody = await res.text();
+      console.error("Google Calendar delete error:", res.status, errBody);
+
+      if (res.status === 403) {
+        return NextResponse.json(
+          {
+            error: "insufficient_scope",
+            message: "Reconnect Google Calendar to enable deleting events.",
+          },
+          { status: 403 }
+        );
+      }
+
+      if (res.status === 404) {
+        return NextResponse.json(
+          { error: "not_found", message: "Event not found." },
+          { status: 404 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: "calendar_api_error", message: "Could not delete the event." },
+        { status: 502 }
+      );
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    console.error("Failed to delete calendar event:", err);
+    return NextResponse.json(
+      { error: "delete_failed", message: "Could not reach Google Calendar." },
+      { status: 500 }
+    );
+  }
+}
