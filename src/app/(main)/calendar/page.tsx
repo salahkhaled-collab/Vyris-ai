@@ -5,7 +5,7 @@ import { useSession, signIn } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, X, Trash2 } from "lucide-react";
 
 interface CalEvent {
   id: string;
@@ -24,7 +24,7 @@ export default function CalendarPage() {
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
-const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -93,25 +93,6 @@ const [deletingId, setDeletingId] = useState<string | null>(null);
       setFormError("Title and date are required.");
       return;
     }
-    async function handleDeleteEvent(eventId: string) {
-  setDeletingId(eventId);
-  try {
-    const res = await fetch(`/api/calendar/events?eventId=${encodeURIComponent(eventId)}`, {
-      method: "DELETE",
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      setError(data.message ?? "Could not delete the event.");
-      return;
-    }
-    setConfirmDeleteId(null);
-    fetchEvents();
-  } catch {
-    setError("Could not reach Google Calendar.");
-  } finally {
-    setDeletingId(null);
-  }
-}
 
     const startTime = formAllDay
       ? formDate
@@ -152,6 +133,26 @@ const [deletingId, setDeletingId] = useState<string | null>(null);
       setFormError("Could not reach Google Calendar.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleDeleteEvent(eventId: string) {
+    setDeletingId(eventId);
+    try {
+      const res = await fetch(`/api/calendar/events?eventId=${encodeURIComponent(eventId)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.message ?? "Could not delete the event.");
+        return;
+      }
+      setConfirmDeleteId(null);
+      fetchEvents();
+    } catch {
+      setError("Could not reach Google Calendar.");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -293,12 +294,43 @@ const [deletingId, setDeletingId] = useState<string | null>(null);
                   <div className="text-sm text-muted">Nothing scheduled.</div>
                 ) : (
                   <div className="space-y-2">
-  {selectedEvents.map((e) => (
-    <div key={e.id} className="flex gap-3 text-sm">
-      <span className="font-mono text-xs text-muted w-16">{e.time}</span>
-      <span>{e.title}</span>
-    </div>
-  ))}
+                    {selectedEvents.map((e) => (
+                      <div
+                        key={e.id}
+                        className="flex items-center justify-between gap-3 text-sm group"
+                      >
+                        <div className="flex gap-3">
+                          <span className="font-mono text-xs text-muted w-16">{e.time}</span>
+                          <span>{e.title}</span>
+                        </div>
+
+                        {confirmDeleteId === e.id ? (
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleDeleteEvent(e.id)}
+                              disabled={deletingId === e.id}
+                              className="text-xs font-medium text-red-600 hover:underline disabled:opacity-50"
+                            >
+                              {deletingId === e.id ? "Deleting..." : "Confirm"}
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-xs text-muted hover:underline"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(e.id)}
+                            className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-black/[0.06] transition-opacity"
+                            aria-label="Delete event"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-muted" strokeWidth={1.75} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
               </Panel>
