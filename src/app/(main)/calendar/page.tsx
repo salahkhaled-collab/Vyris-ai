@@ -23,6 +23,8 @@ export default function CalendarPage() {
   const [error, setError] = useState<string | null>(null);
   const [cursor, setCursor] = useState(() => new Date());
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,6 +93,25 @@ export default function CalendarPage() {
       setFormError("Title and date are required.");
       return;
     }
+    async function handleDeleteEvent(eventId: string) {
+  setDeletingId(eventId);
+  try {
+    const res = await fetch(`/api/calendar/events?eventId=${encodeURIComponent(eventId)}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) {
+      const data = await res.json();
+      setError(data.message ?? "Could not delete the event.");
+      return;
+    }
+    setConfirmDeleteId(null);
+    fetchEvents();
+  } catch {
+    setError("Could not reach Google Calendar.");
+  } finally {
+    setDeletingId(null);
+  }
+}
 
     const startTime = formAllDay
       ? formDate
@@ -272,10 +293,13 @@ export default function CalendarPage() {
                   <div className="text-sm text-muted">Nothing scheduled.</div>
                 ) : (
                   <div className="space-y-2">
-                    {selectedEvents.map((e) => (
-                      <div key={e.id} className="flex gap-3 text-sm">
-                        <span className="font-mono text-xs text-muted w-16">{e.time}</span>
-                        <span>{e.title}</span>
+  {selectedEvents.map((e) => (
+    <div key={e.id} className="flex gap-3 text-sm">
+      <span className="font-mono text-xs text-muted w-16">{e.time}</span>
+      <span>{e.title}</span>
+    </div>
+  ))}
+</div>
                       </div>
                     ))}
                   </div>
