@@ -24,24 +24,25 @@ function decodeBase64Url(data: string): string {
   return Buffer.from(normalized, "base64").toString("utf-8");
 }
 
-function extractBody(payload: GmailPart | undefined): string {
-  if (!payload) return "";
+function extractBody(payload: GmailPart | undefined): { html: string | null; text: string } {
+  if (!payload) return { html: null, text: "" };
 
   const stack: GmailPart[] = [payload];
-  let htmlFallback = "";
+  let html = "";
+  let text = "";
 
   while (stack.length > 0) {
     const part = stack.pop()!;
-    if (part.mimeType === "text/plain" && part.body?.data) {
-      return decodeBase64Url(part.body.data);
+    if (part.mimeType === "text/html" && part.body?.data && !html) {
+      html = decodeBase64Url(part.body.data);
     }
-    if (part.mimeType === "text/html" && part.body?.data && !htmlFallback) {
-      htmlFallback = decodeBase64Url(part.body.data);
+    if (part.mimeType === "text/plain" && part.body?.data && !text) {
+      text = decodeBase64Url(part.body.data);
     }
     if (part.parts) stack.push(...part.parts);
   }
 
-  return htmlFallback.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  return { html: html || null, text };
 }
 
 export async function GET(
@@ -85,6 +86,7 @@ export async function GET(
 
     const data = await res.json();
     const headers = data.payload?.headers as GmailHeader[] | undefined;
+    const { html, text } = extractBody(data.payload);
 
     return NextResponse.json({
       id: data.id,
@@ -92,7 +94,8 @@ export async function GET(
       to: getHeader(headers, "To"),
       subject: getHeader(headers, "Subject") || "(No subject)",
       date: getHeader(headers, "Date"),
-      body: extractBody(data.payload),
+      bodyHtml: html,
+      bodyText: text,
     });
   } catch (err) {
     console.error("Failed to fetch email body:", err);

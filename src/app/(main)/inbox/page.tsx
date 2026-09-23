@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
+import DOMPurify from "dompurify";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
@@ -14,6 +15,11 @@ interface GmailMessage {
   snippet: string;
   unread: boolean;
   timestamp: string;
+}
+
+interface OpenEmailBody {
+  html: string | null;
+  text: string;
 }
 
 function relativeTime(iso: string): string {
@@ -43,7 +49,7 @@ export default function InboxPage() {
   const [composeSuccess, setComposeSuccess] = useState(false);
 
   const [openEmailId, setOpenEmailId] = useState<string | null>(null);
-  const [openEmailBody, setOpenEmailBody] = useState<string | null>(null);
+  const [openEmailBody, setOpenEmailBody] = useState<OpenEmailBody | null>(null);
   const [openEmailLoading, setOpenEmailLoading] = useState(false);
   const [openEmailError, setOpenEmailError] = useState<string | null>(null);
 
@@ -132,7 +138,7 @@ export default function InboxPage() {
       if (!res.ok) {
         setOpenEmailError(data.message ?? "Could not load this email.");
       } else {
-        setOpenEmailBody(data.body);
+        setOpenEmailBody({ html: data.bodyHtml, text: data.bodyText });
       }
     } catch {
       setOpenEmailError("Could not reach Gmail.");
@@ -315,7 +321,16 @@ export default function InboxPage() {
               {openEmailLoading && <div className="text-sm text-muted">Loading...</div>}
               {openEmailError && <div className="text-sm text-red-600">{openEmailError}</div>}
               {openEmailBody !== null && (
-                <div className="whitespace-pre-wrap text-sm leading-relaxed pr-6">{openEmailBody}</div>
+                openEmailBody.html ? (
+                  <div
+                    className="text-sm leading-relaxed pr-6"
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(openEmailBody.html) }}
+                  />
+                ) : (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed pr-6">
+                    {openEmailBody.text}
+                  </div>
+                )
               )}
             </Panel>
           </div>
