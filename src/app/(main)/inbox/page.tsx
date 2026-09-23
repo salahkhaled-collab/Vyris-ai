@@ -42,6 +42,11 @@ export default function InboxPage() {
   const [composeError, setComposeError] = useState<string | null>(null);
   const [composeSuccess, setComposeSuccess] = useState(false);
 
+  const [openEmailId, setOpenEmailId] = useState<string | null>(null);
+  const [openEmailBody, setOpenEmailBody] = useState<string | null>(null);
+  const [openEmailLoading, setOpenEmailLoading] = useState(false);
+  const [openEmailError, setOpenEmailError] = useState<string | null>(null);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     let active = true;
@@ -113,6 +118,26 @@ export default function InboxPage() {
       setComposeError("Could not reach Gmail.");
     } finally {
       setSending(false);
+    }
+  }
+
+  async function openEmail(id: string) {
+    setOpenEmailId(id);
+    setOpenEmailBody(null);
+    setOpenEmailError(null);
+    setOpenEmailLoading(true);
+    try {
+      const res = await fetch(`/api/gmail/${id}`);
+      const data = await res.json();
+      if (!res.ok) {
+        setOpenEmailError(data.message ?? "Could not load this email.");
+      } else {
+        setOpenEmailBody(data.body);
+      }
+    } catch {
+      setOpenEmailError("Could not reach Gmail.");
+    } finally {
+      setOpenEmailLoading(false);
     }
   }
 
@@ -188,8 +213,9 @@ export default function InboxPage() {
                 {emails.map((e) => (
                   <div
                     key={e.id}
+                    onClick={() => openEmail(e.id)}
                     className={cn(
-                      "flex items-start gap-4 px-6 py-4",
+                      "flex items-start gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.02]",
                       e.unread && "bg-brass-soft/50"
                     )}
                   >
@@ -271,6 +297,26 @@ export default function InboxPage() {
                   {sending ? "Sending..." : "Send"}
                 </button>
               </div>
+            </Panel>
+          </div>
+        )}
+
+        {openEmailId && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+            <Panel className="w-full max-w-lg p-6 relative max-h-[80vh] overflow-y-auto">
+              <button
+                onClick={() => setOpenEmailId(null)}
+                className="absolute top-4 right-4 p-1 rounded-lg hover:bg-black/[0.06]"
+                aria-label="Close"
+              >
+                <X className="w-4 h-4" strokeWidth={1.75} />
+              </button>
+
+              {openEmailLoading && <div className="text-sm text-muted">Loading...</div>}
+              {openEmailError && <div className="text-sm text-red-600">{openEmailError}</div>}
+              {openEmailBody !== null && (
+                <div className="whitespace-pre-wrap text-sm leading-relaxed pr-6">{openEmailBody}</div>
+              )}
             </Panel>
           </div>
         )}

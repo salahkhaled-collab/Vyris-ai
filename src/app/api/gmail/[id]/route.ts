@@ -23,8 +23,6 @@ function decodeBase64Url(data: string): string {
   return Buffer.from(normalized, "base64").toString("utf-8");
 }
 
-/** Walks the MIME tree and returns the first text/plain body it finds,
- *  falling back to text/html (stripped of tags) if no plain part exists. */
 function extractBody(payload: GmailPart | undefined): string {
   if (!payload) return "";
 
