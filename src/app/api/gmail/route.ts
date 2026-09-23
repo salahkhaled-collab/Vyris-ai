@@ -3,58 +3,39 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
 
+const MAX_RESULTS = 15;
+
 interface GmailHeader {
   name: string;
   value: string;
 }
 
-interface GmailPart {
-  mimeType?: string;
-  body?: { data?: string };
-  parts?: GmailPart[];
+interface GmailMessageMeta {
+  id: string;
+  snippet?: string;
+  internalDate?: string;
+  labelIds?: string[];
+  payload?: {
+    headers?: GmailHeader[];
+  };
 }
 
 function getHeader(headers: GmailHeader[] | undefined, name: string): string {
   return headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
 
-function decodeBase64Url(data: string): string {
-  const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
-  return Buffer.from(normalized, "base64").toString("utf-8");
+function parseFromName(from: string): string {
+  const match = from.match(/^"?([^"<]+)"?\s*<?/);
+  const name = match?.[1]?.trim();
+  return name && name.length > 0 ? name : from.split("<")[0].trim() || from;
 }
 
-/** Walks the MIME tree and returns the first text/plain body it finds,
- *  falling back to text/html (stripped of tags) if no plain part exists. */
-function extractBody(payload: GmailPart | undefined): string {
-  if (!payload) return "";
-
-  const stack: GmailPart[] = [payload];
-  let htmlFallback = "";
-
-  while (stack.length > 0) {
-    const part = stack.pop()!;
-    if (part.mimeType === "text/plain" && part.body?.data) {
-      return decodeBase64Url(part.body.data);
-    }
-    if (part.mimeType === "text/html" && part.body?.data && !htmlFallback) {
-      htmlFallback = decodeBase64Url(part.body.data);
-    }
-    if (part.parts) stack.push(...part.parts);
-  }
-
-  return htmlFallback.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
-}
-
-export async function GET(
-  req: Request,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  const { id } = await params;
+export async function GET() {
   const session = await getServerSession(authOptions);
 
   if (!session?.user?.id) {
     return NextResponse.json(
-      { error: "not_authenticated", message: "Sign in with Google to view this email." },
+      { error: "not_authenticated", message: "Sign in with Google to load your inbox." },
       { status: 401 }
     );
   }
@@ -65,38 +46,80 @@ export async function GET(
     const message =
       error === "no_refresh_token" || error === "refresh_failed"
         ? "Your Google session expired. Please sign in again."
-        : "Connect Gmail to view this email.";
+        : "Connect Gmail to see your inbox.";
     return NextResponse.json({ error: error ?? "not_authenticated", message }, { status: 401 });
   }
 
+  const authHeader = { Authorization: `Bearer ${accessToken}` };
+
   try {
-    const res = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,
-      { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" }
+    const listParams = new URLSearchParams({
+      maxResults: String(MAX_RESULTS),
+      labelIds: "INBOX",
+      q: "in:inbox",
+    });
+
+    const listRes = await fetch(
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages?${listParams.toString()}`,
+      { headers: authHeader, cache: "no-store" }
     );
 
-    if (!res.ok) {
-      const body = await res.text();
-      console.error("Gmail get error:", res.status, body);
+    if (!listRes.ok) {
+      const body = await listRes.text();
+      console.error("Gmail list error:", listRes.status, body);
       return NextResponse.json(
-        { error: "gmail_api_error", message: "Could not load this email." },
+        { error: "gmail_api_error", message: "Could not load your inbox." },
         { status: 502 }
       );
     }
 
-    const data = await res.json();
-    const headers = data.payload?.headers as GmailHeader[] | undefined;
+    const listData = await listRes.json();
+    const ids: string[] = (listData.messages ?? []).map((m: { id: string }) => m.id);
 
-    return NextResponse.json({
-      id: data.id,
-      from: getHeader(headers, "From"),
-      to: getHeader(headers, "To"),
-      subject: getHeader(headers, "Subject") || "(No subject)",
-      date: getHeader(headers, "Date"),
-      body: extractBody(data.payload),
+    if (ids.length === 0) {
+      return NextResponse.json({ messages: [] });
+    }
+
+    const metaParams = new URLSearchParams({
+      format: "metadata",
     });
+    ["From", "Subject", "Date"].forEach((h) => metaParams.append("metadataHeaders", h));
+
+    const messages = await Promise.all(
+      ids.map(async (id) => {
+        const res = await fetch(
+          `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?${metaParams.toString()}`,
+          { headers: authHeader, cache: "no-store" }
+        );
+        if (!res.ok) return null;
+        return (await res.json()) as GmailMessageMeta;
+      })
+    );
+
+    const formatted = messages
+      .filter((m): m is GmailMessageMeta => m !== null)
+      .map((m) => {
+        const headers = m.payload?.headers;
+        const from = getHeader(headers, "From");
+        const subject = getHeader(headers, "Subject") || "(No subject)";
+        const isUnread = m.labelIds?.includes("UNREAD") ?? false;
+        const dateMs = m.internalDate ? parseInt(m.internalDate, 10) : Date.now();
+
+        return {
+          id: m.id,
+          from: parseFromName(from),
+          fromEmail: from,
+          subject,
+          snippet: m.snippet ?? "",
+          unread: isUnread,
+          timestamp: new Date(dateMs).toISOString(),
+        };
+      })
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+
+    return NextResponse.json({ messages: formatted });
   } catch (err) {
-    console.error("Failed to fetch email body:", err);
+    console.error("Failed to fetch Gmail messages:", err);
     return NextResponse.json(
       { error: "fetch_failed", message: "Could not reach Gmail." },
       { status: 500 }
