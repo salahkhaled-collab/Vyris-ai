@@ -11,7 +11,7 @@
 import { prisma } from "@/lib/prisma";
 import { scopeFilter, type Scope } from "./scope";
 
-// ---- Tool schemas (Anthropic Messages API `tools` format) ----------------
+// ---- Tool schemas sent to the Python LLM service ---------------------------
 
 export const VYRIS_TOOLS = [
   {

@@ -7,14 +7,11 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
 import { VYRIS_TOOLS, runTool, type VyrisToolName } from "@/lib/ai/tools";
 import { VYRIS_SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import type { Scope } from "@/lib/ai/scope";
+import { completeWithPythonLlm, type PythonMessage } from "@/lib/ai/python-client";
 
-const anthropic = new Anthropic(); // reads ANTHROPIC_API_KEY from env
-
-const MODEL = "claude-sonnet-4-5"; // pin explicitly; update deliberately, not silently
 const MAX_TOOL_ROUNDS = 6; // hard cap so a confused loop can't run away
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -44,7 +41,7 @@ export async function POST(req: NextRequest) {
 
   const scope: Scope = { userId: session.user.id, teamId: user?.teamId ?? null };
 
-  const messages: Anthropic.MessageParam[] = [
+  const messages: PythonMessage[] = [
     ...history.map((m) => ({ role: m.role, content: m.content })),
     { role: "user", content: message },
   ];
@@ -52,32 +49,26 @@ export async function POST(req: NextRequest) {
   let finalText = "";
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-    const response = await anthropic.messages.create({
-      model: MODEL,
-      max_tokens: 1500,
+    const response = await completeWithPythonLlm({
+      maxTokens: 1500,
       system: VYRIS_SYSTEM_PROMPT,
-      tools: VYRIS_TOOLS as unknown as Anthropic.Tool[],
+      tools: VYRIS_TOOLS,
       messages,
     });
 
-    const toolUseBlocks = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use"
-    );
+    const toolUseBlocks = response.toolCalls;
 
     // No tool calls this round — Claude gave a final answer.
     if (toolUseBlocks.length === 0) {
-      finalText = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n");
+      finalText = response.text;
       break;
     }
 
     // Record the assistant turn (including tool_use blocks) before
     // appending results, per the Messages API's tool-use contract.
-    messages.push({ role: "assistant", content: response.content });
+    messages.push({ role: "assistant", content: response.assistantContent });
 
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
+    const toolResults: Record<string, unknown>[] = [];
     for (const block of toolUseBlocks) {
       try {
         const result = await runTool(
@@ -85,22 +76,13 @@ export async function POST(req: NextRequest) {
           block.input as Record<string, unknown>,
           scope
         );
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: JSON.stringify(result),
-        });
+        toolResults.push({ tool_call_id: block.id, content: JSON.stringify(result) });
       } catch (err) {
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: block.id,
-          content: `Error running tool: ${err instanceof Error ? err.message : String(err)}`,
-          is_error: true,
-        });
+        toolResults.push({ tool_call_id: block.id, content: `Error running tool: ${err instanceof Error ? err.message : String(err)}`, is_error: true });
       }
     }
 
-    messages.push({ role: "user", content: toolResults });
+    messages.push({ role: "tool", content: toolResults });
 
     if (round === MAX_TOOL_ROUNDS - 1) {
       finalText =

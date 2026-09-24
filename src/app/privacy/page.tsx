@@ -134,8 +134,8 @@ export default function PrivacyPolicyPage() {
               models, and we do not share it with third parties except as required
               to operate the service (e.g., our database and hosting providers) or
               to process AI tasks. Specifically, we send user-submitted prompts to
-              Anthropic&apos;s API for AI completion services; this content is not used by
-              Anthropic to train public models.
+              our configured Python AI service for AI completion services; this content is
+              not used to train public models by Vyris.
             </p>
 
             <h2 className="font-display text-2xl text-ink-text mt-12 mb-4 border-b border-line pb-2">

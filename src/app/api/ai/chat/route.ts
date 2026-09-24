@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOKENS = 800;
@@ -98,14 +98,11 @@ function buildDraftCommsPrompt(ctx: DraftContext): string {
 // ── Route handler ─────────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-
-  if (!apiKey) {
+  if (!pythonLlmConfigured()) {
     return NextResponse.json(
       {
-        error: "missing_api_key",
-        message:
-          "ANTHROPIC_API_KEY is not set on the server. Add it to .env.local to enable real AI.",
+        error: "missing_llm_url",
+        message: "PYTHON_LLM_URL is not set on the server.",
       },
       { status: 500 }
     );
@@ -147,17 +144,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const anthropic = new Anthropic({ apiKey });
     try {
-      const response = await anthropic.messages.create({
-        model: "claude-sonnet-4-6",
-        max_tokens: MAX_TOKENS,
+      const response = await completeWithPythonLlm({
+        maxTokens: MAX_TOKENS,
         system: buildDraftCommsPrompt(ctx),
         messages: [{ role: "user", content: draftNote }],
       });
 
-      const textBlock = response.content.find((b) => b.type === "text");
-      const draft = textBlock?.type === "text" ? textBlock.text : "";
+      const draft = response.text;
 
       // Parse subject + body out of the structured response
       const match = draft.match(/^SUBJECT:\s*(.+?)\n[-–—]+\n([\s\S]+)$/m);
@@ -171,9 +165,9 @@ export async function POST(req: NextRequest) {
       // Fallback: return raw if format unexpected
       return NextResponse.json({ subject: "", body: draft, raw: draft });
     } catch (err) {
-      console.error("Anthropic draft_comms error:", err);
+      console.error("Python LLM draft_comms error:", err);
       return NextResponse.json(
-        { error: "anthropic_api_error", message: "Vyris couldn't draft right now. Try again." },
+        { error: "python_llm_error", message: "Vyris couldn't draft right now. Try again." },
         { status: 502 }
       );
     }
@@ -189,24 +183,18 @@ export async function POST(req: NextRequest) {
   }
 
   const trimmed = messages.slice(-MAX_HISTORY_MESSAGES);
-  const anthropic = new Anthropic({ apiKey });
-
   try {
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
-      max_tokens: MAX_TOKENS,
+    const response = await completeWithPythonLlm({
+      maxTokens: MAX_TOKENS,
       system: await buildChiefOfStaffPrompt(session.user.id),
-      messages: trimmed.map((m) => ({ role: m.role, content: m.content })),
+      messages: trimmed,
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    const reply = textBlock?.type === "text" ? textBlock.text : "";
-
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply: response.text });
   } catch (err) {
-    console.error("Anthropic chat error:", err);
+    console.error("Python LLM chat error:", err);
     return NextResponse.json(
-      { error: "anthropic_api_error", message: "Vyris couldn't respond right now. Try again." },
+      { error: "python_llm_error", message: "Vyris couldn't respond right now. Try again." },
       { status: 502 }
     );
   }

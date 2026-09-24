@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
+import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -34,18 +34,15 @@ async function generateRecommendation(
   context: string,
   options: { label: string; score: number; pros: string[]; cons: string[] }[]
 ): Promise<string | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return null;
+  if (!pythonLlmConfigured()) return null;
 
   const optionsText = options
     .map((o, i) => `Option ${String.fromCharCode(65 + i)}: ${o.label} (score: ${o.score})\nPros: ${o.pros.join(", ") || "none listed"}\nCons: ${o.cons.join(", ") || "none listed"}`)
     .join("\n\n");
 
   try {
-    const anthropic = new Anthropic({ apiKey });
-    const response = await anthropic.messages.create({
-      model: "claude-sonnet-5",
-      max_tokens: 200,
+    const response = await completeWithPythonLlm({
+      maxTokens: 200,
       system: "You are Vyris, an AI Chief of Staff for solo business operators. Given a decision and its options, give a direct, one-to-two sentence recommendation. State which option you'd lean toward and the single strongest reason why. No preamble, no hedging language like 'it depends' — operators need a clear lean, not a menu of considerations they already have.",
       messages: [{
         role: "user",
@@ -53,8 +50,7 @@ async function generateRecommendation(
       }],
     });
 
-    const textBlock = response.content.find((b) => b.type === "text");
-    return textBlock?.type === "text" ? textBlock.text.trim() : null;
+    return response.text.trim() || null;
   } catch (err) {
     console.error("AI recommendation error:", err);
     return null;

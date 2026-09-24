@@ -11,12 +11,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  if (!apiKey) {
+  const transcriptionUrl = process.env.PYTHON_LLM_TRANSCRIBE_URL?.trim();
+  if (!transcriptionUrl) {
     return NextResponse.json(
       {
-        error: "missing_api_key",
-        message: "OPENAI_API_KEY is not set on the server. Add it to .env.local to enable dictation.",
+        error: "missing_transcription_url",
+        message: "PYTHON_LLM_TRANSCRIBE_URL is not set on the server.",
       },
       { status: 500 }
     );
@@ -51,12 +51,16 @@ export async function POST(req: NextRequest) {
 
   const forwardForm = new FormData();
   forwardForm.append("file", audio, "dictation.webm");
-  forwardForm.append("model", "whisper-1");
+  forwardForm.append("model", process.env.PYTHON_LLM_TRANSCRIBE_MODEL ?? "vyris-transcriber");
 
   try {
-    const response = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const headers: Record<string, string> = {};
+    if (process.env.PYTHON_LLM_API_KEY) {
+      headers.Authorization = `Bearer ${process.env.PYTHON_LLM_API_KEY}`;
+    }
+    const response = await fetch(transcriptionUrl, {
       method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}` },
+      headers,
       body: forwardForm,
     });
 
@@ -70,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await response.json();
-    return NextResponse.json({ text: data.text ?? "" });
+    return NextResponse.json({ text: data.text ?? data.transcription ?? "" });
   } catch (err) {
     console.error("Whisper request failed:", err);
     return NextResponse.json(

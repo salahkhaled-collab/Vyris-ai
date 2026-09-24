@@ -333,7 +333,7 @@ export default function BrandPage() {
     targetSectionId: string;
   } | null>(null);
 
-  // ── Fake AI call (replace with real Anthropic API route) ──
+  // ── Fake AI call (replace with the real AI route) ──
   async function processRawInput(raw: string) {
     // Simulated latency
     await new Promise((r) => setTimeout(r, 1400));
