@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Hash password before saving to Neon PostgreSQL
+        //password before saving to Neon PostgreSQL
     const hashedPassword = await hash(password, 10);
 
     // Create user
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         email: emailLower,
         password: hashedPassword,
         role: "CEO", accessLevel: "ADMIN",
-        onboarded: false, // Forces onboarding on first login
+        onboarded: false, 
       },
     });
 

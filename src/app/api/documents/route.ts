@@ -4,9 +4,9 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 
 // Keeping this conservative since files are stored as bytes directly
-// in Postgres (see schema note) — fine for documents/PDFs, not for
-// video or large media. Move to S3/R2/Vercel Blob before raising this.
-const MAX_FILE_BYTES = 8 * 1024 * 1024; // 8MB
+//8MB
+const MAX_FILE_BYTES = 8 * 1024 * 1024;  
+
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -34,7 +34,6 @@ export async function GET() {
       createdAt: true,
       projectId: true,
       teamId: true,
-      // deliberately omit `data` — list view shouldn't pull file bytes
     },
     orderBy: { createdAt: "desc" },
   });

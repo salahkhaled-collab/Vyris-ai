@@ -59,7 +59,6 @@ export async function POST(req: NextRequest) {
   }
 
   // Join the team, mark workspaceType as TEAM so onboarding's workspace
-  // step is skipped (decided by the invite), and apply whatever
   // role/accessLevel the inviter chose for this person.
   await prisma.$transaction([
     prisma.user.update({

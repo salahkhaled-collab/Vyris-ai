@@ -5,20 +5,20 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // ── Core surfaces — warm ivory, no stark white/blue-gray ──
-        ink: "#f5f2ed",               // page background
-        panel: "#ffffff",             // card / sidebar surface
-        "panel-2": "#ece6dc",         // elevated surface (inputs, badges)
-        line: "rgba(20,16,10,0.10)",  // neutral border
+        // ── Core surfaces 
+        ink: "#f5f2ed",               
+        panel: "#ffffff",             
+        "panel-2": "#ece6dc",         
+        line: "rgba(20,16,10,0.10)",  
 
-        // ── Accent: deep burgundy ──────────────────────────
-        brass: "#6e2f3a",             // primary accent
-        "brass-soft": "rgba(110,47,58,0.10)", // accent surface
+        // Accent
+        brass: "#6e2f3a",           
+        "brass-soft": "rgba(110,47,58,0.10)", 
 
-        // ── Signal: deep emerald, kept distinct from brass ──
+        // ── Signal
         signal: "#2f7d54",
 
-        // ── Typography ──────────────────────────────────────
+        // Typography 
         "ink-text": "#1e1a15",
         muted: "#6b645a",
       },

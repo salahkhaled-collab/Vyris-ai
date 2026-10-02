@@ -70,10 +70,8 @@ function toSignal(type: "objective" | "strategicBet", item: DriftInput) {
     };
 }
 
-// "unlinked" — nothing points at this at all.
-// "stale" — has linked tasks, but neither the item nor any linked task
-//           has moved in STALE_THRESHOLD_DAYS.
-// "ok" — active, no drift detected.
+//  has linked tasks, but neither the item nor any linked task
+//   has moved in STALE_THRESHOLD_DAYS.
 function computeDriftStatus(item: DriftInput): "unlinked" | "stale" | "ok" {
     if (item.tasks.length === 0) return "unlinked";
 

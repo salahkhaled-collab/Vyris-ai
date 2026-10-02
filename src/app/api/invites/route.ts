@@ -35,7 +35,7 @@ export async function GET() {
 }
 
 interface CreateInviteBody {
-  email?: string; // omit for a link-only invite
+  email?: string;
   role?: string;
   accessLevel?: string;
 }

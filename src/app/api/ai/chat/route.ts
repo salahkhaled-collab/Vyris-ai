@@ -18,7 +18,7 @@ interface DraftContext {
   draftNote?: string; // rough note from user: what they want to say
 }
 
-// ── System prompts ────────────────────────────────────────────────────────────
+// ── System prompts
 
 async function buildChiefOfStaffPrompt(userId: string): Promise<string> {
   const [objectives, openDecisions, activeRules] = await Promise.all([
@@ -95,7 +95,7 @@ function buildDraftCommsPrompt(ctx: DraftContext): string {
   return parts.join("\n");
 }
 
-// ── Route handler ─────────────────────────────────────────────────────────────
+// ── Route handler
 
 export async function POST(req: NextRequest) {
   if (!pythonLlmConfigured()) {
@@ -173,7 +173,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Chat mode (default) ───────────────────────────────────────────────────
+  // ── Chat mode (default) 
   const messages = body.messages ?? [];
   if (messages.length === 0) {
     return NextResponse.json(
