@@ -1,6 +1,7 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { CommandPalette } from "@/components/layout/CommandPalette";
+import { GlobalAIChat } from "@/components/layout/GlobalAIChat";
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
       </div>
       <MobileNav />
       <CommandPalette />
+      <GlobalAIChat />
     </div>
   );
 }

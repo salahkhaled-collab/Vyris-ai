@@ -200,21 +200,18 @@ export default function AutomationPage() {
             )}
           </div>
 
-          <div className="px-6 py-4 border-t border-line flex items-center gap-3">
-          <div className="flex-1 relative">
+          <div className="px-6 py-4 border-t border-line flex items-center gap-2">
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
               placeholder="Ask Vyris anything — delegate a task, request a summary..."
               disabled={pending}
-              className="w-full bg-panel-2 border border-line rounded-lg pl-4 pr-11 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass disabled:opacity-60"
+              className="flex-1 bg-panel-2 border border-line rounded-lg px-4 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass disabled:opacity-60"
             />
             <DictationButton
               onTranscript={(text) => setInput((prev) => (prev ? `${prev} ${text}` : text))}
-              className="absolute top-1.5 right-1.5"
             />
-          </div>
             <button
               onClick={handleSend}
               disabled={pending}
