@@ -21,6 +21,7 @@ const emptyForm = { name: "", trigger: "", action: "" };
 export default function AutomationPage() {
   // ── Chat (real, calls /api/ai/chat) ──
   const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
   const [input, setInput] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,15 +42,19 @@ export default function AutomationPage() {
     setPending(true);
 
     try {
-      const res = await fetch("/api/ai/chat", {
+      const res = await fetch("/api/ai/query", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
+          message: userMsg.content,
+          history: messages.map((m) => ({ role: m.role, content: m.content })),
+          conversationId,
+          page: "automation",
         }),
       });
 
       const data = await res.json();
+      if (data.conversationId) setConversationId(data.conversationId);
 
       if (!res.ok) {
         setError(data.message ?? "Vyris couldn't respond right now.");

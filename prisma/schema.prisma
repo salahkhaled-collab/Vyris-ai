@@ -102,6 +102,7 @@ model User {
   strategicBets StrategicBet[] @relation("StrategicBetOwner")
   automationRules AutomationRule[] @relation("AutomationRuleOwner")
   risks Risk[] @relation("RiskOwner")
+    aiConversations AiConversation[]
 }
 
 model Team {
@@ -386,4 +387,29 @@ model Document {
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
+}
+model AiConversation {
+  id        String      @id @default(cuid())
+  title     String      @default("New chat")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  ownerId String
+  owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  messages AiMessage[]
+
+  @@index([ownerId, updatedAt])
+}
+
+model AiMessage {
+  id        String   @id @default(cuid())
+  role      String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
 }

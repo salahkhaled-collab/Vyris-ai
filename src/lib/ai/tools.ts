@@ -1,17 +1,11 @@
-// lib/ai/tools.ts
-//
-// Vyris Intelligence's toolset. Each tool has:
-//   - a schema (what Claude sees, sent in the `tools` param)
-//   - an executor (what actually runs against Prisma, scoped to the caller)
-//
-// Scope is ONLY built server-side from the authenticated session (see the
-// API route). Nothing here trusts a userId/teamId coming from the model
-// or the request body.
 
 import { prisma } from "@/lib/prisma";
 import { scopeFilter, type Scope } from "./scope";
 
-// ---- Tool schemas sent to the Python LLM service ---------------------------
+const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
+  return allowed.includes(v as T) ? (v as T) : fallback;
+}
 
 export const VYRIS_TOOLS = [
   {
@@ -100,24 +94,106 @@ export const VYRIS_TOOLS = [
       required: ["query"],
     },
   },
+    {
+    name: "get_automation_rules",
+    description: "List the user's automation rules.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "create_project",
+    description: "Create a new project. Only call when the user explicitly asks to add or create a project.",
+    input_schema: {
+      type: "object",
+      properties: { title: { type: "string" }, description: { type: "string" } },
+      required: ["title"],
+    },
+  },
+  {
+    name: "create_task",
+    description: "Create a task inside an existing project. Needs projectTitle or projectId. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        projectTitle: { type: "string" },
+        projectId: { type: "string" },
+        dueDateISO: { type: "string", description: "ISO date, optional." },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "update_task_status",
+    description: "Change a task's status. Get the task id from get_tasks first.",
+    input_schema: {
+      type: "object",
+      properties: {
+        taskId: { type: "string" },
+        status: { type: "string", enum: ["TODO", "IN_PROGRESS", "DONE"] },
+      },
+      required: ["taskId", "status"],
+    },
+  },
+  {
+    name: "create_contact",
+    description: "Add a contact. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        name: { type: "string" }, email: { type: "string" }, company: { type: "string" },
+        role: { type: "string" }, notes: { type: "string" }, tag: { type: "string" },
+      },
+      required: ["name"],
+    },
+  },
+  {
+    name: "create_risk",
+    description: "Log a business risk. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        title: { type: "string" }, description: { type: "string" },
+        severity: { type: "string", enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+      },
+      required: ["title"],
+    },
+  },
+  {
+    name: "create_decision",
+    description: "Log an open decision. Needs a title and a deadline string. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: { title: { type: "string" }, context: { type: "string" }, deadline: { type: "string" } },
+      required: ["title", "deadline"],
+    },
+  },
+  {
+    name: "create_objective",
+    description: "Create an objective. Needs a title and a quarter like 'Q4-2026'. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: { title: { type: "string" }, quarter: { type: "string" } },
+      required: ["title", "quarter"],
+    },
+  },
 ] as const;
 
 export type VyrisToolName = (typeof VYRIS_TOOLS)[number]["name"];
 
-// ---- Executors -------------------------------------------------------------
-
+//    Executors 
 export async function runTool(
   name: VyrisToolName,
   input: Record<string, unknown>,
   scope: Scope
 ): Promise<unknown> {
   const where = scopeFilter(scope);
+    const taskScope = { OR: [{ ownerId: scope.userId }, { project: where }] };
 
   switch (name) {
     case "get_projects": {
       const status = input.status as string | undefined;
       return prisma.project.findMany({
-        where: { ...where, ...(status ? { status: status as any } : {}) },
+        taskScope: { ...where, ...(status ? { status: status as any } : {}) },
         select: { id: true, title: true, description: true, status: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
         take: 50,
@@ -218,6 +294,126 @@ export async function runTool(
         select: { id: true, name: true, email: true, company: true, role: true, tag: true },
         take: 20,
       });
+    }
+        case "get_automation_rules":
+      return prisma.automationRule.findMany({
+        where: { ownerId: scope.userId },
+        select: { id: true, name: true, trigger: true, action: true, status: true },
+        take: 30,
+      });
+
+    case "create_project": {
+      const title = s(input.title);
+      if (!title) return { ok: false, error: "title is required" };
+      const created = await prisma.project.create({
+        data: { title, description: s(input.description) || null, ownerId: scope.userId },
+        select: { id: true, title: true, status: true },
+      });
+      return { ok: true, created };
+    }
+
+    case "create_task": {
+      const title = s(input.title);
+      const projectId = s(input.projectId);
+      const projectTitle = s(input.projectTitle);
+      if (!title) return { ok: false, error: "title is required" };
+      if (!projectId && !projectTitle) return { ok: false, error: "Which project? Ask the user for the project name." };
+
+      const matches = await prisma.project.findMany({
+        where: {
+          ...where,
+          ...(projectId ? { id: projectId } : { title: { contains: projectTitle, mode: "insensitive" } }),
+        },
+        select: { id: true, title: true },
+        take: 5,
+      });
+      const exact = matches.find((m) => m.title.toLowerCase() === projectTitle.toLowerCase());
+      const chosen = exact ?? (matches.length === 1 ? matches[0] : null);
+      if (!chosen) {
+        return {
+          ok: false,
+          error: matches.length === 0 ? "No project matches that name." : "Several projects match.",
+          candidates: matches.map((m) => m.title),
+        };
+      }
+
+      const due = s(input.dueDateISO);
+      const dueDate = due ? new Date(due) : null;
+      if (dueDate && isNaN(dueDate.getTime())) return { ok: false, error: "dueDateISO is not a valid date" };
+
+      const created = await prisma.task.create({
+        data: { title, projectId: chosen.id, ownerId: scope.userId, dueDate },
+        select: { id: true, title: true, status: true, dueDate: true },
+      });
+      return { ok: true, created: { ...created, project: chosen.title } };
+    }
+
+    case "update_task_status": {
+      const taskId = s(input.taskId);
+      const status = pick(input.status, ["TODO", "IN_PROGRESS", "DONE"] as const, "TODO");
+      const task = await prisma.task.findFirst({ where: { id: taskId, ...taskScope }, select: { id: true } });
+      if (!task) return { ok: false, error: "Task not found." };
+      const updated = await prisma.task.update({
+        where: { id: task.id },
+        data: { status },
+        select: { id: true, title: true, status: true },
+      });
+      return { ok: true, updated };
+    }
+
+    case "create_contact": {
+      const name = s(input.name);
+      if (!name) return { ok: false, error: "name is required" };
+      const created = await prisma.contact.create({
+        data: {
+          name,
+          email: s(input.email) || null,
+          company: s(input.company) || null,
+          role: s(input.role) || null,
+          notes: s(input.notes) || null,
+          tag: s(input.tag) || null,
+          ownerId: scope.userId,
+        },
+        select: { id: true, name: true, company: true },
+      });
+      return { ok: true, created };
+    }
+
+    case "create_risk": {
+      const title = s(input.title);
+      if (!title) return { ok: false, error: "title is required" };
+      const created = await prisma.risk.create({
+        data: {
+          title,
+          description: s(input.description) || title,
+          severity: pick(input.severity, ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const, "MEDIUM"),
+          ownerId: scope.userId,
+        },
+        select: { id: true, title: true, severity: true, status: true },
+      });
+      return { ok: true, created };
+    }
+
+    case "create_decision": {
+      const title = s(input.title);
+      const deadline = s(input.deadline);
+      if (!title || !deadline) return { ok: false, error: "title and deadline are required" };
+      const created = await prisma.decision.create({
+        data: { title, deadline, context: s(input.context) || "Added via Vyris AI", ownerId: scope.userId },
+        select: { id: true, title: true, deadline: true, status: true },
+      });
+      return { ok: true, created };
+    }
+
+    case "create_objective": {
+      const title = s(input.title);
+      const quarter = s(input.quarter);
+      if (!title || !quarter) return { ok: false, error: "title and quarter are required" };
+      const created = await prisma.objective.create({
+        data: { title, quarter, ownerId: scope.userId },
+        select: { id: true, title: true, quarter: true },
+      });
+      return { ok: true, created };
     }
 
     default:

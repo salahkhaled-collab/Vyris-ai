@@ -50,7 +50,9 @@ export async function POST(req: NextRequest) {
   }
 
   const forwardForm = new FormData();
-  forwardForm.append("file", audio, "dictation.webm");
+ const type = audio.type || "";
+const ext = type.includes("mp4") ? "m4a" : type.includes("ogg") ? "ogg" : "webm";
+forwardForm.append("file", audio, `dictation.${ext}`);
   forwardForm.append("model", process.env.PYTHON_LLM_TRANSCRIBE_MODEL ?? "vyris-transcriber");
 
   try {
