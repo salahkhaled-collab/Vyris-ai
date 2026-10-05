@@ -1,0 +1,18 @@
+[1mdiff --git a/prisma/schema.prisma b/prisma/schema.prisma[m
+[1mindex 311f21d..d0a2092 100644[m
+[1m--- a/prisma/schema.prisma[m
+[1m+++ b/prisma/schema.prisma[m
+[36m@@ -412,4 +412,12 @@[m [mmodel AiMessage {[m
+   conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)[m
+ [m
+   @@index([conversationId, createdAt])[m
+[32m+[m[32m}[m
+[32m+[m[32mmodel Memory {[m
+[32m+[m[32m  id        String   @id @default(cuid())[m
+[32m+[m[32m  userId    String[m
+[32m+[m[32m  content   String[m
+[32m+[m[32m  createdAt DateTime @default(now())[m
+[32m+[m[32m  user      User     @relation(fields: [userId], references: [id])[m
+[32m+[m[32m  @@index([userId])[m
+ }[m
+\ No newline at end of file[m
