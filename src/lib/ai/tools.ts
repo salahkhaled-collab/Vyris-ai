@@ -227,7 +227,7 @@ export async function runTool(
       const dueBeforeISO = input.dueBeforeISO as string | undefined;
       return prisma.task.findMany({
         where: {
-          ...where,
+          ...taskScope,
           ...(status ? { status: status as any } : {}),
           ...(projectId ? { projectId } : {}),
           ...(dueBeforeISO ? { dueDate: { lte: new Date(dueBeforeISO) } } : {}),
