@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
-import { getMemories } from "@/lib/memory";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOKENS = 800;
@@ -22,7 +21,7 @@ interface DraftContext {
 // ── System prompts
 
 async function buildChiefOfStaffPrompt(userId: string): Promise<string> {
-  const [objectives, openDecisions, activeRules, memories] = await Promise.all([
+  const [objectives, openDecisions, activeRules] = await Promise.all([
     prisma.objective.findMany({
       where: { ownerId: userId },
       orderBy: { createdAt: "desc" },
@@ -37,7 +36,6 @@ async function buildChiefOfStaffPrompt(userId: string): Promise<string> {
       where: { ownerId: userId, status: "ACTIVE" },
       take: 5,
     }),
-    getMemories(userId),
   ]);
 
   const objectivesSummary = objectives.length
@@ -52,10 +50,6 @@ async function buildChiefOfStaffPrompt(userId: string): Promise<string> {
     ? activeRules.map((r: { name: string; trigger: string; action: string }) => `- ${r.name}: ${r.trigger} → ${r.action}`).join("\n")
     : "No active automation rules.";
 
-  const memoryBlock = memories.length
-    ? `\n\nTHINGS YOU HAVE BEEN TOLD TO REMEMBER ABOUT THIS USER:\n${memories.map((m: { content: string }) => `- ${m.content}`).join("\n")}`
-    : "";
-
   return `You are Vyris, an AI Chief of Staff embedded in a premium executive productivity app.
 Your tone is calm, precise, and direct — like a trusted senior aide, not a chatty assistant.
 Keep responses concise (a few sentences to a short paragraph) unless asked for detail.
@@ -69,7 +63,7 @@ OPEN DECISIONS:
 ${decisionsSummary}
 
 ACTIVE AUTOMATION RULES:
-${rulesSummary}${memoryBlock}
+${rulesSummary}
 
 When relevant, reference this context naturally. Do not invent context you were not given above.`;
 }
