@@ -213,7 +213,7 @@ export async function runTool(
     case "get_projects": {
       const status = input.status as string | undefined;
       return prisma.project.findMany({
-        taskScope: { ...where, ...(status ? { status: status as any } : {}) },
+        where: { ...where, ...(status ? { status: status as any } : {}) },
         select: { id: true, title: true, description: true, status: true, updatedAt: true },
         orderBy: { updatedAt: "desc" },
         take: 50,
