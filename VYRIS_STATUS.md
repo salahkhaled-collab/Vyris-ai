@@ -56,7 +56,7 @@ Strategic Planning + Decision Support only. The rest of the original nav (Inbox,
 ## In progress / NOT done
 
 - **Per-user AI memory:** Memory Prisma model, `remember` tool, and notes injected into the system prompt. **Not finished.** The live AI endpoint is `/api/ai/query`. The unused `/api/chat` draft route was removed.
-- **Global AI chat** (commit `8aa5382`, 2026-10-03): `src/components/layout/GlobalAIChat.tsx` (~438 lines), mounted in `src/app/(main)/layout.tsx`. Calls `/api/ai/chat`, `/api/projects` and `/api/contacts`. **Built, not verified end-to-end.** Unconfirmed: whether `/api/ai/chat` exists and whether it uses the per-user memory work.
+- **Global AI chat** (commit `8aa5382`, 2026-10-03): `src/components/layout/GlobalAIChat.tsx` (~438 lines), mounted in `src/app/(main)/layout.tsx`. Calls `/api/ai/chat`, `/api/projects` and `/api/contacts`. **Built, not verified end-to-end.** Confirmed: `/api/ai/chat` exists but has no memory code; memory is wired only into `/api/ai/query`.
 - **Waitlist page upgrade** (vyris-waitlist.vercel.app): keep the existing style and every detail. Planned: a portal animation with apps like Gmail flowing through a portal to Vyris.
 
 ## Not built (deliberate)
