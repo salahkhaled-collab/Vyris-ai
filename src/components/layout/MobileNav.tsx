@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { navigation, settingsItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutGrid, GitBranch, Menu, X } from "lucide-react";
+import { GitBranch, Menu, X } from "lucide-react";
 import { VyrisMark } from "@/components/ui/VyrisMark";
 
 const overviewGroup = navigation.find((g) => g.label === "Overview");
@@ -40,8 +40,8 @@ export function MobileNav() {
               bottomBarActive(dashboardItem.href) ? "text-brass" : "text-muted"
             )}
           >
-            <LayoutGrid className="w-5 h-5" strokeWidth={1.75} />
-            Dashboard
+            <dashboardItem.icon className="w-5 h-5" strokeWidth={1.75} />
+            {dashboardItem.label}
           </Link>
         )}
         {decisionsItem && (

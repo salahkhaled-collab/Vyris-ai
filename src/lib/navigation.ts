@@ -2,7 +2,7 @@ import {
   Target,
   GitBranch,
   AlertTriangle,
-  LayoutGrid,
+  Home,
   Settings,
   Bell,
   FolderKanban,
@@ -31,7 +31,7 @@ export const navigation: NavGroup[] = [
   {
     label: "Overview",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutGrid, primary: true },
+      { label: "Home", href: "/dashboard", icon: Home, primary: true },
     ],
   },
   {
