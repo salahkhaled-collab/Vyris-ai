@@ -1,19 +1,23 @@
 "use client";
 
-import { Search } from "lucide-react";
+import { Search, type LucideIcon } from "lucide-react";
 
 interface TopbarProps {
   eyebrow: string;
   title: string;
+  titleIcon?: LucideIcon;
   statusText?: string;
 }
 
-export function Topbar({ eyebrow, title, statusText }: TopbarProps) {
+export function Topbar({ eyebrow, title, titleIcon: TitleIcon, statusText }: TopbarProps) {
   return (
     <header className="flex items-center justify-between px-6 lg:px-10 py-5 border-b border-line">
       <div>
         <div className="text-[11px] uppercase tracking-[0.18em] text-muted">{eyebrow}</div>
-        <h1 className="font-display text-2xl mt-1">{title}</h1>
+        <div className="flex items-center gap-2 mt-1">
+          {TitleIcon && <TitleIcon className="w-5 h-5 text-muted" strokeWidth={1.8} />}
+          <h1 className="font-display text-2xl">{title}</h1>
+        </div>
       </div>
       <div className="flex items-center gap-4">
         <button

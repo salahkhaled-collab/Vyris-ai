@@ -22,7 +22,7 @@ interface Message {
 
 // Page-specific context labels
 function getPageContext(pathname: string): string {
-  if (pathname.startsWith("/dashboard")) return "Dashboard";
+  if (pathname.startsWith("/dashboard")) return "Home";
   if (pathname.startsWith("/strategy")) return "Strategic Planning";
   if (pathname.startsWith("/decisions")) return "Decision Support";
   if (pathname.startsWith("/risks")) return "Risks";

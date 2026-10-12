@@ -6,7 +6,7 @@ import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 import {
-  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X,
+  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X, Home,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -290,7 +290,8 @@ export default function DashboardPage() {
     <>
       <Topbar
         eyebrow="Overview"
-        title="Dashboard"
+        title="Home"
+        titleIcon={Home}
         statusText={
           status === "saving" ? "Saving layout..." : status === "error" ? "Couldn't save layout" : undefined
         }
