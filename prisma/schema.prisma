@@ -96,6 +96,7 @@ model User {
 
   ownedProjects Project[]      @relation("ProjectOwner")
   ownedTasks    Task[]         @relation("TaskOwner")
+  assignedTasks Task[]         @relation("TaskAssignee")
   contacts      Contact[]      @relation("ContactOwner")
   documents     Document[]     @relation("DocumentOwner")
   decisions     Decision[]     @relation("DecisionOwner")
@@ -165,6 +166,7 @@ enum ProjectStatus {
 enum TaskStatus {
   TODO
   IN_PROGRESS
+  BLOCKED
   DONE
 }
 
@@ -342,6 +344,14 @@ model Task {
   ownerId String
   owner   User   @relation("TaskOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
+  // Who is responsible for doing the task. Null means "the owner" — a solo
+  // user never sets this, so existing rows and solo workflows are unchanged.
+  assigneeId String?
+  assignee   User?   @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+
+  // Only meaningful while status is BLOCKED; cleared when the task is unblocked.
+  blockedReason String? @db.Text
+
   // Drift Signals: a task optionally points at ONE of these two —
   // enforced in the API layer, not the DB (Prisma has no native XOR constraint).
   objectiveId String?
@@ -349,6 +359,8 @@ model Task {
 
   strategicBetId String?
   strategicBet   StrategicBet? @relation(fields: [strategicBetId], references: [id], onDelete: SetNull)
+
+  @@index([assigneeId])
 }
 
 model Contact {

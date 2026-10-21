@@ -2,6 +2,7 @@
 import { prisma } from "@/lib/prisma";
 import { scopeFilter, type Scope } from "./scope";
 import { saveMemory } from "@/lib/memory";
+import { taskAccessWhere } from "@/lib/task-access";
 
 const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
@@ -200,7 +201,7 @@ export async function runTool(
   scope: Scope
 ): Promise<unknown> {
   const where = scopeFilter(scope);
-    const taskScope = { OR: [{ ownerId: scope.userId }, { project: where }] };
+  const taskScope = taskAccessWhere(scope);
 
   switch (name) {
     case "remember": {
@@ -238,6 +239,8 @@ export async function runTool(
           status: true,
           dueDate: true,
           projectId: true,
+          assigneeId: true,
+          blockedReason: true,
           objectiveId: true,
           strategicBetId: true,
         },
@@ -376,7 +379,8 @@ export async function runTool(
       if (!task) return { ok: false, error: "Task not found." };
       const updated = await prisma.task.update({
         where: { id: task.id },
-        data: { status },
+        // This tool never sets BLOCKED, so any old blocked reason is now stale.
+        data: { status, blockedReason: null },
         select: { id: true, title: true, status: true },
       });
       return { ok: true, updated };

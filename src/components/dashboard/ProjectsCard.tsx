@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useShowCharts } from "@/lib/use-show-charts";
 
 type ProgressData = {
-  counts: { TODO: number; IN_PROGRESS: number; DONE: number };
+  counts: { TODO: number; IN_PROGRESS: number; BLOCKED: number; DONE: number };
   weeks: { start: string; done: number }[];
 };
 
@@ -20,7 +20,7 @@ function ProgressChart() {
 
   if (!data) return null;
   const { counts, weeks } = data;
-  const total = counts.TODO + counts.IN_PROGRESS + counts.DONE;
+  const total = counts.TODO + counts.IN_PROGRESS + counts.BLOCKED + counts.DONE;
   if (total === 0) return null;
 
   const pct = Math.round((counts.DONE / total) * 100);
