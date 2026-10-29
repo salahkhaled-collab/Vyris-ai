@@ -365,7 +365,9 @@ export function GlobalAIChat() {
                       : "bg-panel-2 text-ink-text/90 border border-line"
                   )}
                 >
-                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  <p className="whitespace-pre-wrap">
+                    {m.role === "assistant" ? m.content.replace(/\*\*(.+?)\*\*/g, "$1") : m.content}
+                  </p>
                   <div
                     className={cn(
                       "text-[10px] mt-1.5 font-mono",

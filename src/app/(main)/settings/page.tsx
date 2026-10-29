@@ -5,6 +5,7 @@ import { useSession, signOut } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { useUser, type Role, type WorkspaceType } from "@/lib/user-context";
 import { LogOut, AlertTriangle } from "lucide-react";
+import { MemoryList } from "@/components/settings/MemoryList";
 
 const ROLES: { value: Role; label: string }[] = [
   { value: "CEO", label: "CEO" },
@@ -151,6 +152,9 @@ export default function SettingsPage() {
             ))}
           </div>
         </section>
+
+        {/* Saved notes */}
+        <MemoryList />
 
         {/* Legal */}
         <section className="bg-panel border border-line rounded-2xl p-6">
