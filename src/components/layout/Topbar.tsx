@@ -40,9 +40,6 @@ export function Topbar({ eyebrow, title, titleIcon: TitleIcon, statusText }: Top
             {statusText}
           </div>
         )}
-        <button className="px-4 py-2 rounded-full text-sm font-medium bg-brass text-white">
-          Ask Vyris
-        </button>
       </div>
     </header>
   );
