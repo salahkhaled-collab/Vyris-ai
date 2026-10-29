@@ -1,3 +1,14 @@
+// src/lib/ai/python-client.ts
+//
+// Client for Vyris's own LLM server. Works with ANY server that speaks the
+// OpenAI-compatible /v1/chat/completions protocol (vLLM, Ollama, LM Studio,
+// Together, Fireworks, your own Python FastAPI wrapper, ...). No Anthropic
+// or OpenAI SDK involved — it's a plain fetch.
+//
+// Env vars (set in Vercel -> Project Settings -> Environment Variables):
+//   PYTHON_LLM_URL      full endpoint, e.g. https://your-host/v1/chat/completions
+//   PYTHON_LLM_API_KEY  optional, sent as "Authorization: Bearer <key>"
+//   PYTHON_LLM_MODEL    optional, defaults to "vyris-local"
 
 const REQUEST_TIMEOUT_MS = 45_000;
 

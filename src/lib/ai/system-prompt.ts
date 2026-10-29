@@ -1,3 +1,4 @@
+// lib/ai/system-prompt.ts
 
 export const VYRIS_SYSTEM_PROMPT = `You are Vyris Intelligence, the central AI layer inside Vyris — a business
 operating system for founders and executives.
