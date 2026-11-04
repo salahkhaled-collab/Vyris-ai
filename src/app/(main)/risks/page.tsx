@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
+import { RiskSignalsPanel } from "@/components/risks/RiskSignalsPanel";
 import { cn } from "@/lib/utils";
 import { Plus, X, Trash2, AlertTriangle } from "lucide-react";
 
@@ -123,6 +124,8 @@ export default function RisksPage() {
             </button>
           )}
         </div>
+
+        <RiskSignalsPanel />
 
         {creating && (
           <Panel className="p-5">

@@ -22,6 +22,7 @@ import { ChartsToggle } from "@/components/dashboard/ChartsToggle";
 import { BetsCard } from "@/components/dashboard/BetsCard";
 import { RisksCard } from "@/components/dashboard/RisksCard";
 import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
+import { computeProgress } from "@/lib/okr";
 
 const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: string }> = {
   objectives: { label: "Objectives", icon: Target, href: "/strategy" },
@@ -30,12 +31,6 @@ const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: st
   bets:       { label: "Strategic Bets", icon: TrendingUp, href: "/strategy" },
   projects:   { label: "Projects", icon: FolderKanban, href: "/projects" },
 };
-
-function computeProgress(keyResults: { current: number; target: number }[]) {
-  if (keyResults.length === 0) return 0;
-  const pct = keyResults.reduce((sum, kr) => sum + Math.min(kr.current / (kr.target || 1), 1), 0) / keyResults.length;
-  return Math.round(pct * 100);
-}
 
 // ── Individual widget bodies - each fetches its own real data ─────────────
 

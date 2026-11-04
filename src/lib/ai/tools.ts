@@ -4,6 +4,7 @@ import { scopeFilter, type Scope } from "./scope";
 import { saveMemory } from "@/lib/memory";
 import { isValidAssignee, taskAccessWhere, taskManageWhere } from "@/lib/task-access";
 import { buildAttentionReport } from "@/lib/attention";
+import { loadRiskSignals } from "@/lib/risk-signals-server";
 
 const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
@@ -13,6 +14,18 @@ function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T):
 const MAX_PLAN_TASKS = 15;
 const MAX_BLOCKED_REASON = 500;
 const MAX_ATTENTION_ITEMS = 20;
+const MAX_DECISION_OPTIONS = 6;
+const MAX_POINTS_PER_SIDE = 6;
+const MAX_RECOMMENDATION = 1200;
+
+/** Clean a list of short strings (pros/cons): trimmed, non-empty, capped. */
+function cleanList(value: unknown, max: number): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((v) => s(v).slice(0, 200))
+    .filter((v) => v.length > 0)
+    .slice(0, max);
+}
 
 type ProjectMatch =
   | { ok: true; project: { id: string; title: string } }
@@ -260,7 +273,8 @@ export const VYRIS_TOOLS = [
   },
   {
     name: "create_risk",
-    description: "Log a business risk. Only call when the user explicitly asks.",
+    description:
+      "Log a business risk. Only call when the user explicitly asks, or approves a risk you proposed from get_risk_signals. Put the evidence in description.",
     input_schema: {
       type: "object",
       properties: {
@@ -268,6 +282,63 @@ export const VYRIS_TOOLS = [
         severity: { type: "string", enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
       },
       required: ["title"],
+    },
+  },
+  {
+    name: "get_risk_signals",
+    description:
+      "Evidence of what could go wrong, across modules: active projects with overdue or blocked tasks (with blocked reasons), workload per person (overloaded people are bottlenecks), objectives behind pace or missed for their quarter, strategic bets at risk, and already-tracked high or critical risks. Use for 'what are my risks', 'where are the bottlenecks', 'are we on track'. Propose risks with severity and evidence; don't log them without approval.",
+    input_schema: { type: "object", properties: {} },
+  },
+  {
+    name: "update_risk_status",
+    description: "Change a risk's status (OPEN, MITIGATING, RESOLVED). Get the id from get_risks. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        riskId: { type: "string" },
+        status: { type: "string", enum: ["OPEN", "MITIGATING", "RESOLVED"] },
+      },
+      required: ["riskId", "status"],
+    },
+  },
+  {
+    name: "add_decision_options",
+    description:
+      "Add options to an OPEN decision so they can be compared. Each option has a label, a score from 0 to 100, and pros and cons grounded in the user's data. ONLY call after showing the user the options and getting explicit approval.",
+    input_schema: {
+      type: "object",
+      properties: {
+        decisionId: { type: "string" },
+        options: {
+          type: "array",
+          maxItems: MAX_DECISION_OPTIONS,
+          items: {
+            type: "object",
+            properties: {
+              label: { type: "string" },
+              score: { type: "integer", minimum: 0, maximum: 100 },
+              pros: { type: "array", items: { type: "string" } },
+              cons: { type: "array", items: { type: "string" } },
+            },
+            required: ["label", "score"],
+          },
+        },
+      },
+      required: ["decisionId", "options"],
+    },
+  },
+  {
+    name: "set_decision_recommendation",
+    description:
+      "Save a recommendation on an OPEN decision: which option to lean toward and why, citing the evidence. ONLY call after the user explicitly approves saving it.",
+    input_schema: {
+      type: "object",
+      properties: {
+        decisionId: { type: "string" },
+        recommendation: { type: "string" },
+      },
+      required: ["decisionId", "recommendation"],
     },
   },
   {
@@ -358,7 +429,7 @@ export async function runTool(
           deadline: true,
           status: true,
           recommendation: true,
-          options: { select: { label: true, score: true, pros: true, cons: true } },
+          options: { select: { id: true, label: true, score: true, pros: true, cons: true } },
         },
         orderBy: { updatedAt: "desc" },
         take: 30,
@@ -626,6 +697,93 @@ export async function runTool(
         select: { id: true, title: true, severity: true, status: true },
       });
       return { ok: true, created };
+    }
+
+    case "get_risk_signals": {
+      const signals = await loadRiskSignals(scope);
+      return {
+        ...signals,
+        projects: signals.projects.slice(0, MAX_ATTENTION_ITEMS),
+        workload: signals.workload.slice(0, MAX_ATTENTION_ITEMS),
+        objectivesBehind: signals.objectivesBehind.slice(0, MAX_ATTENTION_ITEMS),
+      };
+    }
+
+    case "update_risk_status": {
+      const riskId = s(input.riskId);
+      const status = pick(input.status, ["OPEN", "MITIGATING", "RESOLVED"] as const, "OPEN");
+      const risk = await prisma.risk.findFirst({ where: { id: riskId, ...where }, select: { id: true } });
+      if (!risk) return { ok: false, error: "Risk not found." };
+      const updated = await prisma.risk.update({
+        where: { id: risk.id },
+        data: { status },
+        select: { id: true, title: true, status: true },
+      });
+      return { ok: true, updated };
+    }
+
+    case "add_decision_options": {
+      const decisionId = s(input.decisionId);
+      const decision = await prisma.decision.findFirst({
+        where: { id: decisionId, ...where },
+        select: { id: true, status: true, options: { select: { label: true } } },
+      });
+      if (!decision) return { ok: false, error: "Decision not found." };
+      if (decision.status !== "OPEN") return { ok: false, error: "That decision is already decided." };
+
+      const raw = Array.isArray(input.options) ? input.options : [];
+      if (raw.length === 0) return { ok: false, error: "options must be a non-empty list" };
+      if (decision.options.length + raw.length > MAX_DECISION_OPTIONS) {
+        return { ok: false, error: `A decision can have at most ${MAX_DECISION_OPTIONS} options.` };
+      }
+
+      const seen = new Set(decision.options.map((o) => o.label.toLowerCase()));
+      const toCreate: { label: string; score: number; pros: string[]; cons: string[] }[] = [];
+      for (const [index, item] of raw.entries()) {
+        const entry = typeof item === "object" && item !== null ? (item as Record<string, unknown>) : {};
+        const label = s(entry.label).slice(0, 120);
+        if (!label) return { ok: false, error: `Option ${index + 1} has no label.` };
+        const score = typeof entry.score === "number" ? Math.round(entry.score) : Number.NaN;
+        if (!Number.isFinite(score) || score < 0 || score > 100) {
+          return { ok: false, error: `Option ${index + 1} needs a score from 0 to 100.` };
+        }
+        if (seen.has(label.toLowerCase())) return { ok: false, error: `Option "${label}" already exists.` };
+        seen.add(label.toLowerCase());
+        toCreate.push({
+          label,
+          score,
+          pros: cleanList(entry.pros, MAX_POINTS_PER_SIDE),
+          cons: cleanList(entry.cons, MAX_POINTS_PER_SIDE),
+        });
+      }
+
+      const created = await prisma.$transaction(
+        toCreate.map((o) =>
+          prisma.decisionOption.create({
+            data: { ...o, decisionId: decision.id },
+            select: { id: true, label: true, score: true },
+          })
+        )
+      );
+      return { ok: true, created };
+    }
+
+    case "set_decision_recommendation": {
+      const decisionId = s(input.decisionId);
+      const recommendation = s(input.recommendation).slice(0, MAX_RECOMMENDATION);
+      if (!recommendation) return { ok: false, error: "recommendation is required" };
+      const decision = await prisma.decision.findFirst({
+        where: { id: decisionId, ...where },
+        select: { id: true, status: true },
+      });
+      if (!decision) return { ok: false, error: "Decision not found." };
+      if (decision.status !== "OPEN") return { ok: false, error: "That decision is already decided." };
+      const updated = await prisma.decision.update({
+        where: { id: decision.id },
+        data: { recommendation },
+        select: { id: true, title: true, recommendation: true },
+      });
+      return { ok: true, updated };
     }
 
     case "create_decision": {
