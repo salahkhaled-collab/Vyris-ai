@@ -14,13 +14,16 @@
 //   * Notes are untrusted data. They are flattened to single lines, stripped of
 //     angle brackets, size-capped, fenced in <saved_notes>, and labelled as
 //     data, so a note cannot close the fence or pose as an instruction.
-//   * Access control is not reinvented: workspace counts reuse scopeFilter.
+//   * Access control is not reinvented: workspace counts reuse scopeFilter and
+//     taskAccessWhere, and "overdue" uses the shared rule in lib/attention.
 //   * No model names or provider code lives here, so it works unchanged with
 //     any model tier.
 
 import type { PrismaClient, Role } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { scopeFilter, type Scope } from "./scope";
+import { taskAccessWhere } from "@/lib/task-access";
+import { overdueCutoff } from "@/lib/attention";
 
 // ── Types ───────────────────────────────────────────────────────────────
 
@@ -42,7 +45,9 @@ export interface ContextNote {
 export interface WorkspaceSnapshot {
   activeProjects: number;
   openTasks: number;
+  /** Open, not blocked, and the due day has passed (same rule as the Projects page). */
   overdueTasks: number;
+  blockedTasks: number;
 }
 
 export interface BuildContextInput {
@@ -126,11 +131,6 @@ function clampLimit(limit: number | undefined): number {
   return Math.min(limit, MAX_LIST_LIMIT);
 }
 
-/** Tasks are visible when you own them or their project is in your scope. */
-function taskScope(scope: Scope) {
-  return { OR: [{ ownerId: scope.userId }, { project: scopeFilter(scope) }] };
-}
-
 // ── Loaders ─────────────────────────────────────────────────────────────
 
 function loadUser(db: ContextDb, userId: string): Promise<ContextUser | null> {
@@ -150,13 +150,17 @@ function loadNotes(db: ContextDb, userId: string, limit: number): Promise<Contex
 }
 
 async function loadWorkspace(db: ContextDb, scope: Scope, now: Date): Promise<WorkspaceSnapshot> {
-  const tasks = taskScope(scope);
-  const [activeProjects, openTasks, overdueTasks] = await Promise.all([
+  // Same visibility rule as every task route: owned, assigned to you, or in a project in scope.
+  const tasks = taskAccessWhere(scope);
+  const [activeProjects, openTasks, overdueTasks, blockedTasks] = await Promise.all([
     db.project.count({ where: { ...scopeFilter(scope), status: "ACTIVE" } }),
     db.task.count({ where: { ...tasks, status: { not: "DONE" } } }),
-    db.task.count({ where: { ...tasks, status: { not: "DONE" }, dueDate: { lt: now } } }),
+    db.task.count({
+      where: { ...tasks, status: { notIn: ["DONE", "BLOCKED"] }, dueDate: { lt: overdueCutoff(now) } },
+    }),
+    db.task.count({ where: { ...tasks, status: "BLOCKED" } }),
   ]);
-  return { activeProjects, openTasks, overdueTasks };
+  return { activeProjects, openTasks, overdueTasks, blockedTasks };
 }
 
 // ── Public API: build and render ────────────────────────────────────────
@@ -223,9 +227,9 @@ export function renderContextBlock(ctx: AiContext): string {
   }
 
   if (ctx.workspace) {
-    const { activeProjects, openTasks, overdueTasks } = ctx.workspace;
+    const { activeProjects, openTasks, overdueTasks, blockedTasks } = ctx.workspace;
     lines.push(
-      `Workspace: ${activeProjects} active project(s), ${openTasks} open task(s), ${overdueTasks} overdue.`
+      `Workspace: ${activeProjects} active project(s), ${openTasks} open task(s), ${overdueTasks} overdue, ${blockedTasks} blocked.`
     );
   }
 

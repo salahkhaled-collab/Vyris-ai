@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
+import { buildAttentionReport, overdueCutoff, type AttentionItem } from "@/lib/attention";
 import {
   Plus,
   ChevronDown,
@@ -15,6 +16,7 @@ import {
   CheckCircle2,
   Ban,
   X,
+  AlertTriangle,
 } from "lucide-react";
 
 type ProjectStatus = "ACTIVE" | "PAUSED" | "DONE";
@@ -25,6 +27,7 @@ interface Task {
   title: string;
   status: TaskStatus;
   dueDate: string | null;
+  blockedReason: string | null;
 }
 
 interface Project {
@@ -56,6 +59,18 @@ const taskStatusIcon: Record<TaskStatus, typeof Circle> = {
   DONE: CheckCircle2,
 };
 
+/** Due dates are stored as midnight UTC, so format them in UTC to show the intended day. */
+function formatDue(iso: string): string {
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: "UTC" });
+}
+
+function isTaskOverdue(task: Task, now: Date): boolean {
+  if (!task.dueDate || task.status === "DONE" || task.status === "BLOCKED") return false;
+  return new Date(task.dueDate).getTime() < overdueCutoff(now).getTime();
+}
+
+const ATTENTION_PREVIEW = 5;
+
 function nextTaskStatus(s: TaskStatus): TaskStatus {
   if (s === "TODO") return "IN_PROGRESS";
   if (s === "IN_PROGRESS") return "DONE";
@@ -72,6 +87,9 @@ export default function ProjectsPage() {
   const [newDescription, setNewDescription] = useState("");
   const [shareWithTeam, setShareWithTeam] = useState(false);
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
+  const [newTaskDue, setNewTaskDue] = useState<Record<string, string>>({});
+  const [blockingTaskId, setBlockingTaskId] = useState<string | null>(null);
+  const [blockReason, setBlockReason] = useState("");
 
   function load() {
     setLoading(true);
@@ -147,7 +165,7 @@ export default function ProjectsPage() {
     const res = await fetch(`/api/projects/${projectId}/tasks`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
+      body: JSON.stringify({ title, dueDate: newTaskDue[projectId] || undefined }),
     });
     if (res.ok) {
       const task = await res.json();
@@ -155,30 +173,55 @@ export default function ProjectsPage() {
         prev.map((p) => (p.id === projectId ? { ...p, tasks: [...p.tasks, task] } : p))
       );
       setNewTaskInputs((prev) => ({ ...prev, [projectId]: "" }));
+      setNewTaskDue((prev) => ({ ...prev, [projectId]: "" }));
     }
   }
 
-  async function cycleTaskStatus(projectId: string, task: Task) {
+  /** Optimistically set a task's status; the server clears blockedReason when leaving BLOCKED. */
+  async function setTaskStatus(
+    projectId: string,
+    taskId: string,
+    status: TaskStatus,
+    blockedReason: string | null = null
+  ) {
     const previous = projects;
-    const status = nextTaskStatus(task.status);
+    const reason = status === "BLOCKED" ? blockedReason : null;
     setProjects((prev) =>
       prev.map((p) =>
         p.id === projectId
-          ? { ...p, tasks: p.tasks.map((t) => (t.id === task.id ? { ...t, status } : t)) }
+          ? {
+              ...p,
+              tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, status, blockedReason: reason } : t)),
+            }
           : p
       )
     );
     try {
-      const res = await fetch(`/api/tasks/${task.id}`, {
+      const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
+        body: JSON.stringify(status === "BLOCKED" ? { status, blockedReason: reason } : { status }),
       });
       if (!res.ok) throw new Error(`Task status update failed: ${res.status}`);
     } catch (err) {
       setProjects(previous);
       console.error(err);
     }
+  }
+
+  function cycleTaskStatus(projectId: string, task: Task) {
+    void setTaskStatus(projectId, task.id, nextTaskStatus(task.status));
+  }
+
+  function confirmBlocked(projectId: string, taskId: string) {
+    void setTaskStatus(projectId, taskId, "BLOCKED", blockReason.trim() || null);
+    setBlockingTaskId(null);
+    setBlockReason("");
+  }
+
+  function openProject(projectId: string) {
+    setExpanded((prev) => new Set(prev).add(projectId));
+    document.getElementById(`project-${projectId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   async function deleteTask(projectId: string, taskId: string) {
@@ -198,6 +241,22 @@ export default function ProjectsPage() {
   }
 
   const activeCount = projects.filter((p) => p.status === "ACTIVE").length;
+
+  const attention = useMemo(
+    () =>
+      buildAttentionReport(
+        projects.flatMap((p) => p.tasks.map((t) => ({ ...t, projectId: p.id, projectTitle: p.title }))),
+        projects.map((p) => ({
+          id: p.id,
+          title: p.title,
+          status: p.status,
+          openTaskCount: p.tasks.filter((t) => t.status !== "DONE").length,
+        })),
+        new Date()
+      ),
+    [projects]
+  );
+  const now = new Date();
 
   return (
     <>
@@ -280,12 +339,54 @@ export default function ProjectsPage() {
           </Panel>
         )}
 
+        {!loading && attention.total > 0 && (
+          <Panel className="p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <AlertTriangle className="w-4 h-4 text-brass" strokeWidth={1.75} />
+              <h3 className="text-sm font-medium">Needs attention</h3>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <AttentionGroup
+                label="Blocked"
+                items={attention.blocked}
+                detail={(i) => i.blockedReason || "No reason given"}
+                onOpen={openProject}
+              />
+              <AttentionGroup
+                label="Overdue"
+                items={attention.overdue}
+                detail={(i) => `${i.daysOverdue} day${i.daysOverdue === 1 ? "" : "s"} overdue`}
+                onOpen={openProject}
+              />
+              <AttentionGroup
+                label="Due soon"
+                items={attention.dueSoon}
+                detail={(i) => (i.dueDate ? `Due ${formatDue(i.dueDate)}` : "")}
+                onOpen={openProject}
+              />
+            </div>
+            {attention.idleProjects.length > 0 && (
+              <p className="text-xs text-muted mt-4">
+                No open tasks in:{" "}
+                {attention.idleProjects.map((p, i) => (
+                  <span key={p.id}>
+                    {i > 0 && ", "}
+                    <button onClick={() => openProject(p.id)} className="text-ink-text hover:underline">
+                      {p.title}
+                    </button>
+                  </span>
+                ))}
+              </p>
+            )}
+          </Panel>
+        )}
+
         <div className="space-y-3">
           {projects.map((project) => {
             const isOpen = expanded.has(project.id);
             const doneCount = project.tasks.filter((t) => t.status === "DONE").length;
             return (
-              <Panel key={project.id} className="overflow-hidden">
+              <Panel key={project.id} className="overflow-hidden scroll-mt-4" id={`project-${project.id}`}>
                 <button
                   onClick={() => toggleExpanded(project.id)}
                   className="w-full flex items-center gap-3 px-5 py-4 text-left"
@@ -347,8 +448,10 @@ export default function ProjectsPage() {
                     <div className="divide-y divide-line">
                       {project.tasks.map((task) => {
                         const Icon = taskStatusIcon[task.status];
+                        const overdue = isTaskOverdue(task, now);
                         return (
-                          <div key={task.id} className="flex items-center gap-3 px-5 py-3">
+                          <div key={task.id} className="px-5 py-3">
+                          <div className="flex items-center gap-3">
                             <button onClick={() => cycleTaskStatus(project.id, task)}>
                               <Icon
                                 className={cn(
@@ -366,12 +469,80 @@ export default function ProjectsPage() {
                             >
                               {task.title}
                             </span>
+                            {task.dueDate && task.status !== "DONE" && (
+                              <span
+                                className={cn(
+                                  "text-[11px] whitespace-nowrap",
+                                  overdue ? "text-red-500 font-medium" : "text-muted"
+                                )}
+                              >
+                                {overdue ? "Overdue · " : ""}
+                                {formatDue(task.dueDate)}
+                              </span>
+                            )}
+                            {task.status === "BLOCKED" ? (
+                              <button
+                                onClick={() => void setTaskStatus(project.id, task.id, "IN_PROGRESS")}
+                                className="text-[11px] text-brass hover:underline whitespace-nowrap"
+                              >
+                                Unblock
+                              </button>
+                            ) : (
+                              task.status !== "DONE" && (
+                                <button
+                                  onClick={() => {
+                                    setBlockingTaskId(task.id);
+                                    setBlockReason("");
+                                  }}
+                                  className="text-muted hover:text-ink-text transition-colors"
+                                  aria-label="Mark blocked"
+                                  title="Mark blocked"
+                                >
+                                  <Ban className="w-3.5 h-3.5" strokeWidth={1.75} />
+                                </button>
+                              )
+                            )}
                             <button
                               onClick={() => deleteTask(project.id, task.id)}
                               className="text-muted hover:text-signal/80 transition-colors"
+                              aria-label="Delete task"
                             >
                               <X className="w-3.5 h-3.5" strokeWidth={1.75} />
                             </button>
+                          </div>
+                          {task.status === "BLOCKED" && (
+                            <div className="text-xs text-muted mt-1 ml-7">
+                              Blocked: {task.blockedReason || "no reason given"}
+                            </div>
+                          )}
+                          {blockingTaskId === task.id && (
+                            <div className="flex items-center gap-2 mt-2 ml-7">
+                              <input
+                                autoFocus
+                                value={blockReason}
+                                onChange={(e) => setBlockReason(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") confirmBlocked(project.id, task.id);
+                                  if (e.key === "Escape") setBlockingTaskId(null);
+                                }}
+                                maxLength={500}
+                                placeholder="What is it waiting on?"
+                                className="flex-1 bg-panel-2 border border-line rounded-lg px-3 py-1.5 text-xs placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
+                              />
+                              <button
+                                onClick={() => confirmBlocked(project.id, task.id)}
+                                className="px-3 py-1.5 rounded-lg text-xs font-medium bg-brass text-white"
+                              >
+                                Mark blocked
+                              </button>
+                              <button
+                                onClick={() => setBlockingTaskId(null)}
+                                className="text-xs text-muted"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
                           </div>
                         );
                       })}
@@ -386,6 +557,15 @@ export default function ProjectsPage() {
                         onKeyDown={(e) => e.key === "Enter" && addTask(project.id)}
                         placeholder="Add a task..."
                         className="flex-1 bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
+                      />
+                      <input
+                        type="date"
+                        value={newTaskDue[project.id] ?? ""}
+                        onChange={(e) =>
+                          setNewTaskDue((prev) => ({ ...prev, [project.id]: e.target.value }))
+                        }
+                        aria-label="Due date (optional)"
+                        className="bg-panel-2 border border-line rounded-lg px-2 py-2 text-xs text-muted focus:outline-none focus:ring-1 focus:ring-brass"
                       />
                       <button
                         onClick={() => addTask(project.id)}
@@ -403,5 +583,43 @@ export default function ProjectsPage() {
         </div>
       </main>
     </>
+  );
+}
+function AttentionGroup({
+  label,
+  items,
+  detail,
+  onOpen,
+}: {
+  label: string;
+  items: AttentionItem[];
+  detail: (item: AttentionItem) => string;
+  onOpen: (projectId: string) => void;
+}) {
+  return (
+    <div>
+      <div className="text-[11px] uppercase tracking-[0.14em] text-muted mb-2">
+        {label} · {items.length}
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-muted">Nothing here.</p>
+      ) : (
+        <ul className="space-y-2">
+          {items.slice(0, ATTENTION_PREVIEW).map((item) => (
+            <li key={item.taskId}>
+              <button onClick={() => onOpen(item.projectId)} className="text-left w-full group">
+                <div className="text-sm truncate group-hover:underline">{item.title}</div>
+                <div className="text-xs text-muted truncate">
+                  {item.projectTitle} · {detail(item)}
+                </div>
+              </button>
+            </li>
+          ))}
+          {items.length > ATTENTION_PREVIEW && (
+            <li className="text-xs text-muted">and {items.length - ATTENTION_PREVIEW} more</li>
+          )}
+        </ul>
+      )}
+    </div>
   );
 }
