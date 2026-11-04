@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
+import { buildSystemPromptWithContext } from "@/lib/ai/context";
 
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOKENS = 800;
@@ -186,7 +187,10 @@ export async function POST(req: NextRequest) {
   try {
     const response = await completeWithPythonLlm({
       maxTokens: MAX_TOKENS,
-      system: await buildChiefOfStaffPrompt(session.user.id),
+      system: await buildSystemPromptWithContext(
+        await buildChiefOfStaffPrompt(session.user.id),
+        { userId: session.user.id }
+      ),
       messages: trimmed,
     });
 
