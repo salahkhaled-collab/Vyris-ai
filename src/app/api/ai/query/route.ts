@@ -2,40 +2,15 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { pythonLlmConfigured } from "@/lib/ai/python-client";
 import {
-  completeWithPythonLlm,
-  pythonLlmConfigured,
-  type PythonMessage,
-} from "@/lib/ai/python-client";
-import { VYRIS_TOOLS, runTool, type VyrisToolName } from "@/lib/ai/tools";
-import { VYRIS_SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
-import type { Scope } from "@/lib/ai/scope";
-import { buildSystemPromptWithContext } from "@/lib/ai/context";
+  MAX_HISTORY_MESSAGES,
+  runAssistantTurn,
+  sanitizeHistory,
+  type ChatMessage,
+} from "@/lib/ai/assistant";
 
 export const maxDuration = 60;
-
-const MAX_TOOL_ROUNDS = 5;
-const MAX_HISTORY_MESSAGES = 10;
-const MAX_TOKENS = 1200;
-const MAX_TOOL_RESULT_CHARS = 12_000;
-
-const KNOWN_TOOLS = new Set<string>(VYRIS_TOOLS.map((t) => t.name));
-
-type ChatMessage = { role: "user" | "assistant"; content: string };
-
-function sanitizeHistory(raw: unknown): ChatMessage[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter(
-      (m): m is ChatMessage =>
-        !!m &&
-        typeof m === "object" &&
-        (m.role === "user" || m.role === "assistant") &&
-        typeof m.content === "string"
-    )
-    .slice(-MAX_HISTORY_MESSAGES)
-    .map((m) => ({ role: m.role, content: m.content }));
-}
 
 export async function POST(req: NextRequest) {
   if (!pythonLlmConfigured()) {
@@ -62,12 +37,6 @@ export async function POST(req: NextRequest) {
   }
   const text = message.trim();
   const page = typeof body?.page === "string" ? body.page.slice(0, 40) : null;
-
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { teamId: true },
-  });
-  const scope: Scope = { userId, teamId: user?.teamId ?? null };
 
   // History: from the DB when continuing a saved conversation (never trust the client's copy).
   let convoId: string | null = typeof body?.conversationId === "string" ? body.conversationId : null;
@@ -113,44 +82,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ reply, conversationId: convoId });
   }
 
-  const system = await buildSystemPromptWithContext(VYRIS_SYSTEM_PROMPT, { userId, page });
-
-  const messages: PythonMessage[] = [...history, { role: "user", content: text }];
-
   try {
-    for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
-      const completion = await completeWithPythonLlm({
-        system,
-        messages,
-        tools: VYRIS_TOOLS,
-        maxTokens: MAX_TOKENS,
-      });
-
-      if (completion.toolCalls.length === 0) {
-        return finish(completion.text);
-      }
-
-      messages.push(completion.assistantMessage);
-
-      for (const call of completion.toolCalls) {
-        let content: string;
-        try {
-          if (!KNOWN_TOOLS.has(call.name)) throw new Error(`Unknown tool: ${call.name}`);
-          const result = await runTool(call.name as VyrisToolName, call.input, scope);
-          content = JSON.stringify(result);
-        } catch (err) {
-          content = JSON.stringify({ ok: false, error: err instanceof Error ? err.message : String(err) });
-        }
-        if (content.length > MAX_TOOL_RESULT_CHARS) {
-          content = content.slice(0, MAX_TOOL_RESULT_CHARS) + "…[truncated]";
-        }
-        messages.push({ role: "tool", tool_call_id: call.id, content });
-      }
-    }
-
-    return finish(
-      "I gathered some information but hit my tool-call limit before finishing. Try narrowing the question."
-    );
+    return finish(await runAssistantTurn({ userId, text, history, page }));
   } catch (err) {
     console.error("Python LLM query error:", err);
     return NextResponse.json(
