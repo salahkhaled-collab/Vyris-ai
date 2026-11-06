@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { computeProgress } from "@/lib/okr";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -32,13 +33,6 @@ export async function GET() {
   }));
 
   return NextResponse.json(withProgress);
-}
-
-function computeProgress(keyResults: { current: number; target: number }[]) {
-  if (keyResults.length === 0) return 0;
-  const pcts = keyResults.map((kr) => Math.min(kr.target === 0 ? 0 : kr.current / kr.target, 1));
-  const avg = pcts.reduce((sum, p) => sum + p, 0) / pcts.length;
-  return Math.round(avg * 100);
 }
 
 /** The signed-in user's own team, or null. Used instead of any client-supplied teamId. */
