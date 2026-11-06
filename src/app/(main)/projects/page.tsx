@@ -13,11 +13,12 @@ import {
   Circle,
   CircleDot,
   CheckCircle2,
+  Ban,
   X,
 } from "lucide-react";
 
 type ProjectStatus = "ACTIVE" | "PAUSED" | "DONE";
-type TaskStatus = "TODO" | "IN_PROGRESS" | "DONE";
+type TaskStatus = "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE";
 
 interface Task {
   id: string;
@@ -51,6 +52,7 @@ const statusTone: Record<ProjectStatus, string> = {
 const taskStatusIcon: Record<TaskStatus, typeof Circle> = {
   TODO: Circle,
   IN_PROGRESS: CircleDot,
+  BLOCKED: Ban,
   DONE: CheckCircle2,
 };
 
