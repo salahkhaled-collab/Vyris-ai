@@ -57,6 +57,12 @@ async function generateRecommendation(
   }
 }
 
+/** The signed-in user's own team, or null. Used instead of any client-supplied teamId. */
+async function callerTeamId(userId: string): Promise<string | null> {
+  const user = await prisma.user.findUnique({ where: { id: userId }, select: { teamId: true } });
+  return user?.teamId ?? null;
+}
+
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -83,7 +89,8 @@ export async function POST(req: NextRequest) {
       deadline: body.deadline ?? "",
       recommendation,
       ownerId: session.user.id,
-      teamId: body.shareWithTeam ? body.teamId ?? null : null,
+      // Never trust a teamId from the client: share only into the caller's own team.
+      teamId: body.shareWithTeam ? await callerTeamId(session.user.id) : null,
       options: {
         create: body.options.map((o: any) => ({
           label: o.label,
