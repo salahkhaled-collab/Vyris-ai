@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSession } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
@@ -97,6 +98,9 @@ export default function ProjectsPage() {
   const [newTaskDue, setNewTaskDue] = useState<Record<string, string>>({});
   const [blockingTaskId, setBlockingTaskId] = useState<string | null>(null);
   const [members, setMembers] = useState<TeamMember[]>([]);
+  const [shareError, setShareError] = useState<string | null>(null);
+  const { data: session } = useSession();
+  const myId = session?.user?.id ?? null;
   const [assignError, setAssignError] = useState<string | null>(null);
   const [blockReason, setBlockReason] = useState("");
 
@@ -145,6 +149,25 @@ export default function ProjectsPage() {
       setShareWithTeam(false);
       setCreating(false);
       setExpanded((prev) => new Set(prev).add(project.id));
+    }
+  }
+
+  async function setProjectSharing(id: string, share: boolean) {
+    const previous = projects;
+    setShareError(null);
+    setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, teamId: share ? "pending" : null } : p)));
+    try {
+      const res = await fetch(`/api/projects/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ shareWithTeam: share }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Couldn't change sharing.");
+      setProjects((prev) => prev.map((p) => (p.id === id ? { ...p, teamId: data.teamId ?? null } : p)));
+    } catch (err) {
+      setProjects(previous);
+      setShareError(err instanceof Error ? err.message : "Couldn't change sharing.");
     }
   }
 
@@ -381,6 +404,12 @@ export default function ProjectsPage() {
           </Panel>
         )}
 
+        {shareError && (
+          <div className="text-sm text-red-500" role="alert">
+            {shareError}
+          </div>
+        )}
+
         {assignError && (
           <div className="text-sm text-red-500" role="alert">
             {assignError}
@@ -484,9 +513,20 @@ export default function ProjectsPage() {
                           {statusLabel[s]}
                         </button>
                       ))}
+                      {members.length > 1 && project.owner.id === myId && (
+                        <button
+                          onClick={() => void setProjectSharing(project.id, !project.teamId)}
+                          className="ml-auto text-[11px] text-brass hover:underline"
+                        >
+                          {project.teamId ? "Make private" : "Share with team"}
+                        </button>
+                      )}
                       <button
                         onClick={() => deleteProject(project.id)}
-                        className="ml-auto flex items-center gap-1 text-[11px] text-muted hover:text-signal/80 transition-colors"
+                        className={cn(
+                          "flex items-center gap-1 text-[11px] text-muted hover:text-signal/80 transition-colors",
+                          !(members.length > 1 && project.owner.id === myId) && "ml-auto"
+                        )}
                       >
                         <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
                         Delete project
