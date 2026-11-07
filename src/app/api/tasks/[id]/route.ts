@@ -10,6 +10,8 @@ import {
   taskManageWhere,
 } from "@/lib/task-access";
 
+const MAX_BLOCKED_REASON = 500;
+
 const VALID_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
 
 interface PatchBody {
@@ -43,6 +45,17 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     return NextResponse.json({ error: "invalid_status" }, { status: 400 });
   }
 
+  // Reassigning needs manage rights (owner, or the project is in your scope): being
+  // the assignee lets you work the task, not hand it to someone else. Same rule as
+  // the AI's assign_task tool.
+  if (body.assigneeId !== undefined) {
+    const canManage = await prisma.task.findFirst({
+      where: { id: params.id, ...taskManageWhere(scope) },
+      select: { id: true },
+    });
+    if (!canManage) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  }
+
   // null clears the assignment (back to "the owner"); a string must be a valid assignee.
   if (typeof body.assigneeId === "string" && !(await isValidAssignee(scope, body.assigneeId))) {
     return NextResponse.json({ error: "invalid_assignee" }, { status: 400 });
@@ -54,7 +67,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (effectiveStatus !== "BLOCKED") {
     blockedReason = task.blockedReason ? null : undefined;
   } else if (body.blockedReason !== undefined) {
-    blockedReason = body.blockedReason?.trim() || null;
+    blockedReason = body.blockedReason?.trim().slice(0, MAX_BLOCKED_REASON) || null;
   }
 
   const updated = await prisma.task.update({

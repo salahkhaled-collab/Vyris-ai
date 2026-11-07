@@ -28,6 +28,13 @@ interface Task {
   status: TaskStatus;
   dueDate: string | null;
   blockedReason: string | null;
+  assigneeId: string | null;
+}
+
+interface TeamMember {
+  id: string;
+  name: string | null;
+  email: string | null;
 }
 
 interface Project {
@@ -89,6 +96,8 @@ export default function ProjectsPage() {
   const [newTaskInputs, setNewTaskInputs] = useState<Record<string, string>>({});
   const [newTaskDue, setNewTaskDue] = useState<Record<string, string>>({});
   const [blockingTaskId, setBlockingTaskId] = useState<string | null>(null);
+  const [members, setMembers] = useState<TeamMember[]>([]);
+  const [assignError, setAssignError] = useState<string | null>(null);
   const [blockReason, setBlockReason] = useState("");
 
   function load() {
@@ -98,6 +107,14 @@ export default function ProjectsPage() {
       .then((data) => setProjects(data.projects ?? []))
       .finally(() => setLoading(false));
   }
+
+  // Team members for the assignee picker. Solo users get none, so no picker shows.
+  useEffect(() => {
+    fetch("/api/team/members")
+      .then((r) => (r.ok ? r.json() : { members: [] }))
+      .then((d: { members?: TeamMember[] }) => setMembers(Array.isArray(d.members) ? d.members : []))
+      .catch(() => setMembers([]));
+  }, []);
 
   useEffect(load, []);
 
@@ -206,6 +223,31 @@ export default function ProjectsPage() {
     } catch (err) {
       setProjects(previous);
       console.error(err);
+    }
+  }
+
+  async function assignTask(projectId: string, taskId: string, assigneeId: string | null) {
+    const previous = projects;
+    setAssignError(null);
+    setProjects((prev) =>
+      prev.map((p) =>
+        p.id === projectId
+          ? { ...p, tasks: p.tasks.map((t) => (t.id === taskId ? { ...t, assigneeId } : t)) }
+          : p
+      )
+    );
+    try {
+      const res = await fetch(`/api/tasks/${taskId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assigneeId }),
+      });
+      if (!res.ok) {
+        throw new Error(res.status === 403 ? "Only the task owner can reassign it." : "Couldn't assign that task.");
+      }
+    } catch (err) {
+      setProjects(previous);
+      setAssignError(err instanceof Error ? err.message : "Couldn't assign that task.");
     }
   }
 
@@ -339,6 +381,12 @@ export default function ProjectsPage() {
           </Panel>
         )}
 
+        {assignError && (
+          <div className="text-sm text-red-500" role="alert">
+            {assignError}
+          </div>
+        )}
+
         {!loading && attention.total > 0 && (
           <Panel className="p-5">
             <div className="flex items-center gap-2 mb-3">
@@ -469,6 +517,24 @@ export default function ProjectsPage() {
                             >
                               {task.title}
                             </span>
+                            {members.length > 1 && (
+                              <select
+                                value={task.assigneeId ?? ""}
+                                onChange={(e) => void assignTask(project.id, task.id, e.target.value || null)}
+                                aria-label="Assign task"
+                                className={cn(
+                                  "max-w-[9rem] truncate bg-transparent text-[11px] rounded-md px-1.5 py-1 border border-transparent hover:border-line focus:outline-none focus:ring-1 focus:ring-brass",
+                                  task.assigneeId ? "text-ink-text" : "text-muted"
+                                )}
+                              >
+                                <option value="">Unassigned</option>
+                                {members.map((m) => (
+                                  <option key={m.id} value={m.id}>
+                                    {m.name || m.email || "Unnamed"}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             {task.dueDate && task.status !== "DONE" && (
                               <span
                                 className={cn(
