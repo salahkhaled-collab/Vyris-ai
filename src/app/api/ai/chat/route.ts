@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
-import { prisma } from "@/lib/prisma";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
-import { buildSystemPromptWithContext } from "@/lib/ai/context";
+import { runAssistantTurn, sanitizeHistory } from "@/lib/ai/assistant";
 
-const MAX_HISTORY_MESSAGES = 10;
+export const maxDuration = 60;
+
 const MAX_TOKENS = 800;
 
 interface IncomingMessage {
@@ -20,54 +20,6 @@ interface DraftContext {
 }
 
 // ── System prompts
-
-async function buildChiefOfStaffPrompt(userId: string): Promise<string> {
-  const [objectives, openDecisions, activeRules] = await Promise.all([
-    prisma.objective.findMany({
-      where: { ownerId: userId },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-    prisma.decision.findMany({
-      where: { ownerId: userId, status: "OPEN" },
-      orderBy: { createdAt: "desc" },
-      take: 5,
-    }),
-    prisma.automationRule.findMany({
-      where: { ownerId: userId, status: "ACTIVE" },
-      take: 5,
-    }),
-  ]);
-
-  const objectivesSummary = objectives.length
-    ? objectives.map((o: { title: string; quarter: string }) => `- ${o.title} (${o.quarter})`).join("\n")
-    : "No objectives set yet.";
-
-  const decisionsSummary = openDecisions.length
-    ? openDecisions.map((d: { title: string; deadline: string }) => `- ${d.title} — deadline: ${d.deadline}`).join("\n")
-    : "No open decisions.";
-
-  const rulesSummary = activeRules.length
-    ? activeRules.map((r: { name: string; trigger: string; action: string }) => `- ${r.name}: ${r.trigger} → ${r.action}`).join("\n")
-    : "No active automation rules.";
-
-  return `You are Vyris, an AI Chief of Staff embedded in a premium executive productivity app.
-Your tone is calm, precise, and direct — like a trusted senior aide, not a chatty assistant.
-Keep responses concise (a few sentences to a short paragraph) unless asked for detail.
-
-Current context for this user:
-
-OBJECTIVES:
-${objectivesSummary}
-
-OPEN DECISIONS:
-${decisionsSummary}
-
-ACTIVE AUTOMATION RULES:
-${rulesSummary}
-
-When relevant, reference this context naturally. Do not invent context you were not given above.`;
-}
 
 function buildDraftCommsPrompt(ctx: DraftContext): string {
   const parts: string[] = [
@@ -121,6 +73,7 @@ export async function POST(req: NextRequest) {
     messages?: IncomingMessage[];
     mode?: "chat" | "draft_comms";
     context?: DraftContext;
+    page?: string;
   };
 
   try {
@@ -174,27 +127,25 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // ── Chat mode (default) 
-  const messages = body.messages ?? [];
-  if (messages.length === 0) {
+  // ── Chat mode (default): the same assistant, tools and context as /api/ai/query.
+  const messages = sanitizeHistory(body.messages);
+  const last = messages[messages.length - 1];
+  if (!last || last.role !== "user" || !last.content.trim()) {
     return NextResponse.json(
       { error: "empty_messages", message: "No messages provided." },
       { status: 400 }
     );
   }
+  const page = typeof body.page === "string" ? body.page.slice(0, 40) : null;
 
-  const trimmed = messages.slice(-MAX_HISTORY_MESSAGES);
   try {
-    const response = await completeWithPythonLlm({
-      maxTokens: MAX_TOKENS,
-      system: await buildSystemPromptWithContext(
-        await buildChiefOfStaffPrompt(session.user.id),
-        { userId: session.user.id }
-      ),
-      messages: trimmed,
+    const reply = await runAssistantTurn({
+      userId: session.user.id,
+      text: last.content.trim(),
+      history: messages.slice(0, -1),
+      page,
     });
-
-    return NextResponse.json({ reply: response.text });
+    return NextResponse.json({ reply });
   } catch (err) {
     console.error("Python LLM chat error:", err);
     return NextResponse.json(

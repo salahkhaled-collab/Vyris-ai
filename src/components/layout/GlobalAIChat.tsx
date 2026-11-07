@@ -225,6 +225,7 @@ export function GlobalAIChat() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: next.map((m) => ({ role: m.role, content: m.content })),
+          page: pathname.split("/")[1] || null,
         }),
       });
 
