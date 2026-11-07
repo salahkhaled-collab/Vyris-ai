@@ -5,6 +5,7 @@ import { useSession, signIn } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { Calendar, Users, Video } from "lucide-react";
+import { MeetingNotesPanel } from "@/components/meetings/MeetingNotesPanel";
 
 interface MeetingEvent {
   id: string;
@@ -77,6 +78,8 @@ export default function MeetingsPage() {
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">
+        <MeetingNotesPanel />
+
         {status !== "authenticated" && (
           <Panel className="p-8 text-center">
             <Calendar className="w-8 h-8 text-muted mx-auto mb-3" strokeWidth={1.5} />
