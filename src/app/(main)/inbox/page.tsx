@@ -214,6 +214,18 @@ export default function InboxPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emails]);
 
+  /** Once answered (by sending, or Vyris sees you already replied), move it out of Needs reply. */
+  function markAnswered(id: string) {
+    setTriage((prev) => {
+      const current = prev?.[id];
+      if (!prev || !current || (current.priority !== "urgent" && current.priority !== "needs_reply")) return prev;
+      const updated: TriageResult = { ...current, priority: "fyi", reason: "Answered" };
+      const cache = readTriageCache();
+      writeTriageCache({ results: { ...cache.results, [id]: updated }, projects: cache.projects });
+      return { ...prev, [id]: updated };
+    });
+  }
+
   function updateQueue(id: string, patch: Partial<QueueItem>) {
     setQueue((prev) => prev.map((q) => (q.email.id === id ? { ...q, ...patch } : q)));
   }
@@ -240,6 +252,7 @@ export default function InboxPage() {
         }
         if (!data) throw new Error("Couldn't draft.");
         const hasDraft = Boolean(data.replyDraft?.trim());
+        if (data.reply?.to && !data.needsReply && !hasDraft) markAnswered(email.id);
         updateQueue(email.id, {
           summary: data,
           draft: data.replyDraft ?? "",
@@ -274,6 +287,7 @@ export default function InboxPage() {
     try {
       await sendThreadReply(item.summary.reply, item.draft);
       updateQueue(item.email.id, { state: "sent", message: "Sent." });
+      markAnswered(item.email.id);
     } catch (err) {
       updateQueue(item.email.id, { state: "ready", message: err instanceof Error ? err.message : "Couldn't send." });
     }
@@ -316,8 +330,10 @@ export default function InboxPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Couldn't summarise this thread.");
-      setSummary(data as SummaryResponse);
-      setDraft((data as SummaryResponse).replyDraft ?? "");
+      const result = data as SummaryResponse;
+      setSummary(result);
+      setDraft(result.replyDraft ?? "");
+      if (result.reply?.to && !result.needsReply && !result.replyDraft?.trim()) markAnswered(id);
     } catch (err) {
       setSummaryError(err instanceof Error ? err.message : "Couldn't summarise this thread.");
     } finally {
@@ -333,6 +349,7 @@ export default function InboxPage() {
     try {
       await sendThreadReply(reply, draft);
       setReplyStatus("Reply sent.");
+      if (openEmailId) markAnswered(openEmailId);
     } catch (err) {
       setReplyStatus(err instanceof Error ? err.message : "Couldn't send.");
     } finally {
