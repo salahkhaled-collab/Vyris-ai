@@ -7,12 +7,14 @@ import { NewDecisionForm } from "@/components/decisions/NewDecisionForm";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
 import { CheckCircle2, Circle, Loader2, Trash2 } from "lucide-react";
+import { ShareToggle } from "@/components/ui/ShareToggle";
 
 type DecisionOption = { id: string; label: string; score: number; pros: string[]; cons: string[] };
 type Decision = {
   id: string; title: string; context: string; deadline: string;
   status: "OPEN" | "DECIDED"; recommendation: string | null;
   chosenOptionId: string | null;
+  ownerId: string;
   teamId: string | null;
   options: DecisionOption[];
 };
@@ -165,6 +167,13 @@ export default function DecisionsPage() {
                     <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">
                       {d.deadline}
                     </span>
+<ShareToggle
+                      type="decision"
+                      id={d.id}
+                      ownerId={d.ownerId}
+                      teamId={d.teamId}
+                      onChange={(teamId) => setDecisions((prev) => prev.map((x) => (x.id === d.id ? { ...x, teamId } : x)))}
+                    />
                     <DeleteButton onConfirm={() => deleteDecision(d.id)} />
                   </div>
                 </div>
@@ -230,6 +239,13 @@ export default function DecisionsPage() {
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-panel-2 text-muted">Team</span>
                   )}
                   <span className="text-xs px-3 py-1.5 rounded-full bg-panel-2 text-muted whitespace-nowrap">{d.deadline}</span>
+<ShareToggle
+                    type="decision"
+                    id={d.id}
+                    ownerId={d.ownerId}
+                    teamId={d.teamId}
+                    onChange={(teamId) => setDecisions((prev) => prev.map((x) => (x.id === d.id ? { ...x, teamId } : x)))}
+                  />
                   <DeleteButton onConfirm={() => deleteDecision(d.id)} small />
                 </div>
               </Panel>
