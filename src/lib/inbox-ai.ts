@@ -10,6 +10,9 @@
 export const PRIORITIES = ["urgent", "needs_reply", "fyi", "low"] as const;
 export type Priority = (typeof PRIORITIES)[number];
 
+export const CATEGORIES = ["work", "personal", "promotions"] as const;
+export type Category = (typeof CATEGORIES)[number];
+
 export interface TriageInput {
   id: string;
   from: string;
@@ -20,6 +23,7 @@ export interface TriageInput {
 
 export interface TriageResult {
   priority: Priority;
+  category: Category;
   reason: string;
   projectId: string | null;
 }
@@ -64,13 +68,17 @@ export function triagePrompt(projects: { id: string; title: string }[], userName
     '- "needs_reply": a person is waiting for an answer from the user, not urgent.',
     '- "fyi": worth knowing, no reply needed.',
     '- "low": newsletters, promotions, automated notifications.',
+    "And one category:",
+    '- "work": about the user\'s business: clients, partners, team, suppliers, investors, deals, projects.',
+    '- "personal": friends, family, personal accounts and errands.',
+    '- "promotions": marketing, newsletters, automated notifications.',
     "Give a reason of at most 12 words.",
     projects.length > 0
       ? `If an email clearly relates to one of these projects, set projectId to its id, else null:\n${projects
           .map((p) => `- ${p.id}: ${p.title}`)
           .join("\n")}`
       : "Set projectId to null.",
-    'Reply with ONLY JSON: {"results":[{"id": string, "priority": string, "reason": string, "projectId": string|null}]}',
+    'Reply with ONLY JSON: {"results":[{"id": string, "priority": string, "category": string, "reason": string, "projectId": string|null}]}',
   ].join("\n");
 }
 
@@ -102,7 +110,12 @@ export function parseTriage(
     if (!allowedEmails.has(id) || out[id]) continue;
     const priority = (PRIORITIES as readonly string[]).includes(String(r.priority)) ? (r.priority as Priority) : "fyi";
     const projectId = typeof r.projectId === "string" && allowedProjects.has(r.projectId) ? r.projectId : null;
-    out[id] = { priority, reason: clean(r.reason, 120), projectId };
+    const category = (CATEGORIES as readonly string[]).includes(String(r.category))
+      ? (r.category as Category)
+      : priority === "low"
+        ? "promotions"
+        : "work"; // missing category: assume work, so a real client email is never skipped by the reply agent
+    out[id] = { priority, category, reason: clean(r.reason, 120), projectId };
   }
   return Object.keys(out).length > 0 ? out : null;
 }
@@ -151,4 +164,61 @@ export function parseThreadSummary(text: string): ThreadSummary | null {
 export function replySubject(subject: string): string {
   const s = subject.trim();
   return /^re:/i.test(s) ? s : `Re: ${s}`;
+}
+
+// ── Contacts, filters and the reply queue ──────────────────────────────────
+
+/** Anyone saved in the user's Contacts is always "work", whatever the model said. */
+export function applyContactOverride(
+  results: Record<string, TriageResult>,
+  senderAddressById: Record<string, string | null>,
+  contactEmails: Set<string>
+): Record<string, TriageResult> {
+  const out: Record<string, TriageResult> = {};
+  for (const [id, r] of Object.entries(results)) {
+    const addr = senderAddressById[id]?.toLowerCase() ?? null;
+    out[id] = addr && contactEmails.has(addr) ? { ...r, category: "work" } : r;
+  }
+  return out;
+}
+
+export const FILTERS = ["all", "needs_reply", "urgent", "work", "low"] as const;
+export type InboxFilter = (typeof FILTERS)[number];
+
+export const FILTER_LABELS: Record<InboxFilter, string> = {
+  all: "All",
+  needs_reply: "Needs reply",
+  urgent: "Urgent",
+  work: "Work",
+  low: "Low",
+};
+
+/** Whether a triaged email belongs under a filter. Untriaged emails only show under "All". */
+export function matchesFilter(result: TriageResult | undefined, filter: InboxFilter): boolean {
+  if (filter === "all") return true;
+  if (!result) return false;
+  switch (filter) {
+    case "needs_reply":
+      return result.priority === "urgent" || result.priority === "needs_reply";
+    case "urgent":
+      return result.priority === "urgent";
+    case "work":
+      return result.category === "work";
+    case "low":
+      return result.priority === "low" || result.category === "promotions";
+  }
+}
+
+/** At most this many drafts per run, to keep it quick and cheap. */
+export const MAX_QUEUE = 8;
+
+/** Work emails waiting on the user: what the reply agent drafts for. Most urgent first. */
+export function replyCandidates<T extends { id: string }>(emails: T[], triage: Record<string, TriageResult>): T[] {
+  return emails
+    .filter((e) => {
+      const t = triage[e.id];
+      return t?.category === "work" && (t.priority === "urgent" || t.priority === "needs_reply");
+    })
+    .sort((a, b) => PRIORITIES.indexOf(triage[a.id].priority) - PRIORITIES.indexOf(triage[b.id].priority))
+    .slice(0, MAX_QUEUE);
 }
