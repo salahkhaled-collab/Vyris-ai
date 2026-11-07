@@ -206,6 +206,16 @@ export async function getThreadForMessage(token: string, messageId: string): Pro
   return { threadId: thread.id, subject: getHeader(first, "Subject") || "(No subject)", messages };
 }
 
+/** The connected Gmail address. It can differ from the Vyris login email. */
+export async function getMailboxAddress(token: string): Promise<string | null> {
+  try {
+    const profile = await gmailFetch<{ emailAddress?: string }>(token, "/profile");
+    return profile.emailAddress?.toLowerCase() ?? null;
+  } catch {
+    return null;
+  }
+}
+
 // ── Outgoing mail ──────────────────────────────────────────────────────────
 
 /** Header values may never contain line breaks; one injected CRLF could add a hidden Bcc. */
