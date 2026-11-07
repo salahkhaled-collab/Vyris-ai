@@ -3,8 +3,10 @@ import { prisma } from "@/lib/prisma";
 import { scopeFilter, type Scope } from "./scope";
 import { saveMemory } from "@/lib/memory";
 import { isValidAssignee, taskAccessWhere, taskManageWhere } from "@/lib/task-access";
-import { buildAttentionReport } from "@/lib/attention";
+import { loadAttention } from "@/lib/attention-server";
 import { loadRiskSignals } from "@/lib/risk-signals-server";
+import { afterTaskStatusChange } from "@/lib/automation/engine";
+import { TRIGGERS, describeRule, isTriggerKey, parseAction } from "@/lib/automation/rules";
 
 const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
@@ -488,12 +490,23 @@ export async function runTool(
         take: 20,
       });
     }
-        case "get_automation_rules":
-      return prisma.automationRule.findMany({
+        case "get_automation_rules": {
+      const rules = await prisma.automationRule.findMany({
         where: { ownerId: scope.userId },
         select: { id: true, name: true, trigger: true, action: true, status: true },
         take: 30,
       });
+      return rules.map((r) => {
+        const action = parseAction(r.action);
+        return {
+          id: r.id,
+          name: r.name,
+          status: r.status,
+          rule: isTriggerKey(r.trigger) && action ? describeRule(r.trigger, action) : `Old text rule (doesn't run): ${r.trigger} -> ${r.action}`,
+          runs: isTriggerKey(r.trigger) ? TRIGGERS[r.trigger].runs : null,
+        };
+      });
+    }
 
     case "create_project": {
       const title = s(input.title);
@@ -527,7 +540,7 @@ export async function runTool(
     case "update_task_status": {
       const taskId = s(input.taskId);
       const status = pick(input.status, ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"] as const, "TODO");
-      const task = await prisma.task.findFirst({ where: { id: taskId, ...taskScope }, select: { id: true } });
+      const task = await prisma.task.findFirst({ where: { id: taskId, ...taskScope }, select: { id: true, status: true } });
       if (!task) return { ok: false, error: "Task not found." };
       // A blocked reason only lives while the task is BLOCKED; any other status clears it.
       const blockedReason = status === "BLOCKED" ? s(input.blockedReason).slice(0, MAX_BLOCKED_REASON) || null : null;
@@ -536,40 +549,12 @@ export async function runTool(
         data: { status, blockedReason },
         select: { id: true, title: true, status: true, blockedReason: true },
       });
+      await afterTaskStatusChange(updated.id, task.status, updated.status);
       return { ok: true, updated };
     }
 
     case "get_attention": {
-      const [tasks, projects] = await Promise.all([
-        prisma.task.findMany({
-          where: { ...taskScope, status: { not: "DONE" } },
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            dueDate: true,
-            blockedReason: true,
-            projectId: true,
-            project: { select: { title: true } },
-          },
-          take: 500,
-        }),
-        prisma.project.findMany({
-          where: { ...where, status: "ACTIVE" },
-          select: {
-            id: true,
-            title: true,
-            status: true,
-            _count: { select: { tasks: { where: { status: { not: "DONE" } } } } },
-          },
-          take: 100,
-        }),
-      ]);
-      const report = buildAttentionReport(
-        tasks.map((t) => ({ ...t, projectTitle: t.project.title })),
-        projects.map((p) => ({ id: p.id, title: p.title, status: p.status, openTaskCount: p._count.tasks })),
-        new Date()
-      );
+      const report = await loadAttention(scope);
       return {
         overdue: report.overdue.slice(0, MAX_ATTENTION_ITEMS),
         blocked: report.blocked.slice(0, MAX_ATTENTION_ITEMS),

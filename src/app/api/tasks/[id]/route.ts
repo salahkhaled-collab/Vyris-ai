@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { afterTaskStatusChange } from "@/lib/automation/engine";
 import { TaskStatus } from "@prisma/client";
 import {
   getScope,
@@ -82,6 +83,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       ...(blockedReason !== undefined && { blockedReason }),
     },
   });
+
+  // Automation rules (task blocked / done). Never throws; failures are logged on the rule.
+  await afterTaskStatusChange(updated.id, task.status, updated.status);
 
   return NextResponse.json(updated);
 }
