@@ -6,8 +6,8 @@ import { getGoogleAccessToken } from "@/lib/google-token";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 import { scopeFilter } from "@/lib/ai/scope";
 import { getScope } from "@/lib/task-access";
-import { listInbox } from "@/lib/gmail";
-import { parseTriage, triagePrompt, triageUserMessage } from "@/lib/inbox-ai";
+import { listInbox, parseRecipient } from "@/lib/gmail";
+import { applyContactOverride, parseTriage, triagePrompt, triageUserMessage } from "@/lib/inbox-ai";
 
 export const maxDuration = 60;
 
@@ -26,7 +26,7 @@ export async function POST() {
 
   try {
     const scope = await getScope(session.user.id);
-    const [emails, projects, user] = await Promise.all([
+    const [emails, projects, user, contacts] = await Promise.all([
       listInbox(accessToken, 15),
       prisma.project.findMany({
         where: { ...scopeFilter(scope), status: "ACTIVE" },
@@ -34,6 +34,11 @@ export async function POST() {
         take: 50,
       }),
       prisma.user.findUnique({ where: { id: session.user.id }, select: { name: true } }),
+      prisma.contact.findMany({
+        where: { ...scopeFilter(scope), email: { not: null } },
+        select: { email: true },
+        take: 2000,
+      }),
     ]);
     if (emails.length === 0) return NextResponse.json({ results: {} });
 
@@ -42,14 +47,23 @@ export async function POST() {
       messages: [{ role: "user", content: triageUserMessage(emails) }],
       maxTokens: 1500,
     });
-    const results = parseTriage(
+    const parsed = parseTriage(
       completion.text,
       emails.map((e) => e.id),
       projects.map((p) => p.id)
     );
-    if (!results) {
+    if (!parsed) {
       return NextResponse.json({ error: "unparseable", message: "Couldn't sort your inbox right now. Try again." }, { status: 422 });
     }
+    // Anyone in the user's Contacts is always work.
+    const contactEmails = new Set(
+      contacts.map((c) => c.email?.trim().toLowerCase()).filter((e): e is string => Boolean(e))
+    );
+    const results = applyContactOverride(
+      parsed,
+      Object.fromEntries(emails.map((e) => [e.id, parseRecipient(e.fromEmail)])),
+      contactEmails
+    );
     return NextResponse.json({
       results,
       projects: Object.fromEntries(projects.map((p) => [p.id, p.title])),
