@@ -1,15 +1,24 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSession, signIn } from "next-auth/react";
 import DOMPurify from "dompurify";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
-import { Mail, Pencil, X } from "lucide-react";
+import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
+import {
+  PRIORITIES,
+  WAITING_DAYS,
+  daysWaiting,
+  type Priority,
+  type ThreadSummary,
+  type TriageResult,
+} from "@/lib/inbox-ai";
 
 interface GmailMessage {
   id: string;
+  threadId?: string;
   from: string;
   subject: string;
   snippet: string;
@@ -21,6 +30,17 @@ interface OpenEmailBody {
   html: string | null;
   text: string;
 }
+
+interface SummaryResponse extends ThreadSummary {
+  reply: { to: string | null; subject: string; threadId: string; inReplyTo: string | null } | null;
+}
+
+const priorityStyle: Record<Priority, { label: string; className: string }> = {
+  urgent: { label: "Urgent", className: "bg-red-500/10 text-red-600" },
+  needs_reply: { label: "Needs reply", className: "bg-brass-soft text-brass" },
+  fyi: { label: "FYI", className: "bg-panel-2 text-muted" },
+  low: { label: "Low", className: "bg-panel-2 text-muted/70" },
+};
 
 function relativeTime(iso: string): string {
   const diffMs = Date.now() - new Date(iso).getTime();
@@ -53,6 +73,18 @@ export default function InboxPage() {
   const [openEmailLoading, setOpenEmailLoading] = useState(false);
   const [openEmailError, setOpenEmailError] = useState<string | null>(null);
 
+  const [triage, setTriage] = useState<Record<string, TriageResult> | null>(null);
+  const [triageProjects, setTriageProjects] = useState<Record<string, string>>({});
+  const [triaging, setTriaging] = useState(false);
+  const [triageError, setTriageError] = useState<string | null>(null);
+
+  const [summary, setSummary] = useState<SummaryResponse | null>(null);
+  const [summarizing, setSummarizing] = useState(false);
+  const [summaryError, setSummaryError] = useState<string | null>(null);
+  const [draft, setDraft] = useState("");
+  const [replySending, setReplySending] = useState(false);
+  const [replyStatus, setReplyStatus] = useState<string | null>(null);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     let active = true;
@@ -77,6 +109,81 @@ export default function InboxPage() {
   }, [status]);
 
   const unreadEmailCount = emails?.filter((e) => e.unread).length ?? 0;
+
+  // With triage results, show urgent first, then needs reply, FYI, low; newest first within each.
+  const orderedEmails = useMemo(() => {
+    if (!emails) return null;
+    if (!triage) return emails;
+    const rank = (id: string) => PRIORITIES.indexOf(triage[id]?.priority ?? "fyi");
+    return [...emails].sort(
+      (a, b) => rank(a.id) - rank(b.id) || new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, [emails, triage]);
+
+  async function prioritize() {
+    if (triaging) return;
+    setTriaging(true);
+    setTriageError(null);
+    try {
+      const res = await fetch("/api/ai/inbox/triage", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Couldn't sort your inbox.");
+      setTriage(data.results ?? {});
+      setTriageProjects(data.projects ?? {});
+    } catch (err) {
+      setTriageError(err instanceof Error ? err.message : "Couldn't sort your inbox.");
+    } finally {
+      setTriaging(false);
+    }
+  }
+
+  async function summarize(id: string) {
+    setSummarizing(true);
+    setSummaryError(null);
+    setReplyStatus(null);
+    try {
+      const res = await fetch("/api/ai/inbox/summarize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ messageId: id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Couldn't summarise this thread.");
+      setSummary(data as SummaryResponse);
+      setDraft((data as SummaryResponse).replyDraft ?? "");
+    } catch (err) {
+      setSummaryError(err instanceof Error ? err.message : "Couldn't summarise this thread.");
+    } finally {
+      setSummarizing(false);
+    }
+  }
+
+  async function sendReply() {
+    const reply = summary?.reply;
+    if (!reply?.to || !draft.trim() || replySending) return;
+    setReplySending(true);
+    setReplyStatus(null);
+    try {
+      const res = await fetch("/api/gmail/send", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: reply.to,
+          subject: reply.subject,
+          message: draft,
+          threadId: reply.threadId,
+          inReplyTo: reply.inReplyTo,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(res.status === 403 ? "Reconnect Gmail to enable sending." : data.message ?? "Couldn't send.");
+      setReplyStatus("Reply sent.");
+    } catch (err) {
+      setReplyStatus(err instanceof Error ? err.message : "Couldn't send.");
+    } finally {
+      setReplySending(false);
+    }
+  }
 
   function openCompose() {
     setComposeTo("");
@@ -129,6 +236,10 @@ export default function InboxPage() {
 
   async function openEmail(id: string) {
     setOpenEmailId(id);
+    setSummary(null);
+    setSummaryError(null);
+    setDraft("");
+    setReplyStatus(null);
     setOpenEmailBody(null);
     setOpenEmailError(null);
     setOpenEmailLoading(true);
@@ -169,6 +280,17 @@ export default function InboxPage() {
               <h2 className="font-display text-xl">Email</h2>
             </div>
             {status === "authenticated" && (
+              <div className="flex items-center gap-2">
+              {emails && emails.length > 0 && (
+                <button
+                  onClick={() => void prioritize()}
+                  disabled={triaging}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-panel-2 border border-line disabled:opacity-50"
+                >
+                  {triaging ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" strokeWidth={1.75} />}
+                  {triaging ? "Sorting..." : triage ? "Re-prioritize" : "Prioritize"}
+                </button>
+              )}
               <button
                 onClick={openCompose}
                 className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-brass text-white hover:bg-brass/90"
@@ -176,8 +298,15 @@ export default function InboxPage() {
                 <Pencil className="w-3.5 h-3.5" strokeWidth={2} />
                 Compose
               </button>
+              </div>
             )}
           </div>
+
+          {triageError && (
+            <div className="text-sm text-red-500" role="alert">
+              {triageError}
+            </div>
+          )}
 
           {status !== "authenticated" && (
             <Panel className="p-6 flex items-center justify-between gap-4">
@@ -216,7 +345,12 @@ export default function InboxPage() {
           {status === "authenticated" && !emailLoading && !emailError && emails && emails.length > 0 && (
             <Panel className="overflow-hidden">
               <div className="divide-y divide-line">
-                {emails.map((e) => (
+                {(orderedEmails ?? []).map((e) => {
+                  const t = triage?.[e.id];
+                  const waiting = daysWaiting(e.timestamp, new Date());
+                  const showWaiting =
+                    t && (t.priority === "urgent" || t.priority === "needs_reply") && waiting >= WAITING_DAYS;
+                  return (
                   <div
                     key={e.id}
                     onClick={() => openEmail(e.id)}
@@ -237,12 +371,31 @@ export default function InboxPage() {
                       <div className="text-xs text-muted mt-1 leading-relaxed line-clamp-1">
                         {e.snippet}
                       </div>
+                      {t && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                          <span className={cn("text-[10px] px-2 py-0.5 rounded-full", priorityStyle[t.priority].className)}>
+                            {priorityStyle[t.priority].label}
+                          </span>
+                          {showWaiting && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/10 text-red-600">
+                              Waiting {waiting} days
+                            </span>
+                          )}
+                          {t.projectId && triageProjects[t.projectId] && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-panel-2 text-ink-text">
+                              {triageProjects[t.projectId]}
+                            </span>
+                          )}
+                          {t.reason && <span className="text-[11px] text-muted truncate">{t.reason}</span>}
+                        </div>
+                      )}
                       <div className="text-[11px] text-muted mt-1.5 font-mono">
                         {relativeTime(e.timestamp)}
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             </Panel>
           )}
@@ -317,6 +470,60 @@ export default function InboxPage() {
               >
                 <X className="w-4 h-4" strokeWidth={1.75} />
               </button>
+
+              <div className="mb-4 pr-8">
+                {!summary && (
+                  <button
+                    onClick={() => void summarize(openEmailId)}
+                    disabled={summarizing}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-brass text-white disabled:opacity-50"
+                  >
+                    {summarizing ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" strokeWidth={1.75} />}
+                    {summarizing ? "Reading the thread..." : "Summarize & draft reply"}
+                  </button>
+                )}
+                {summaryError && <div className="text-xs text-red-500 mt-2">{summaryError}</div>}
+                {summary && (
+                  <div className="rounded-lg border border-line bg-panel-2 p-4 space-y-3">
+                    {summary.summary && <p className="text-sm">{summary.summary}</p>}
+                    {summary.keyPoints.length > 0 && (
+                      <ul className="list-disc pl-5 text-xs space-y-1 text-ink-text/90">
+                        {summary.keyPoints.map((k) => (
+                          <li key={k}>{k}</li>
+                        ))}
+                      </ul>
+                    )}
+                    {summary.reply?.to ? (
+                      <div className="space-y-2">
+                        <div className="text-[11px] text-muted">
+                          Reply to {summary.reply.to} · {summary.reply.subject}
+                          {!summary.needsReply && " · no reply seems needed"}
+                        </div>
+                        <textarea
+                          value={draft}
+                          onChange={(e) => setDraft(e.target.value)}
+                          rows={6}
+                          className="w-full bg-panel border border-line rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-brass"
+                        />
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={cn("text-xs", replyStatus === "Reply sent." ? "text-green-600" : "text-red-500")}>
+                            {replyStatus}
+                          </span>
+                          <button
+                            onClick={() => void sendReply()}
+                            disabled={!draft.trim() || replySending || replyStatus === "Reply sent."}
+                            className="px-4 py-2 rounded-lg text-xs font-medium bg-brass text-white disabled:opacity-50"
+                          >
+                            {replySending ? "Sending..." : "Send reply"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-[11px] text-muted">No one to reply to in this thread.</div>
+                    )}
+                  </div>
+                )}
+              </div>
 
               {openEmailLoading && <div className="text-sm text-muted">Loading...</div>}
               {openEmailError && <div className="text-sm text-red-600">{openEmailError}</div>}

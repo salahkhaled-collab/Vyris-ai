@@ -2,48 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
+import { extractBody, getHeader, type GmailHeader } from "@/lib/gmail";
 export const dynamic = "force-dynamic";
-
-interface GmailHeader {
-  name: string;
-  value: string;
-}
-
-interface GmailPart {
-  mimeType?: string;
-  body?: { data?: string };
-  parts?: GmailPart[];
-}
-
-function getHeader(headers: GmailHeader[] | undefined, name: string): string {
-  return headers?.find((h) => h.name.toLowerCase() === name.toLowerCase())?.value ?? "";
-}
-
-function decodeBase64Url(data: string): string {
-  const normalized = data.replace(/-/g, "+").replace(/_/g, "/");
-  return Buffer.from(normalized, "base64").toString("utf-8");
-}
-
-function extractBody(payload: GmailPart | undefined): { html: string | null; text: string } {
-  if (!payload) return { html: null, text: "" };
-
-  const stack: GmailPart[] = [payload];
-  let html = "";
-  let text = "";
-
-  while (stack.length > 0) {
-    const part = stack.pop()!;
-    if (part.mimeType === "text/html" && part.body?.data && !html) {
-      html = decodeBase64Url(part.body.data);
-    }
-    if (part.mimeType === "text/plain" && part.body?.data && !text) {
-      text = decodeBase64Url(part.body.data);
-    }
-    if (part.parts) stack.push(...part.parts);
-  }
-
-  return { html: html || null, text };
-}
 
 export async function GET(
   req: Request,
@@ -71,7 +31,7 @@ export async function GET(
 
   try {
     const res = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${id}?format=full`,
+      `https://gmail.googleapis.com/gmail/v1/users/me/messages/${encodeURIComponent(id)}?format=full`,
       { headers: { Authorization: `Bearer ${accessToken}` }, cache: "no-store" }
     );
 

@@ -2,22 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
-
-function buildRawMessage(to: string, subject: string, body: string): string {
-  const message = [
-    `To: ${to}`,
-    `Subject: ${subject}`,
-    "Content-Type: text/plain; charset=utf-8",
-    "",
-    body,
-  ].join("\r\n");
-
-  return Buffer.from(message)
-    .toString("base64")
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
-}
+import { buildRawMessage, parseRecipient } from "@/lib/gmail";
 
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -39,17 +24,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error ?? "not_authenticated", message }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { to, subject, message } = body;
+  const body: unknown = await req.json().catch(() => null);
+  const { to, subject, message, threadId, inReplyTo } = (body ?? {}) as Record<string, unknown>;
 
-  if (!to || !subject || !message) {
+  if (typeof to !== "string" || typeof subject !== "string" || typeof message !== "string" || !subject.trim() || !message.trim()) {
     return NextResponse.json(
       { error: "invalid_input", message: "To, subject, and message are required." },
       { status: 400 }
     );
   }
+  const recipient = parseRecipient(to);
+  if (!recipient) {
+    return NextResponse.json({ error: "invalid_recipient", message: "That email address doesn't look right." }, { status: 400 });
+  }
 
-  const raw = buildRawMessage(to, subject, message);
+  // Header values are sanitised inside buildRawMessage (no line breaks can reach the headers).
+  const raw = buildRawMessage({
+    to: recipient,
+    subject,
+    body: message,
+    inReplyTo: typeof inReplyTo === "string" ? inReplyTo : null,
+  });
+  const thread = typeof threadId === "string" && /^[A-Za-z0-9]+$/.test(threadId) ? threadId : undefined;
 
   try {
     const res = await fetch(
@@ -60,7 +56,8 @@ export async function POST(req: NextRequest) {
           Authorization: `Bearer ${accessToken}`,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ raw }),
+        // threadId keeps a reply in the same Gmail conversation.
+        body: JSON.stringify(thread ? { raw, threadId: thread } : { raw }),
       }
     );
 
