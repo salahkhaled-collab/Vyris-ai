@@ -5,7 +5,14 @@ import { getGoogleAccessToken } from "@/lib/google-token";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 import { listNotes } from "@/lib/ai/context";
 import { GmailError, getThreadForMessage, parseRecipient } from "@/lib/gmail";
-import { parseThreadSummary, replySubject, threadPrompt, threadUserMessage } from "@/lib/inbox-ai";
+import {
+  parseThreadSummary,
+  rateLimitMessage,
+  rateLimitWait,
+  replySubject,
+  threadPrompt,
+  threadUserMessage,
+} from "@/lib/inbox-ai";
 
 export const maxDuration = 60;
 
@@ -74,6 +81,10 @@ export async function POST(req: NextRequest) {
         : null,
     });
   } catch (err: unknown) {
+    const wait = rateLimitWait(err);
+    if (wait !== null) {
+      return NextResponse.json({ error: "rate_limited", message: rateLimitMessage(wait), retryAfter: wait }, { status: 429 });
+    }
     console.error("Thread summary failed:", err);
     const status = err instanceof GmailError && err.status === 404 ? 404 : 502;
     return NextResponse.json({ error: "summary_failed", message: "Couldn't summarise this thread right now." }, { status });

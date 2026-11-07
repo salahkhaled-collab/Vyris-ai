@@ -50,6 +50,12 @@ interface QueueItem {
   message: string | null;
 }
 
+class ApiError extends Error {
+  constructor(message: string, public status: number, public retryAfter: number | null) {
+    super(message);
+  }
+}
+
 async function postJson<T>(url: string, body?: unknown): Promise<T> {
   const res = await fetch(url, {
     method: "POST",
@@ -58,10 +64,39 @@ async function postJson<T>(url: string, body?: unknown): Promise<T> {
   });
   const data = await res.json();
   if (!res.ok) {
-    const msg = (data as { message?: string }).message;
-    throw new Error(res.status === 403 ? "Reconnect Gmail to enable sending." : msg ?? "Something went wrong.");
+    const d = data as { message?: string; retryAfter?: number };
+    const msg = res.status === 403 ? "Reconnect Gmail to enable sending." : d.message ?? "Something went wrong.";
+    throw new ApiError(msg, res.status, typeof d.retryAfter === "number" ? d.retryAfter : null);
   }
   return data as T;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Triage results are remembered per email on this device, so reloading the
+// Inbox doesn't spend the AI provider's per-minute budget re-sorting old mail.
+const TRIAGE_CACHE_KEY = "vyris.inbox.triage.v1";
+const TRIAGE_CACHE_MAX = 300;
+type TriageCache = { results: Record<string, TriageResult>; projects: Record<string, string> };
+
+function readTriageCache(): TriageCache {
+  try {
+    const raw = window.localStorage.getItem(TRIAGE_CACHE_KEY);
+    const parsed = raw ? (JSON.parse(raw) as Partial<TriageCache>) : null;
+    return { results: parsed?.results ?? {}, projects: parsed?.projects ?? {} };
+  } catch {
+    return { results: {}, projects: {} };
+  }
+}
+
+function writeTriageCache(cache: TriageCache) {
+  try {
+    const ids = Object.keys(cache.results).slice(-TRIAGE_CACHE_MAX);
+    const results = Object.fromEntries(ids.map((id) => [id, cache.results[id]]));
+    window.localStorage.setItem(TRIAGE_CACHE_KEY, JSON.stringify({ results, projects: cache.projects }));
+  } catch {
+    // Storage unavailable (private mode etc.): fine, we just re-sort next time.
+  }
 }
 
 const priorityStyle: Record<Priority, { label: string; className: string }> = {
@@ -165,11 +200,17 @@ export default function InboxPage() {
   }, [emails, triage]);
   const candidates = useMemo(() => (emails && triage ? replyCandidates(emails, triage) : []), [emails, triage]);
 
-  // Sort the inbox automatically once it loads, so filters work right away.
+  // Sort the inbox once it loads: reuse remembered results, ask the AI only about new emails.
   useEffect(() => {
     if (autoTriaged.current || !emails || emails.length === 0) return;
     autoTriaged.current = true;
-    void prioritize();
+    const cache = readTriageCache();
+    const cached = Object.fromEntries(emails.filter((e) => cache.results[e.id]).map((e) => [e.id, cache.results[e.id]]));
+    if (Object.keys(cached).length > 0) {
+      setTriage(cached);
+      setTriageProjects(cache.projects);
+    }
+    if (emails.some((e) => !cache.results[e.id])) void prioritize(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emails]);
 
@@ -184,7 +225,20 @@ export default function InboxPage() {
     setQueue(candidates.map((email) => ({ email, summary: null, draft: "", state: "drafting", message: null })));
     for (const email of candidates) {
       try {
-        const data = await postJson<SummaryResponse>("/api/ai/inbox/summarize", { messageId: email.id });
+        let data: SummaryResponse | null = null;
+        // On the provider's per-minute limit, wait as long as it asks (up to twice), then carry on.
+        for (let attempt = 0; attempt < 3 && !data; attempt++) {
+          try {
+            data = await postJson<SummaryResponse>("/api/ai/inbox/summarize", { messageId: email.id });
+          } catch (err) {
+            if (!(err instanceof ApiError) || err.status !== 429 || attempt === 2) throw err;
+            const wait = err.retryAfter ?? 20;
+            updateQueue(email.id, { message: `Waiting ${wait}s for the AI usage limit...` });
+            await sleep(wait * 1000);
+            updateQueue(email.id, { message: null });
+          }
+        }
+        if (!data) throw new Error("Couldn't draft.");
         updateQueue(email.id, {
           summary: data,
           draft: data.replyDraft ?? "",
@@ -220,16 +274,24 @@ export default function InboxPage() {
     }
   }
 
-  async function prioritize() {
+  /** force=true re-sorts everything; otherwise only emails without a remembered result. */
+  async function prioritize(force = true) {
     if (triaging) return;
     setTriaging(true);
     setTriageError(null);
     try {
-      const res = await fetch("/api/ai/inbox/triage", { method: "POST" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message ?? "Couldn't sort your inbox.");
-      setTriage(data.results ?? {});
-      setTriageProjects(data.projects ?? {});
+      const cache = readTriageCache();
+      const knownIds = force ? [] : Object.keys(cache.results);
+      const data = await postJson<{ results: Record<string, TriageResult>; projects?: Record<string, string> }>(
+        "/api/ai/inbox/triage",
+        { knownIds }
+      );
+      const results = { ...(force ? {} : cache.results), ...data.results };
+      const projects = { ...cache.projects, ...(data.projects ?? {}) };
+      writeTriageCache({ results: { ...cache.results, ...data.results }, projects });
+      const current = new Set((emails ?? []).map((e) => e.id));
+      setTriage(Object.fromEntries(Object.entries(results).filter(([id]) => current.has(id))));
+      setTriageProjects(projects);
     } catch (err) {
       setTriageError(err instanceof Error ? err.message : "Couldn't sort your inbox.");
     } finally {
