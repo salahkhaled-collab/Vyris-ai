@@ -38,6 +38,11 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/",
   },
+  // Google Search Console ownership proof for vyris.vercel.app (public by design).
+  // Google Cloud requires it before the OAuth app can use this homepage URL.
+  verification: {
+    google: "PLBTDb3m163xZj-kiv-XGbwZ9vWblzVzC4Llph201FQ",
+  },
   openGraph: {
     type: "website",
     siteName: "Vyris",
