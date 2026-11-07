@@ -7,6 +7,7 @@ import { NewObjectiveForm } from "@/components/strategy/NewObjectiveForm";
 import { NewStrategicBetForm } from "@/components/strategy/NewStrategicBetForm";
 import { cn } from "@/lib/utils";
 import { Loader2, CheckCircle2, AlertCircle, Trash2 } from "lucide-react";
+import { ShareToggle } from "@/components/ui/ShareToggle";
 
 type KeyResult = { id: string; label: string; current: number; target: number; unit: string };
 type Objective = {
@@ -15,6 +16,8 @@ type Objective = {
   quarter: string;
   progress: number;
   keyResults: KeyResult[];
+  ownerId: string;
+  teamId: string | null;
 };
 type StrategicBet = {
   id: string;
@@ -22,6 +25,8 @@ type StrategicBet = {
   signal: string;
   horizon: string;
   status: "ON_TRACK" | "AT_RISK" | "OFF_TRACK";
+  ownerId: string;
+  teamId: string | null;
 };
 
 function ProgressBar({ value, className }: { value: number; className?: string }) {
@@ -178,6 +183,7 @@ function BetRow({
               <option value="AT_RISK">At risk</option>
               <option value="OFF_TRACK">Off track</option>
             </select>
+            <ShareToggle type="strategicBet" id={bet.id} ownerId={bet.ownerId} teamId={bet.teamId} />
             <button
               onClick={handleDelete}
               disabled={deleting}
@@ -233,6 +239,7 @@ function ObjectiveCard({
           <span className="text-[11px] uppercase tracking-[0.14em] text-muted">{o.quarter}</span>
           <div className="flex items-center gap-2">
             <span className="font-mono text-xs text-brass">{o.progress}%</span>
+            <ShareToggle type="objective" id={o.id} ownerId={o.ownerId} teamId={o.teamId} />
             <button
               onClick={handleDelete}
               disabled={deleting}

@@ -5,6 +5,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
 import { RiskSignalsPanel } from "@/components/risks/RiskSignalsPanel";
+import { ShareToggle } from "@/components/ui/ShareToggle";
 import { cn } from "@/lib/utils";
 import { Plus, X, Trash2, AlertTriangle } from "lucide-react";
 
@@ -214,9 +215,18 @@ export default function RisksPage() {
                   )}
                   <h3 className="text-sm font-medium">{r.title}</h3>
                 </div>
-                <button onClick={() => deleteRisk(r.id)} className="text-muted hover:text-signal/80 shrink-0">
-                  <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <ShareToggle
+                    type="risk"
+                    id={r.id}
+                    ownerId={r.ownerId}
+                    teamId={r.teamId}
+                    onChange={(teamId) => setRisks((prev) => prev.map((x) => (x.id === r.id ? { ...x, teamId } : x)))}
+                  />
+                  <button onClick={() => deleteRisk(r.id)} className="text-muted hover:text-signal/80" aria-label="Delete risk">
+                    <Trash2 className="w-3.5 h-3.5" strokeWidth={1.75} />
+                  </button>
+                </div>
               </div>
               <p className="text-xs text-muted leading-relaxed mb-3">{r.description}</p>
               <div className="flex items-center gap-2">
