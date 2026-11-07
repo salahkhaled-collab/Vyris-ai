@@ -79,6 +79,19 @@ export function extractBody(payload: GmailPart | undefined): { html: string | nu
   return { html: html || null, text };
 }
 
+/** Gmail snippets arrive HTML-escaped ("Children&#39;s"); turn entities back into text. */
+export function decodeEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, n: string) => String.fromCodePoint(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => String.fromCodePoint(parseInt(h, 16)))
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&");
+}
+
 /** Rough HTML to text for feeding the model (never rendered). */
 export function htmlToText(html: string): string {
   return html
@@ -157,7 +170,7 @@ export async function listInbox(token: string, max = 15): Promise<InboxMessage[]
         from: parseFromName(from),
         fromEmail: from,
         subject: getHeader(headers, "Subject") || "(No subject)",
-        snippet: m.snippet ?? "",
+        snippet: decodeEntities(m.snippet ?? ""),
         unread: m.labelIds?.includes("UNREAD") ?? false,
         timestamp: new Date(m.internalDate ? parseInt(m.internalDate, 10) : Date.now()).toISOString(),
       };

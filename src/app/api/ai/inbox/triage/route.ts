@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
@@ -7,12 +7,22 @@ import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-clie
 import { scopeFilter } from "@/lib/ai/scope";
 import { getScope } from "@/lib/task-access";
 import { listInbox, parseRecipient } from "@/lib/gmail";
-import { applyContactOverride, parseTriage, triagePrompt, triageUserMessage } from "@/lib/inbox-ai";
+import {
+  applyContactOverride,
+  parseTriage,
+  rateLimitMessage,
+  rateLimitWait,
+  triagePrompt,
+  triageUserMessage,
+} from "@/lib/inbox-ai";
 
 export const maxDuration = 60;
 
-/** POST /api/ai/inbox/triage — classify the latest inbox emails. Read-only. */
-export async function POST() {
+/**
+ * POST /api/ai/inbox/triage { knownIds?: string[] } — classify the latest inbox
+ * emails, skipping ids the client already has results for. Read-only.
+ */
+export async function POST(req: NextRequest) {
   if (!pythonLlmConfigured()) {
     return NextResponse.json({ error: "missing_llm_url", message: "The AI isn't configured." }, { status: 500 });
   }
@@ -24,9 +34,13 @@ export async function POST() {
     return NextResponse.json({ error: "no_gmail", message: "Connect Gmail first." }, { status: 401 });
   }
 
+  const body: unknown = await req.json().catch(() => null);
+  const knownRaw = (body as { knownIds?: unknown } | null)?.knownIds;
+  const known = new Set(Array.isArray(knownRaw) ? knownRaw.filter((x): x is string => typeof x === "string").slice(0, 100) : []);
+
   try {
     const scope = await getScope(session.user.id);
-    const [emails, projects, user, contacts] = await Promise.all([
+    const [inbox, projects, user, contacts] = await Promise.all([
       listInbox(accessToken, 15),
       prisma.project.findMany({
         where: { ...scopeFilter(scope), status: "ACTIVE" },
@@ -40,7 +54,11 @@ export async function POST() {
         take: 2000,
       }),
     ]);
-    if (emails.length === 0) return NextResponse.json({ results: {} });
+    // Only new emails go to the AI: saves the provider's per-minute token budget.
+    const emails = inbox.filter((e) => !known.has(e.id));
+    if (emails.length === 0) {
+      return NextResponse.json({ results: {}, projects: Object.fromEntries(projects.map((p) => [p.id, p.title])) });
+    }
 
     const completion = await completeWithPythonLlm({
       system: triagePrompt(projects, user?.name ?? null),
@@ -69,6 +87,10 @@ export async function POST() {
       projects: Object.fromEntries(projects.map((p) => [p.id, p.title])),
     });
   } catch (err: unknown) {
+    const wait = rateLimitWait(err);
+    if (wait !== null) {
+      return NextResponse.json({ error: "rate_limited", message: rateLimitMessage(wait), retryAfter: wait }, { status: 429 });
+    }
     console.error("Inbox triage failed:", err);
     return NextResponse.json({ error: "triage_failed", message: "Couldn't sort your inbox right now." }, { status: 502 });
   }

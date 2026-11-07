@@ -222,3 +222,21 @@ export function replyCandidates<T extends { id: string }>(emails: T[], triage: R
     .sort((a, b) => PRIORITIES.indexOf(triage[a.id].priority) - PRIORITIES.indexOf(triage[b.id].priority))
     .slice(0, MAX_QUEUE);
 }
+
+// ── Provider rate limits ───────────────────────────────────────────────────
+
+/**
+ * Recognise a provider rate-limit error (HTTP 429) from the LLM client's error
+ * message and pull out the suggested wait. Returns null for any other error.
+ */
+export function rateLimitWait(err: unknown): number | null {
+  const message = err instanceof Error ? err.message : String(err);
+  if (!/status 429\b/.test(message) && !/rate.?limit/i.test(message)) return null;
+  const match = /try again in (?:(\d+)m)?([\d.]+)s/i.exec(message);
+  const seconds = match ? Number(match[1] ?? 0) * 60 + Number(match[2]) : 20;
+  return Math.min(120, Math.max(1, Math.ceil(seconds)));
+}
+
+export function rateLimitMessage(seconds: number): string {
+  return `The AI is at its free-plan usage limit. Try again in about ${seconds} seconds.`;
+}
