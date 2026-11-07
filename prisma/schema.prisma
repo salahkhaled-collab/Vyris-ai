@@ -68,7 +68,7 @@ enum WorkspaceType {
 }
 
 model User {
-  memories Memory[]
+  memories      Memory[]
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
@@ -76,11 +76,11 @@ model User {
   image         String?
   password      String? //new
 
-  role          Role?
-  accessLevel   AccessLevel @default(MEMBER)
-  dashboardLayout String[] @default([])
-  workspaceType WorkspaceType?
-  onboarded     Boolean        @default(false)
+  role            Role?
+  accessLevel     AccessLevel    @default(MEMBER)
+  dashboardLayout String[]       @default([])
+  workspaceType   WorkspaceType?
+  onboarded       Boolean        @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -94,17 +94,17 @@ model User {
   sentMessages TeamMessage[] @relation("MessageAuthor")
   sentInvites  Invite[]      @relation("InviteSender")
 
-  ownedProjects Project[]      @relation("ProjectOwner")
-  ownedTasks    Task[]         @relation("TaskOwner")
-  assignedTasks Task[]         @relation("TaskAssignee")
-  contacts      Contact[]      @relation("ContactOwner")
-  documents     Document[]     @relation("DocumentOwner")
-  decisions     Decision[]     @relation("DecisionOwner")
-  objectives    Objective[]    @relation("ObjectiveOwner")
-  strategicBets StrategicBet[] @relation("StrategicBetOwner")
+  ownedProjects   Project[]        @relation("ProjectOwner")
+  ownedTasks      Task[]           @relation("TaskOwner")
+  assignedTasks   Task[]           @relation("TaskAssignee")
+  contacts        Contact[]        @relation("ContactOwner")
+  documents       Document[]       @relation("DocumentOwner")
+  decisions       Decision[]       @relation("DecisionOwner")
+  objectives      Objective[]      @relation("ObjectiveOwner")
+  strategicBets   StrategicBet[]   @relation("StrategicBetOwner")
   automationRules AutomationRule[] @relation("AutomationRuleOwner")
-  risks Risk[] @relation("RiskOwner")
-    aiConversations AiConversation[]
+  risks           Risk[]           @relation("RiskOwner")
+  aiConversations AiConversation[]
 }
 
 model Team {
@@ -147,7 +147,7 @@ model Invite {
   invitedBy String
   inviter   User   @relation("InviteSender", fields: [invitedBy], references: [id], onDelete: Cascade)
 
-  email String?
+  email       String?
   role        Role?
   accessLevel AccessLevel @default(MEMBER)
 
@@ -327,6 +327,29 @@ model AutomationRule {
 
   ownerId String
   owner   User   @relation("AutomationRuleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  runs AutomationRun[]
+}
+
+enum AutomationRunStatus {
+  SUCCESS
+  FAILED
+  SKIPPED
+}
+
+/// One execution of a rule. dedupeKey stops a rule firing twice for the same
+/// thing (e.g. "overdue" for the same task every day).
+model AutomationRun {
+  id        String              @id @default(cuid())
+  ruleId    String
+  rule      AutomationRule      @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  dedupeKey String
+  status    AutomationRunStatus
+  detail    String              @db.Text
+  createdAt DateTime            @default(now())
+
+  @@unique([ruleId, dedupeKey])
+  @@index([ruleId, createdAt])
 }
 
 model Task {
@@ -401,11 +424,12 @@ model Document {
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
 }
+
 model AiConversation {
-  id        String      @id @default(cuid())
-  title     String      @default("New chat")
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id        String   @id @default(cuid())
+  title     String   @default("New chat")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   ownerId String
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade)
@@ -426,11 +450,13 @@ model AiMessage {
 
   @@index([conversationId, createdAt])
 }
+
 model Memory {
   id        String   @id @default(cuid())
   userId    String
   content   String
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
+
   @@index([userId])
 }

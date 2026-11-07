@@ -5,8 +5,27 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { ChatMessage } from "@/types";
 import { cn } from "@/lib/utils";
-import { Send, Zap, Pause, Plus, Trash2, X } from "lucide-react";
+import { Send, Zap, Pause, Plus, Trash2, X, Play } from "lucide-react";
+import {
+  ACTION_LABELS,
+  DEFAULT_TASK_TITLE,
+  SCHEDULED_TRIGGERS,
+  TRIGGERS,
+  TRIGGER_KEYS,
+  actionsFor,
+  describeRule,
+  isTriggerKey,
+  parseAction,
+  type RuleAction,
+  type TriggerKey,
+} from "@/lib/automation/rules";
 import { DictationButton } from "@/components/ui/DictationButton";
+
+interface AutomationRun {
+  status: "SUCCESS" | "FAILED" | "SKIPPED";
+  detail: string;
+  createdAt: string;
+}
 
 interface AutomationRule {
   id: string;
@@ -14,9 +33,32 @@ interface AutomationRule {
   trigger: string;
   action: string;
   status: "ACTIVE" | "PAUSED";
+  lastRun: AutomationRun | null;
 }
 
-const emptyForm = { name: "", trigger: "", action: "" };
+interface RuleForm {
+  name: string;
+  trigger: TriggerKey;
+  actionType: RuleAction["type"];
+  title: string;
+  dueInDays: number;
+}
+
+const emptyForm: RuleForm = {
+  name: "",
+  trigger: "task_blocked",
+  actionType: "email_me",
+  title: DEFAULT_TASK_TITLE,
+  dueInDays: 2,
+};
+
+function timeAgo(iso: string): string {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hours = Math.round(mins / 60);
+  return hours < 24 ? `${hours} hr ago` : `${Math.round(hours / 24)} days ago`;
+}
 
 export default function AutomationPage() {
   // ── Chat (real, calls /api/ai/chat) ──
@@ -82,6 +124,7 @@ export default function AutomationPage() {
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [runningId, setRunningId] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/automation-rules")
@@ -98,13 +141,18 @@ export default function AutomationPage() {
   }, []);
 
   async function createRule() {
-    if (!form.name.trim() || !form.trigger.trim() || !form.action.trim() || saving) return;
+    if (!form.name.trim() || saving) return;
     setSaving(true);
+    setRulesError(null);
+    const action: RuleAction =
+      form.actionType === "create_task"
+        ? { type: "create_task", title: form.title, dueInDays: form.dueInDays }
+        : { type: "email_me" };
     try {
       const res = await fetch("/api/automation-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(form),
+        body: JSON.stringify({ name: form.name, trigger: form.trigger, action }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -133,6 +181,27 @@ export default function AutomationPage() {
       if (!res.ok) throw new Error();
     } catch {
       setRules((prev) => prev.map((r) => (r.id === rule.id ? rule : r)));
+    }
+  }
+
+  async function runNow(rule: AutomationRule) {
+    if (runningId) return;
+    setRunningId(rule.id);
+    setRulesError(null);
+    try {
+      const res = await fetch(`/api/automation-rules/${rule.id}/run`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message ?? "Couldn't run the rule.");
+      const outcome = data.outcome as { status: AutomationRun["status"]; detail: string } | null;
+      if (outcome) {
+        setRules((prev) =>
+          prev.map((r) => (r.id === rule.id ? { ...r, lastRun: { ...outcome, createdAt: new Date().toISOString() } } : r))
+        );
+      }
+    } catch (err) {
+      setRulesError(err instanceof Error ? err.message : "Couldn't run the rule.");
+    } finally {
+      setRunningId(null);
     }
   }
 
@@ -265,21 +334,68 @@ export default function AutomationPage() {
                   placeholder="Rule name"
                   className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
                 />
-                <input
+                <label className="block text-[11px] text-muted">When</label>
+                <select
                   value={form.trigger}
-                  onChange={(e) => setForm({ ...form, trigger: e.target.value })}
-                  placeholder="Trigger — when this happens..."
-                  className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
-                />
-                <input
-                  value={form.action}
-                  onChange={(e) => setForm({ ...form, action: e.target.value })}
-                  placeholder="Action — do this..."
-                  className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
-                />
+                  onChange={(e) => {
+                    const trigger = e.target.value as TriggerKey;
+                    setForm({
+                      ...form,
+                      trigger,
+                      actionType: actionsFor(trigger).includes(form.actionType) ? form.actionType : "email_me",
+                    });
+                  }}
+                  className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brass"
+                >
+                  {TRIGGER_KEYS.map((k) => (
+                    <option key={k} value={k}>
+                      {TRIGGERS[k].label}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-[11px] text-muted -mt-1">Runs {TRIGGERS[form.trigger].runs}.</p>
+                <label className="block text-[11px] text-muted">Then</label>
+                <select
+                  value={form.actionType}
+                  onChange={(e) => setForm({ ...form, actionType: e.target.value as RuleAction["type"] })}
+                  className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-brass"
+                >
+                  {actionsFor(form.trigger).map((a) => (
+                    <option key={a} value={a}>
+                      {ACTION_LABELS[a]}
+                    </option>
+                  ))}
+                </select>
+                {form.actionType === "create_task" && (
+                  <div className="space-y-2">
+                    <input
+                      value={form.title}
+                      onChange={(e) => setForm({ ...form, title: e.target.value })}
+                      maxLength={200}
+                      placeholder={DEFAULT_TASK_TITLE}
+                      className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
+                    />
+                    <p className="text-[11px] text-muted">Use {"{task}"} and {"{project}"} in the title.</p>
+                    <label className="flex items-center gap-2 text-xs text-muted">
+                      Due in
+                      <input
+                        type="number"
+                        min={0}
+                        max={60}
+                        value={form.dueInDays}
+                        onChange={(e) => setForm({ ...form, dueInDays: Number(e.target.value) || 0 })}
+                        className="w-16 bg-panel-2 border border-line rounded-lg px-2 py-1 text-sm"
+                      />
+                      days
+                    </label>
+                  </div>
+                )}
+                {form.actionType === "email_me" && (
+                  <p className="text-[11px] text-muted">Sent to yourself through your connected Gmail.</p>
+                )}
                 <button
                   onClick={createRule}
-                  disabled={!form.name.trim() || !form.trigger.trim() || !form.action.trim() || saving}
+                  disabled={!form.name.trim() || saving}
                   className="w-full px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
                 >
                   {saving ? "Saving..." : "Save rule"}
@@ -313,16 +429,39 @@ export default function AutomationPage() {
                     </button>
                   </div>
                 </div>
-                <div className="text-xs text-muted leading-relaxed space-y-1">
-                  <div>
-                    <span className="text-ink-text/60">Trigger: </span>
-                    {rule.trigger}
-                  </div>
-                  <div>
-                    <span className="text-ink-text/60">Action: </span>
-                    {rule.action}
-                  </div>
-                </div>
+                {(() => {
+                  const action = parseAction(rule.action);
+                  const runnable = isTriggerKey(rule.trigger) && action !== null;
+                  return (
+                    <div className="text-xs text-muted leading-relaxed space-y-1.5">
+                      {runnable && isTriggerKey(rule.trigger) && action ? (
+                        <div>{describeRule(rule.trigger, action)}</div>
+                      ) : (
+                        <div>
+                          <span className="text-red-500">Old text rule, doesn&apos;t run.</span> Delete it and create a new
+                          one. ({rule.trigger} → {rule.action})
+                        </div>
+                      )}
+                      {rule.lastRun ? (
+                        <div className={cn(rule.lastRun.status === "FAILED" ? "text-red-500" : "text-muted")}>
+                          Last run {timeAgo(rule.lastRun.createdAt)}: {rule.lastRun.detail}
+                        </div>
+                      ) : (
+                        runnable && <div>Hasn&apos;t run yet.</div>
+                      )}
+                      {runnable && isTriggerKey(rule.trigger) && SCHEDULED_TRIGGERS.includes(rule.trigger) && (
+                        <button
+                          onClick={() => void runNow(rule)}
+                          disabled={runningId !== null}
+                          className="flex items-center gap-1 text-[11px] text-brass hover:underline disabled:opacity-50"
+                        >
+                          <Play className="w-3 h-3" strokeWidth={2} />
+                          {runningId === rule.id ? "Running..." : "Run now"}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             ))}
           </div>
