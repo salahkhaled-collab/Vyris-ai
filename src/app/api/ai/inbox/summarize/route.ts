@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 import { listNotes } from "@/lib/ai/context";
-import { GmailError, getThreadForMessage, parseRecipient } from "@/lib/gmail";
+import { GmailError, getMailboxAddress, getThreadForMessage, parseRecipient } from "@/lib/gmail";
 import {
   parseThreadSummary,
   rateLimitMessage,
@@ -39,7 +39,16 @@ export async function POST(req: NextRequest) {
   if (!accessToken) return NextResponse.json({ error: "no_gmail", message: "Connect Gmail first." }, { status: 401 });
 
   try {
-    const thread = await getThreadForMessage(accessToken, messageId);
+    const [thread, mailbox] = await Promise.all([
+      getThreadForMessage(accessToken, messageId),
+      getMailboxAddress(accessToken),
+    ]);
+    // "Me" is the connected Gmail address (it can differ from the Vyris login).
+    const myEmail = mailbox ?? session.user.email?.toLowerCase() ?? null;
+    const isMe = (from: string) => {
+      const addr = parseRecipient(from);
+      return addr !== null && myEmail !== null && addr.toLowerCase() === myEmail;
+    };
 
     // Keep the most recent messages within the size budget.
     const kept: typeof thread.messages = [];
@@ -50,13 +59,20 @@ export async function POST(req: NextRequest) {
       used += m.text.length;
     }
 
-    const myEmail = session.user.email?.toLowerCase() ?? null;
     const { notes } = await listNotes(session.user.id, { limit: 50 });
     const toneNotes = notes.map((n) => n.content).filter((c) => TONE_NOTE.test(c)).slice(0, 5);
 
     const completion = await completeWithPythonLlm({
       system: threadPrompt(session.user.name ?? null, myEmail, toneNotes),
-      messages: [{ role: "user", content: threadUserMessage(thread.subject, kept) }],
+      messages: [
+        {
+          role: "user",
+          content: threadUserMessage(
+            thread.subject,
+            kept.map((m) => ({ ...m, fromUser: isMe(m.from) }))
+          ),
+        },
+      ],
       maxTokens: 1500,
     });
     const summary = parseThreadSummary(completion.text);
@@ -65,10 +81,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Reply goes to the last person who wasn't the user, threaded on their message.
-    const lastOther = [...thread.messages].reverse().find((m) => {
-      const addr = parseRecipient(m.from);
-      return addr !== null && addr.toLowerCase() !== myEmail;
-    });
+    const lastOther = [...thread.messages].reverse().find((m) => parseRecipient(m.from) !== null && !isMe(m.from));
     return NextResponse.json({
       ...summary,
       reply: lastOther

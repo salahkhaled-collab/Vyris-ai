@@ -130,7 +130,8 @@ export function threadPrompt(userName: string | null, userEmail: string | null, 
     '{"summary": string, "keyPoints": string[], "needsReply": boolean, "replyDraft": string}',
     "- summary: 2-3 sentences on what the thread is about and where it stands.",
     "- keyPoints: up to 5 short facts, asks or deadlines.",
-    "- needsReply: true if the last message is from someone else and asks or expects something of the user.",
+    "- Each message has a sender attribute: \"the user\" or \"someone else\". Trust it over names; other people may share the user's name.",
+    "- needsReply: true if the last message has sender=\"someone else\" and asks or expects something of the user.",
     "- replyDraft: a reply the user could send, in plain text, signed with their first name. Empty string if no reply is needed.",
     "Style for the reply: concise, warm, direct; no filler.",
     toneNotes.length > 0 ? `The user's own notes about how they write (follow them):\n${toneNotes.map((n) => `- ${n}`).join("\n")}` : "",
@@ -139,10 +140,21 @@ export function threadPrompt(userName: string | null, userEmail: string | null, 
     .join("\n");
 }
 
-export function threadUserMessage(subject: string, messages: { from: string; date: string; text: string }[]): string {
+/**
+ * Each message is labelled "the user" or "someone else" by comparing email
+ * addresses in code, so the model never has to guess who the user is from a
+ * display name (two people can share a name).
+ */
+export function threadUserMessage(
+  subject: string,
+  messages: { from: string; date: string; text: string; fromUser: boolean }[]
+): string {
   return [
     `Subject: ${clean(subject, 200)}`,
-    ...messages.map((m, i) => `<message n="${i + 1}">\nFrom: ${clean(m.from, 120)}\nDate: ${clean(m.date, 60)}\n${m.text}\n</message>`),
+    ...messages.map(
+      (m, i) =>
+        `<message n="${i + 1}" sender="${m.fromUser ? "the user" : "someone else"}">\nFrom: ${clean(m.from, 120)}\nDate: ${clean(m.date, 60)}\n${m.text}\n</message>`
+    ),
   ].join("\n");
 }
 

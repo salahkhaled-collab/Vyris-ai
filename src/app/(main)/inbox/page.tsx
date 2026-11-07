@@ -239,11 +239,16 @@ export default function InboxPage() {
           }
         }
         if (!data) throw new Error("Couldn't draft.");
+        const hasDraft = Boolean(data.replyDraft?.trim());
         updateQueue(email.id, {
           summary: data,
           draft: data.replyDraft ?? "",
           state: data.reply?.to ? "ready" : "error",
-          message: data.reply?.to ? null : "No one to reply to in this thread.",
+          message: !data.reply?.to
+            ? "No one to reply to in this thread."
+            : hasDraft
+              ? null
+              : "Vyris thinks no reply is needed. Skip it, or write one below.",
         });
       } catch (err) {
         updateQueue(email.id, { state: "error", message: err instanceof Error ? err.message : "Couldn't draft." });
@@ -516,6 +521,7 @@ export default function InboxPage() {
                         <textarea
                           value={q.draft}
                           onChange={(e) => updateQueue(q.email.id, { draft: e.target.value })}
+                          placeholder="Write a reply..."
                           rows={5}
                           className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm resize-y focus:outline-none focus:ring-1 focus:ring-brass"
                         />
@@ -538,7 +544,12 @@ export default function InboxPage() {
                       </>
                     )}
                     {q.message && (
-                      <div className={cn("text-xs", q.state === "sent" ? "text-green-600" : q.state === "skipped" ? "text-muted" : "text-red-500")}>
+                      <div
+                        className={cn(
+                          "text-xs",
+                          q.state === "sent" ? "text-green-600" : q.state === "error" || q.state === "drafting" ? "text-red-500" : "text-muted"
+                        )}
+                      >
                         {q.message}
                       </div>
                     )}
