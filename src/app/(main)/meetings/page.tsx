@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { connectGoogle } from "@/lib/google-connect";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { Calendar, Users, Video } from "lucide-react";
@@ -88,7 +89,7 @@ export default function MeetingsPage() {
               See your real meetings for the week, grouped by day.
             </div>
             <button
-              onClick={() => signIn("google")}
+              onClick={() => connectGoogle("calendar")}
               className="px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
             >
               Connect
@@ -103,8 +104,8 @@ export default function MeetingsPage() {
         {status === "authenticated" && error && (
           <Panel className="p-6 text-sm text-muted">
             {error}{" "}
-            <button onClick={() => signIn("google")} className="text-brass underline">
-              Reconnect
+            <button onClick={() => connectGoogle("calendar")} className="text-brass underline">
+              Connect
             </button>
           </Panel>
         )}

@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { BASE_GOOGLE_SCOPES, coversScopes } from "@/lib/google-scopes";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -22,18 +23,12 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GOOGLE_CLIENT_ID as string,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET as string,
       allowDangerousEmailAccountLinking: false,
+      // Sign-in asks for basic profile only. Gmail and Calendar are requested
+      // later from their Connect buttons (see src/lib/google-scopes.ts).
       authorization: {
         params: {
-        scope: [
-  "openid",
-  "email",
-  "profile",
-  "https://www.googleapis.com/auth/calendar",
-  "https://www.googleapis.com/auth/gmail.readonly",
-  "https://www.googleapis.com/auth/gmail.send",
-].join(" "),
-          access_type: "offline",
-          prompt: "consent",
+          scope: BASE_GOOGLE_SCOPES.join(" "),
+          include_granted_scopes: "true",
         },
       },
     }),
@@ -89,20 +84,31 @@ export const authOptions: NextAuthOptions = {
   callbacks: {
     async signIn({ account }) {
       if (account?.provider === "google" && account.access_token) {
-        await prisma.account.updateMany({
-          where: {
-            provider: "google",
-            providerAccountId: account.providerAccountId,
-          },
-          data: {
-            access_token: account.access_token,
-            refresh_token: account.refresh_token ?? undefined,
-            expires_at: account.expires_at,
-            token_type: account.token_type,
-            scope: account.scope,
-            id_token: account.id_token,
-          },
+        const existing = await prisma.account.findFirst({
+          where: { provider: "google", providerAccountId: account.providerAccountId },
+          select: { scope: true },
         });
+        // A plain sign-in asks for profile scopes only. Never let it replace a
+        // stored token that carries Gmail/Calendar access with a narrower one.
+        // A grant that adds anything new (a Connect click) always wins.
+        const narrower =
+          coversScopes(existing?.scope, account.scope) && !coversScopes(account.scope, existing?.scope);
+        if (existing && !narrower) {
+          await prisma.account.updateMany({
+            where: {
+              provider: "google",
+              providerAccountId: account.providerAccountId,
+            },
+            data: {
+              access_token: account.access_token,
+              refresh_token: account.refresh_token ?? undefined,
+              expires_at: account.expires_at,
+              token_type: account.token_type,
+              scope: account.scope,
+              id_token: account.id_token,
+            },
+          });
+        }
       }
 
       return true;

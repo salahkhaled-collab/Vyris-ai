@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useSession, signIn } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import { connectGoogle } from "@/lib/google-connect";
 import DOMPurify from "dompurify";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
@@ -585,7 +586,7 @@ export default function InboxPage() {
                 </div>
               </div>
               <button
-                onClick={() => signIn("google")}
+                onClick={() => connectGoogle("gmail")}
                 className="shrink-0 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
               >
                 Connect
@@ -600,8 +601,8 @@ export default function InboxPage() {
           {status === "authenticated" && emailError && (
             <Panel className="p-6 text-sm text-muted">
               {emailError}{" "}
-              <button onClick={() => signIn("google")} className="text-brass underline">
-                Reconnect
+              <button onClick={() => connectGoogle("gmail")} className="text-brass underline">
+                Connect
               </button>
             </Panel>
           )}

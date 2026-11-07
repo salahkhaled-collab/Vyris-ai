@@ -15,7 +15,7 @@ export async function GET() {
     );
   }
 
-  const { accessToken, error } = await getGoogleAccessToken(session.user.id);
+  const { accessToken, error } = await getGoogleAccessToken(session.user.id, "gmail");
   if (!accessToken) {
     const message =
       error === "no_refresh_token" || error === "refresh_failed"

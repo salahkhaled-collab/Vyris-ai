@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_message" }, { status: 400 });
   }
 
-  const { accessToken } = await getGoogleAccessToken(session.user.id);
+  const { accessToken } = await getGoogleAccessToken(session.user.id, "gmail");
   if (!accessToken) return NextResponse.json({ error: "no_gmail", message: "Connect Gmail first." }, { status: 401 });
 
   try {
