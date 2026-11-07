@@ -5,7 +5,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
 import { useUser } from "@/lib/user-context";
-import { Plus, Trash2, Mail, Phone, Building2, X, Users, Send, Clock } from "lucide-react";
+import { Plus, Trash2, Mail, Phone, Building2, X, Users, Send, Clock, Link as LinkIcon, Check } from "lucide-react";
 
 // ── Personal contact types ──────────────────────────────────────────────────
 
@@ -43,8 +43,20 @@ interface TeamMember {
   image: string | null;
 }
 
+interface InviteOutcome {
+  inviteUrl: string;
+  email: string | null;
+  emailSent: boolean | null;
+  emailError: string | null;
+}
+
+function inviteLink(token: string): string {
+  return `${window.location.origin}/invite/${token}`;
+}
+
 interface PendingInvite {
   id: string;
+  token: string;
   email: string | null;
   createdAt: string;
   expiresAt: string;
@@ -105,6 +117,8 @@ function TeamTab() {
   const [inviteRole, setInviteRole] = useState<string>("");
   const [inviteAccessLevel, setInviteAccessLevel] = useState<"ADMIN" | "MEMBER">("MEMBER");
   const [inviting, setInviting] = useState(false);
+  const [outcome, setOutcome] = useState<InviteOutcome | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
 
@@ -146,24 +160,40 @@ function TeamTab() {
     }
   }
 
-  async function sendInvite() {
-    if (!inviteEmail.trim() || inviting) return;
+  /** withEmail=false creates a link-only invite you share yourself. */
+  async function sendInvite(withEmail = true) {
+    if ((withEmail && !inviteEmail.trim()) || inviting) return;
     setInviting(true);
     setInviteError(null);
+    setOutcome(null);
     try {
       const res = await fetch("/api/invites", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          email: inviteEmail.trim(),
+          ...(withEmail ? { email: inviteEmail.trim() } : {}),
           role: inviteRole || null,
           accessLevel: inviteAccessLevel,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message ?? "Could not send invite.");
+      setOutcome({
+        inviteUrl: data.inviteUrl,
+        email: data.email ?? null,
+        emailSent: data.emailSent ?? null,
+        emailError: data.emailError ?? null,
+      });
       setInvites((prev) => [
-        { id: data.id, email: data.email, createdAt: new Date().toISOString(), expiresAt: data.expiresAt, role: data.role ?? null, accessLevel: data.accessLevel ?? "MEMBER" },
+        {
+          id: data.id,
+          token: data.token,
+          email: data.email,
+          createdAt: new Date().toISOString(),
+          expiresAt: data.expiresAt,
+          role: inviteRole || null,
+          accessLevel: inviteAccessLevel,
+        },
         ...prev,
       ]);
       setInviteEmail("");
@@ -173,6 +203,16 @@ function TeamTab() {
       setInviteError(err instanceof Error ? err.message : "Could not send invite.");
     } finally {
       setInviting(false);
+    }
+  }
+
+  async function copyLink(id: string, url: string) {
+    try {
+      await navigator.clipboard.writeText(url);
+      setCopiedId(id);
+      setTimeout(() => setCopiedId((current) => (current === id ? null : current)), 2000);
+    } catch {
+      setInviteError("Couldn't copy. Select the link and copy it manually.");
     }
   }
 
@@ -232,16 +272,58 @@ function TeamTab() {
               <option value="ADMIN">Admin access</option>
             </select>
           </div>
-          <button
-            onClick={sendInvite}
-            disabled={!inviteEmail.trim() || inviting}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
-          >
-            <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
-            {inviting ? "Sending..." : "Send invite"}
-          </button>
+          <div className="grid grid-cols-2 gap-2.5">
+            <button
+              onClick={() => void sendInvite(true)}
+              disabled={!inviteEmail.trim() || inviting}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
+            >
+              <Send className="w-3.5 h-3.5" strokeWidth={1.75} />
+              {inviting ? "Sending..." : "Send invite"}
+            </button>
+            <button
+              onClick={() => void sendInvite(false)}
+              disabled={inviting}
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-panel-2 border border-line disabled:opacity-50"
+            >
+              <LinkIcon className="w-3.5 h-3.5" strokeWidth={1.75} />
+              Create link only
+            </button>
+          </div>
         </div>
-        {inviteError && <div className="text-xs text-signal/80 mt-2">{inviteError}</div>}
+        {inviteError && <div className="text-xs text-red-500 mt-2">{inviteError}</div>}
+
+        {outcome && (
+          <div className="mt-4 rounded-lg border border-line bg-panel-2 p-3 space-y-2" role="status">
+            <div className="text-xs">
+              {outcome.emailSent === true && <>Invite emailed to {outcome.email}. You can also share the link:</>}
+              {outcome.emailSent === false && (
+                <span className="text-red-500">
+                  The email to {outcome.email} couldn&apos;t be sent
+                  {outcome.emailError ? ` (${outcome.emailError})` : ""}. The invite still works: send them this link
+                  yourself.
+                </span>
+              )}
+              {outcome.emailSent === null && <>Invite link created. Send it to the person you&apos;re inviting:</>}
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                readOnly
+                value={outcome.inviteUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                aria-label="Invite link"
+                className="flex-1 min-w-0 bg-panel border border-line rounded-lg px-3 py-1.5 text-xs font-mono"
+              />
+              <button
+                onClick={() => void copyLink("outcome", outcome.inviteUrl)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-brass text-white"
+              >
+                {copiedId === "outcome" ? <Check className="w-3.5 h-3.5" /> : <LinkIcon className="w-3.5 h-3.5" />}
+                {copiedId === "outcome" ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </div>
+        )}
       </Panel>
 
       <div>
@@ -277,7 +359,7 @@ function TeamTab() {
                 <div className="w-10 h-10 rounded-full bg-panel-2 flex items-center justify-center shrink-0">
                   <Clock className="w-4 h-4 text-muted" strokeWidth={1.75} />
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="text-sm font-medium truncate">{inv.email ?? "Link invite"}</div>
                   <div className="text-xs text-muted">
                     Pending
@@ -285,6 +367,16 @@ function TeamTab() {
                     {" · "}{inv.accessLevel === "ADMIN" ? "Admin" : "Member"}
                   </div>
                 </div>
+                {inv.token && (
+                  <button
+                    onClick={() => void copyLink(inv.id, inviteLink(inv.token))}
+                    className="shrink-0 flex items-center gap-1 text-xs text-brass hover:underline"
+                    aria-label={`Copy invite link${inv.email ? ` for ${inv.email}` : ""}`}
+                  >
+                    {copiedId === inv.id ? <Check className="w-3.5 h-3.5" /> : <LinkIcon className="w-3.5 h-3.5" />}
+                    {copiedId === inv.id ? "Copied" : "Copy link"}
+                  </button>
+                )}
               </Panel>
             ))}
           </div>
