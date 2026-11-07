@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { hasFeatureScopes, type GoogleFeature } from "@/lib/google-scopes";
 
 /**
  * Returns a valid Google access token for the given user, refreshing it
@@ -6,12 +7,16 @@ import { prisma } from "@/lib/prisma";
  * record with the new token/expiry. Used by both the Calendar and
  * Gmail routes since they share the same Google account connection.
  *
- * Returns null if the user has no Google account linked, or if the
- * refresh fails (e.g. the user revoked access).
+ * Returns null if the user has no Google account linked, if the account was
+ * never granted the feature passed in `need` (sign-in only asks for profile
+ * scopes), or if the refresh fails (e.g. the user revoked access).
  */
-export async function getGoogleAccessToken(userId: string): Promise<{
+export async function getGoogleAccessToken(
+  userId: string,
+  need?: GoogleFeature
+): Promise<{
   accessToken: string | null;
-  error?: "no_account" | "no_refresh_token" | "refresh_failed";
+  error?: "no_account" | "missing_scope" | "no_refresh_token" | "refresh_failed";
 }> {
   const account = await prisma.account.findFirst({
     where: { userId, provider: "google" },
@@ -19,6 +24,11 @@ export async function getGoogleAccessToken(userId: string): Promise<{
 
   if (!account) {
     return { accessToken: null, error: "no_account" };
+  }
+
+  // A null scope is unknown (older rows), not "none": let the API call decide.
+  if (need && account.scope && !hasFeatureScopes(account.scope, need)) {
+    return { accessToken: null, error: "missing_scope" };
   }
 
   const now = Math.floor(Date.now() / 1000);

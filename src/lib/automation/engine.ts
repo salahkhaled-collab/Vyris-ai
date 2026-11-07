@@ -82,7 +82,7 @@ async function runOnce(rule: RuleRow, dedupeKey: string, work: () => Promise<Out
 
 /** Email the rule owner: through their own Gmail if connected, else via Resend. */
 export async function emailOwner(userId: string, subject: string, body: string): Promise<Outcome> {
-  const { accessToken } = await getGoogleAccessToken(userId);
+  const { accessToken } = await getGoogleAccessToken(userId, "gmail");
   if (accessToken) {
     const mailbox = await getMailboxAddress(accessToken);
     if (mailbox) {

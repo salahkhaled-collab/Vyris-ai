@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const { accessToken, error } = await getGoogleAccessToken(session.user.id);
+  const { accessToken, error } = await getGoogleAccessToken(session.user.id, "calendar");
 
   if (!accessToken) {
     const message =

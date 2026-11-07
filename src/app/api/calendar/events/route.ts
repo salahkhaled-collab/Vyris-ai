@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { accessToken, error } = await getGoogleAccessToken(session.user.id);
+  const { accessToken, error } = await getGoogleAccessToken(session.user.id, "calendar");
 
   if (!accessToken) {
     const message =
@@ -101,7 +101,7 @@ export async function DELETE(req: NextRequest) {
     );
   }
 
-  const { accessToken, error } = await getGoogleAccessToken(session.user.id);
+  const { accessToken, error } = await getGoogleAccessToken(session.user.id, "calendar");
 
   if (!accessToken) {
     const message =

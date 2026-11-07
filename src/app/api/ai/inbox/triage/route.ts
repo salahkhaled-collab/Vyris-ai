@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
 
-  const { accessToken } = await getGoogleAccessToken(session.user.id);
+  const { accessToken } = await getGoogleAccessToken(session.user.id, "gmail");
   if (!accessToken) {
     return NextResponse.json({ error: "no_gmail", message: "Connect Gmail first." }, { status: 401 });
   }
