@@ -145,7 +145,13 @@ interface GmailMessageMeta {
 }
 
 export async function listInbox(token: string, max = 15): Promise<InboxMessage[]> {
-  const params = new URLSearchParams({ maxResults: String(max), labelIds: "INBOX", q: "in:inbox" });
+  return searchMessages(token, "in:inbox", max, "INBOX");
+}
+
+/** Messages matching a Gmail search query (metadata only), newest first. */
+export async function searchMessages(token: string, q: string, max = 10, labelId?: string): Promise<InboxMessage[]> {
+  const params = new URLSearchParams({ maxResults: String(max), q });
+  if (labelId) params.set("labelIds", labelId);
   const list = await gmailFetch<{ messages?: { id: string }[] }>(token, `/messages?${params.toString()}`);
   const ids = (list.messages ?? []).map((m) => m.id);
   if (ids.length === 0) return [];

@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { connectGoogle } from "@/lib/google-connect";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
-import { Calendar, Users, Video } from "lucide-react";
+import { AlertTriangle, Calendar, Users, Video } from "lucide-react";
 import { MeetingNotesPanel } from "@/components/meetings/MeetingNotesPanel";
+import { FocusTimePanel } from "@/components/meetings/FocusTimePanel";
+import { MeetingBriefButton } from "@/components/meetings/MeetingBriefButton";
+import { findConflicts, type CalendarItem } from "@/lib/calendar";
 
-interface MeetingEvent {
-  id: string;
+interface MeetingEvent extends CalendarItem {
   date: string | null;
   time: string;
-  title: string;
   meta: string;
   attendees: string[];
   videoLink: string | null;
@@ -37,10 +38,14 @@ export default function MeetingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [reloadKey, setReloadKey] = useState(0);
+  const reload = useCallback(() => setReloadKey((k) => k + 1), []);
+
   useEffect(() => {
     if (status !== "authenticated") return;
     let active = true;
-    setLoading(true);
+    // Spinner only on the first load; a reload after blocking focus time keeps the list on screen.
+    if (events === null) setLoading(true);
     fetch("/api/calendar?range=week")
       .then(async (res) => {
         const data = await res.json();
@@ -57,7 +62,9 @@ export default function MeetingsPage() {
     return () => {
       active = false;
     };
-  }, [status]);
+  }, [status, reloadKey]);
+
+  const conflicts = useMemo(() => findConflicts(events ?? []), [events]);
 
   const grouped = (events ?? []).reduce<Record<string, MeetingEvent[]>>((acc, e) => {
     if (!e.date) return acc;
@@ -110,6 +117,8 @@ export default function MeetingsPage() {
           </Panel>
         )}
 
+        {status === "authenticated" && !error && events && <FocusTimePanel events={events} onBlocked={reload} />}
+
         {status === "authenticated" && !loading && !error && orderedKeys.length === 0 && (
           <Panel className="p-10 text-center text-sm text-muted">
             Nothing on your calendar for the next 7 days.
@@ -129,6 +138,12 @@ export default function MeetingsPage() {
                       <div className="font-mono text-xs pt-0.5 w-16 text-muted shrink-0">{e.time}</div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">{e.title}</div>
+                        {conflicts[e.id] && (
+                          <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                            <AlertTriangle className="w-3 h-3" strokeWidth={2} />
+                            Overlaps with {conflicts[e.id].join(", ")}
+                          </div>
+                        )}
                         <div className="flex items-center gap-3 mt-1 text-xs text-muted">
                           {e.meta && <span>{e.meta}</span>}
                           {e.attendees.length > 0 && (
@@ -138,6 +153,7 @@ export default function MeetingsPage() {
                             </span>
                           )}
                         </div>
+                        {!e.allDay && <MeetingBriefButton eventId={e.id} />}
                       </div>
                       {e.videoLink && (
                         <a
