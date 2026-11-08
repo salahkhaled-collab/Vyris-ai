@@ -194,6 +194,29 @@ export function applyContactOverride(
   return out;
 }
 
+// ── Vyris's own automation emails ──────────────────────────────────────────
+
+const DIGEST_SUBJECT = /^(Vyris daily digest|Vyris weekly report)\b/i;
+const TASK_EVENT_SUBJECT = /^(Blocked|Done|Overdue): /;
+
+/**
+ * Digest, weekly and task-event emails sent by Vyris automation rules. They
+ * skip the model (no tokens, no made-up project tags) and are filed as FYI.
+ * Task-event subjects only count when the user sent them to themselves.
+ */
+export function isVyrisAutomationEmail(subject: string, senderAddress: string | null, mailbox: string | null): boolean {
+  if (DIGEST_SUBJECT.test(subject.trim())) return true;
+  const self = Boolean(senderAddress && mailbox && senderAddress.toLowerCase() === mailbox.toLowerCase());
+  return self && TASK_EVENT_SUBJECT.test(subject.trim());
+}
+
+export const AUTOMATION_TRIAGE: TriageResult = {
+  priority: "fyi",
+  category: "promotions",
+  reason: "Sent by your Vyris automation",
+  projectId: null,
+};
+
 export const FILTERS = ["all", "needs_reply", "urgent", "work", "low"] as const;
 export type InboxFilter = (typeof FILTERS)[number];
 
