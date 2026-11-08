@@ -6,9 +6,11 @@ import { getGoogleAccessToken } from "@/lib/google-token";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 import { scopeFilter } from "@/lib/ai/scope";
 import { getScope } from "@/lib/task-access";
-import { listInbox, parseRecipient } from "@/lib/gmail";
+import { getMailboxAddress, listInbox, parseRecipient } from "@/lib/gmail";
 import {
+  AUTOMATION_TRIAGE,
   applyContactOverride,
+  isVyrisAutomationEmail,
   parseTriage,
   rateLimitMessage,
   rateLimitWait,
@@ -40,8 +42,9 @@ export async function POST(req: NextRequest) {
 
   try {
     const scope = await getScope(session.user.id);
-    const [inbox, projects, user, contacts] = await Promise.all([
+    const [inbox, mailbox, projects, user, contacts] = await Promise.all([
       listInbox(accessToken, 15),
+      getMailboxAddress(accessToken),
       prisma.project.findMany({
         where: { ...scopeFilter(scope), status: "ACTIVE" },
         select: { id: true, title: true },
@@ -55,9 +58,15 @@ export async function POST(req: NextRequest) {
       }),
     ]);
     // Only new emails go to the AI: saves the provider's per-minute token budget.
-    const emails = inbox.filter((e) => !known.has(e.id));
+    const fresh = inbox.filter((e) => !known.has(e.id));
+    // Vyris's own digests and alerts are filed without asking the model.
+    const automated: Record<string, typeof AUTOMATION_TRIAGE> = {};
+    for (const e of fresh) {
+      if (isVyrisAutomationEmail(e.subject, parseRecipient(e.fromEmail), mailbox)) automated[e.id] = AUTOMATION_TRIAGE;
+    }
+    const emails = fresh.filter((e) => !automated[e.id]);
     if (emails.length === 0) {
-      return NextResponse.json({ results: {}, projects: Object.fromEntries(projects.map((p) => [p.id, p.title])) });
+      return NextResponse.json({ results: automated, projects: Object.fromEntries(projects.map((p) => [p.id, p.title])) });
     }
 
     const completion = await completeWithPythonLlm({
@@ -83,7 +92,7 @@ export async function POST(req: NextRequest) {
       contactEmails
     );
     return NextResponse.json({
-      results,
+      results: { ...results, ...automated },
       projects: Object.fromEntries(projects.map((p) => [p.id, p.title])),
     });
   } catch (err: unknown) {

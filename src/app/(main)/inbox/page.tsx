@@ -447,13 +447,13 @@ export default function InboxPage() {
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-10">
         <section className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Mail className="w-4 h-4 text-brass" strokeWidth={1.75} />
               <h2 className="font-display text-xl">Email</h2>
             </div>
             {status === "authenticated" && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
               {candidates.length > 0 && (
                 <button
                   onClick={() => void draftReplies()}
@@ -627,8 +627,7 @@ export default function InboxPage() {
                     key={e.id}
                     onClick={() => openEmail(e.id)}
                     className={cn(
-                      "flex items-start gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.02]",
-                      e.unread && "bg-brass-soft/50"
+                      "flex items-start gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.02]"
                     )}
                   >
                     <div className="shrink-0 rounded-lg p-2 bg-panel-2 text-muted">
@@ -637,9 +636,11 @@ export default function InboxPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {e.unread && <span className="w-1.5 h-1.5 rounded-full bg-signal shrink-0" />}
-                        <div className="text-sm font-medium truncate">{e.from}</div>
+                        <div className={cn("text-sm truncate", e.unread ? "font-semibold" : "font-medium")}>{e.from}</div>
                       </div>
-                      <div className="text-xs text-ink-text/80 mt-0.5 truncate">{e.subject}</div>
+                      <div className={cn("text-xs mt-0.5 truncate", e.unread ? "text-ink-text font-medium" : "text-ink-text/80")}>
+                        {e.subject}
+                      </div>
                       <div className="text-xs text-muted mt-1 leading-relaxed line-clamp-1">
                         {e.snippet}
                       </div>
