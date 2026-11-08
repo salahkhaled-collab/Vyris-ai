@@ -8,9 +8,18 @@ interface GoogleEvent {
   summary?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
-  attendees?: { email: string }[];
+  attendees?: { email: string; self?: boolean; responseStatus?: string }[];
   hangoutLink?: string;
   description?: string;
+  transparency?: string;
+}
+
+const RSVP = new Set(["accepted", "declined", "tentative", "needsAction"]);
+
+/** The signed-in user's own RSVP, if they are on the attendee list. */
+function selfRsvp(e: GoogleEvent): string | null {
+  const status = e.attendees?.find((a) => a.self)?.responseStatus;
+  return status && RSVP.has(status) ? status : null;
 }
 
 export async function GET(req: NextRequest) {
@@ -120,6 +129,12 @@ export async function GET(req: NextRequest) {
         meta: metaParts.join(" · "),
         attendees: e.attendees?.map((a) => a.email) ?? [],
         videoLink: e.hangoutLink ?? null,
+        // Exact times for conflict and focus-time checks (see src/lib/calendar.ts).
+        start: startRaw ?? null,
+        end: e.end?.dateTime ?? e.end?.date ?? null,
+        allDay,
+        selfStatus: selfRsvp(e),
+        free: e.transparency === "transparent",
       };
     });
 
