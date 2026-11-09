@@ -114,6 +114,8 @@ export default function CalendarPage() {
           startTime,
           endTime,
           allDay: formAllDay,
+          // Wall-clock times need the browser's timezone, or Google rejects them.
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         }),
       });
 

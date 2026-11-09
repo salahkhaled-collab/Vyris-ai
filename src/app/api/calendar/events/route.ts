@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { allDayEnd, parseEventInput } from "@/lib/calendar-events";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
@@ -23,28 +24,27 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error ?? "not_authenticated", message }, { status: 401 });
   }
 
-  const body = await req.json();
-  const { title, startTime, endTime, allDay, description } = body;
-
-  if (!title || !startTime) {
-    return NextResponse.json(
-      { error: "invalid_input", message: "Title and start time are required." },
-      { status: 400 }
-    );
+  const body: unknown = await req.json().catch(() => null);
+  const parsed = parseEventInput(body);
+  if ("error" in parsed) {
+    return NextResponse.json({ error: "invalid_input", message: parsed.error }, { status: 400 });
   }
+  const { title, startTime, endTime, allDay, description, timeZone } = parsed;
 
+  // Google needs a timezone for wall-clock times ("2026-11-10T10:00:00") and an
+  // exclusive end date for all-day events (a one-day event ends the next day).
   const eventBody = allDay
     ? {
         summary: title,
         description,
         start: { date: startTime.slice(0, 10) },
-        end: { date: (endTime ?? startTime).slice(0, 10) },
+        end: { date: allDayEnd(startTime.slice(0, 10), (endTime ?? startTime).slice(0, 10)) },
       }
     : {
         summary: title,
         description,
-        start: { dateTime: startTime },
-        end: { dateTime: endTime ?? startTime },
+        start: { dateTime: startTime, ...(timeZone ? { timeZone } : {}) },
+        end: { dateTime: endTime ?? startTime, ...(timeZone ? { timeZone } : {}) },
       };
 
   try {
