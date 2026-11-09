@@ -171,10 +171,10 @@ export async function POST(req: NextRequest) {
     if (!brief) {
       return NextResponse.json({ error: "unparseable", message: "Couldn't write a brief right now. Try again." }, { status: 422 });
     }
-    return NextResponse.json({
-      brief,
-      sources: { contacts: people.filter((p) => p.contact).length, projects: related.length, emails: recent.length },
-    });
+    const sources = { contacts: people.filter((p) => p.contact).length, projects: related.length, emails: recent.length };
+    // Nothing beyond a title: say so, so a generic brief isn't mistaken for insight.
+    const thin = attendees.length === 0 && !event.description?.trim() && sources.projects === 0 && sources.emails === 0;
+    return NextResponse.json({ brief, sources, thin });
   } catch (err: unknown) {
     const wait = rateLimitWait(err);
     if (wait !== null) {

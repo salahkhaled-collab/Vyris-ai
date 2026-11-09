@@ -7,6 +7,7 @@ import type { MeetingBrief } from "@/lib/meeting-brief";
 interface BriefResponse {
   brief?: MeetingBrief;
   sources?: { contacts: number; projects: number; emails: number };
+  thin?: boolean;
   message?: string;
 }
 
@@ -92,6 +93,12 @@ export function MeetingBriefButton({ eventId }: { eventId: string }) {
                 ))}
               </ul>
             </div>
+          )}
+          {data?.thin && (
+            <p className="text-xs text-muted border-t border-line pt-2">
+              Vyris has nothing on file for this meeting yet: no guests, notes, related project or emails. Add guests
+              in Google Calendar, or save the people to Contacts, for a brief worth reading.
+            </p>
           )}
           {sources && (
             <p className="text-[11px] text-muted">
