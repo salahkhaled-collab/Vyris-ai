@@ -144,6 +144,33 @@ interface GmailMessageMeta {
   payload?: { headers?: GmailHeader[] };
 }
 
+function toInboxMessage(m: GmailMessageMeta): InboxMessage {
+  const headers = m.payload?.headers;
+  const from = getHeader(headers, "From");
+  return {
+    id: m.id,
+    threadId: m.threadId,
+    from: parseFromName(from),
+    fromEmail: from,
+    subject: getHeader(headers, "Subject") || "(No subject)",
+    snippet: decodeEntities(m.snippet ?? ""),
+    unread: m.labelIds?.includes("UNREAD") ?? false,
+    timestamp: new Date(m.internalDate ? parseInt(m.internalDate, 10) : Date.now()).toISOString(),
+  };
+}
+
+const METADATA_PARAMS = (() => {
+  const meta = new URLSearchParams({ format: "metadata" });
+  ["From", "Subject", "Date"].forEach((h) => meta.append("metadataHeaders", h));
+  return meta.toString();
+})();
+
+/** One message's metadata (sender, subject, snippet, date). Throws GmailError(404) if it isn't in this mailbox. */
+export async function getMessageMeta(token: string, messageId: string): Promise<InboxMessage> {
+  const m = await gmailFetch<GmailMessageMeta>(token, `/messages/${encodeURIComponent(messageId)}?${METADATA_PARAMS}`);
+  return toInboxMessage(m);
+}
+
 export async function listInbox(token: string, max = 15): Promise<InboxMessage[]> {
   return searchMessages(token, "in:inbox", max, "INBOX");
 }
@@ -167,20 +194,7 @@ export async function searchMessages(token: string, q: string, max = 10, labelId
 
   return messages
     .filter((m): m is GmailMessageMeta => m !== null)
-    .map((m) => {
-      const headers = m.payload?.headers;
-      const from = getHeader(headers, "From");
-      return {
-        id: m.id,
-        threadId: m.threadId,
-        from: parseFromName(from),
-        fromEmail: from,
-        subject: getHeader(headers, "Subject") || "(No subject)",
-        snippet: decodeEntities(m.snippet ?? ""),
-        unread: m.labelIds?.includes("UNREAD") ?? false,
-        timestamp: new Date(m.internalDate ? parseInt(m.internalDate, 10) : Date.now()).toISOString(),
-      };
-    })
+    .map(toInboxMessage)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 }
 
