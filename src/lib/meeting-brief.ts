@@ -41,6 +41,7 @@ export const BRIEF_PROMPT = [
   "- people: each attendee with one short note on who they are or what they last discussed (max 6).",
   "- openItems: unresolved asks, open tasks or deadlines that involve these people (max 5).",
   "- talkingPoints: 2-4 concrete things the user should raise or decide.",
+  "If the data is little more than a title, keep talkingPoints to 2 and do not pad them with generic advice.",
   "Keep every string under 25 words.",
 ].join("\n");
 

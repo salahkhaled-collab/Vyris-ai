@@ -11,7 +11,9 @@ export default function DashboardLayout({
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0">
+      {/* [&_main]:pb-28: every page's scroll area ends with room to scroll its last
+          item clear of the floating "Ask Vyris" button. */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden pb-16 lg:pb-0 [&_main]:pb-28">
         {children}
       </div>
       <MobileNav />
