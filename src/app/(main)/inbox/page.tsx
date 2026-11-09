@@ -7,6 +7,7 @@ import DOMPurify from "dompurify";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
+import { SaveToProject } from "@/components/inbox/SaveToProject";
 import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
 import {
   FILTERS,
@@ -743,6 +744,14 @@ export default function InboxPage() {
               >
                 <X className="w-4 h-4" strokeWidth={1.75} />
               </button>
+
+              <div className="mb-3 pr-8">
+                <SaveToProject
+                  messageId={openEmailId}
+                  suggestedProjectId={triage?.[openEmailId]?.projectId ?? null}
+                  knownProjects={triageProjects}
+                />
+              </div>
 
               <div className="mb-4 pr-8">
                 {!summary && (

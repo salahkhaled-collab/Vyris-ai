@@ -105,6 +105,7 @@ model User {
   automationRules AutomationRule[] @relation("AutomationRuleOwner")
   risks           Risk[]           @relation("RiskOwner")
   aiConversations AiConversation[]
+  linkedEmails    ProjectEmail[]   @relation("ProjectEmailLinker")
 }
 
 model Team {
@@ -187,6 +188,28 @@ model Project {
 
   tasks     Task[]
   documents Document[]
+  emails    ProjectEmail[]
+}
+
+/// A Gmail thread the user saved to a project. Only metadata (subject, sender,
+/// snippet) is kept; the body stays in Gmail. Visible to anyone who can see the project.
+model ProjectEmail {
+  id         String   @id @default(cuid())
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  threadId   String
+  messageId  String
+  subject    String
+  fromName   String
+  fromEmail  String?
+  snippet    String   @db.Text
+  receivedAt DateTime
+  linkedById String
+  linkedBy   User     @relation("ProjectEmailLinker", fields: [linkedById], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([projectId, threadId])
+  @@index([projectId, receivedAt])
 }
 
 enum DecisionStatus {

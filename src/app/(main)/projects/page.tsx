@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
+import { ProjectEmails } from "@/components/projects/ProjectEmails";
 import { useUser } from "@/lib/user-context";
 import { buildAttentionReport, overdueCutoff, type AttentionItem } from "@/lib/attention";
 import {
@@ -681,6 +682,7 @@ export default function ProjectsPage() {
                         <Plus className="w-4 h-4" strokeWidth={2} />
                       </button>
                     </div>
+                    <ProjectEmails projectId={project.id} myId={myId} isOwner={project.owner.id === myId} />
                   </div>
                 )}
               </Panel>
