@@ -113,6 +113,16 @@ export default function ProjectsPage() {
       .finally(() => setLoading(false));
   }
 
+  /** Re-read projects without the loading state, e.g. to show tasks an automation just created. */
+  function refreshQuietly() {
+    fetch("/api/projects")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { projects?: Project[] } | null) => {
+        if (data?.projects) setProjects(data.projects);
+      })
+      .catch(() => {});
+  }
+
   // Team members for the assignee picker. Solo users get none, so no picker shows.
   useEffect(() => {
     fetch("/api/team/members")
@@ -244,6 +254,9 @@ export default function ProjectsPage() {
         body: JSON.stringify(status === "BLOCKED" ? { status, blockedReason: reason } : { status }),
       });
       if (!res.ok) throw new Error(`Task status update failed: ${res.status}`);
+      // Blocking or finishing a task can fire automation rules that create
+      // follow-up tasks on the server; pull them in without a loading flash.
+      if (status === "BLOCKED" || status === "DONE") refreshQuietly();
     } catch (err) {
       setProjects(previous);
       console.error(err);
