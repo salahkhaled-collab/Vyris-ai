@@ -2,22 +2,12 @@
 //
 // Validation for the public waitlist form. Pure and client-safe.
 
-export const BUSINESS_TYPES = ["ecommerce", "agency", "content", "other"] as const;
-export type BusinessType = (typeof BUSINESS_TYPES)[number];
-
-export const BUSINESS_LABELS: Record<BusinessType, string> = {
-  ecommerce: "E-commerce",
-  agency: "Agency or freelance",
-  content: "Content or creator",
-  other: "Something else",
-};
-
 const EMAIL_RE = /^[^\s@<>,;"]+@[^\s@<>,;"]+\.[^\s@<>,;"]{2,}$/;
 
 export interface WaitlistInput {
+  name: string;
   email: string;
-  name: string | null;
-  businessType: BusinessType | null;
+  company: string | null;
   source: string | null;
 }
 
@@ -34,17 +24,16 @@ const text = (v: unknown, max: number): string | null => {
 export function parseWaitlistInput(body: unknown): WaitlistInput | { error: string } | "bot" {
   const b = (typeof body === "object" && body !== null ? body : {}) as Record<string, unknown>;
   if (typeof b.website === "string" && b.website.trim().length > 0) return "bot";
+  const name = text(b.name, 80);
+  if (!name) return { error: "Enter your name." };
   const email = typeof b.email === "string" ? b.email.trim().toLowerCase() : "";
   if (email.length === 0) return { error: "Enter your email address." };
   if (email.length > 254 || !EMAIL_RE.test(email)) return { error: "That email address doesn't look right." };
-  const businessType = (BUSINESS_TYPES as readonly string[]).includes(String(b.businessType))
-    ? (b.businessType as BusinessType)
-    : null;
   const source = text(b.source, 60);
   return {
+    name,
     email,
-    name: text(b.name, 80),
-    businessType,
+    company: text(b.company, 120),
     source: source && /^[\w .-]+$/.test(source) ? source : null,
   };
 }

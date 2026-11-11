@@ -2,20 +2,25 @@
 
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   ArrowRight,
   Brain,
   CalendarClock,
-  Check,
+  Clock,
   FolderKanban,
   Inbox,
   Loader2,
+  Plug,
+  ShieldCheck,
   Split,
+  Target,
   Workflow,
+  type LucideIcon,
 } from "lucide-react";
 import { VyrisMark } from "@/components/ui/VyrisMark";
 import { cn } from "@/lib/utils";
-import { BUSINESS_LABELS, BUSINESS_TYPES, type BusinessType } from "@/lib/waitlist";
+import { AGENTS, AGENT_GROUPS, type AgentGroup } from "@/lib/waitlist-agents";
 
 // ── Motion helpers ─────────────────────────────────────────────────────────
 
@@ -72,114 +77,69 @@ function Reveal({ children, delay = 0, className }: { children: ReactNode; delay
 // ── Waitlist form ──────────────────────────────────────────────────────────
 
 function WaitlistForm({ variant = "light", source }: { variant?: "light" | "dark"; source: string | null }) {
+  const router = useRouter();
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [businessType, setBusinessType] = useState<BusinessType | "">("");
+  const [company, setCompany] = useState("");
   const [website, setWebsite] = useState(""); // honeypot: hidden from people
-  const [state, setState] = useState<"idle" | "sending" | "done">("idle");
+  const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const dark = variant === "dark";
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (state === "sending") return;
-    setState("sending");
+    if (sending) return;
+    setSending(true);
     setError(null);
     try {
       const res = await fetch("/api/waitlist", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, businessType: businessType || undefined, website, source }),
+        body: JSON.stringify({ name, email, company, website, source }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) {
         setError(data.message ?? "Couldn't save that. Please try again.");
-        setState("idle");
+        setSending(false);
         return;
       }
-      setState("done");
+      try {
+        sessionStorage.setItem("vyris.waitlist.name", name.trim().split(" ")[0] ?? "");
+      } catch {
+        // Private windows can block storage; the success page works without it.
+      }
+      router.push("/waitlist/success");
     } catch {
       setError("Couldn't reach Vyris. Check your connection and try again.");
-      setState("idle");
+      setSending(false);
     }
-  }
-
-  if (state === "done") {
-    return (
-      <div
-        role="status"
-        className={cn(
-          "animate-pop-in flex items-start gap-3 rounded-2xl border p-5",
-          dark ? "border-white/20 bg-white/10 text-white" : "border-line bg-panel text-ink-text"
-        )}
-      >
-        <span className={cn("mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full", dark ? "bg-white text-brass" : "bg-signal text-white")}>
-          <Check className="h-4 w-4" strokeWidth={2.5} />
-        </span>
-        <div>
-          <div className="font-display text-lg leading-snug">You&apos;re on the list.</div>
-          <p className={cn("mt-1 text-sm", dark ? "text-white/80" : "text-muted")}>
-            We&apos;ll email <span className="font-medium">{email.trim()}</span> when your early access is ready.
-          </p>
-        </div>
-      </div>
-    );
   }
 
   const field = cn(
     "w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2",
     dark
       ? "border-white/25 bg-white/10 text-white placeholder:text-white/60 focus:ring-white/60"
-      : "border-line bg-panel text-ink-text placeholder:text-muted focus:ring-brass/40"
+      : "border-line bg-ink text-ink-text placeholder:text-muted focus:ring-brass/40"
   );
+  const label = cn("mb-1.5 block text-xs font-medium", dark ? "text-white/80" : "text-muted");
+  const id = (f: string) => `wl-${f}-${variant}`;
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <label className="sr-only" htmlFor={`wl-email-${variant}`}>
-          Email address
-        </label>
-        <input
-          id={`wl-email-${variant}`}
-          type="email"
-          inputMode="email"
-          autoComplete="email"
-          required
-          maxLength={254}
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@yourbusiness.com"
-          className={cn(field, "sm:flex-1")}
-        />
-        <button
-          type="submit"
-          disabled={state === "sending"}
-          className={cn(
-            "group flex shrink-0 items-center justify-center gap-2 rounded-xl px-6 py-3 text-sm font-medium transition-transform hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0",
-            dark ? "bg-white text-brass" : "bg-brass text-white"
-          )}
-        >
-          {state === "sending" ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          Join the waitlist
-          <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
-        </button>
+    <form onSubmit={submit} noValidate className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className={label} htmlFor={id("name")}>Name</label>
+          <input id={id("name")} autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={field} />
+        </div>
+        <div>
+          <label className={label} htmlFor={id("company")}>Company <span className="font-normal opacity-70">(optional)</span></label>
+          <input id={id("company")} autoComplete="organization" maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Your business" className={field} />
+        </div>
       </div>
-
-      <label className="sr-only" htmlFor={`wl-type-${variant}`}>
-        What do you run?
-      </label>
-      <select
-        id={`wl-type-${variant}`}
-        value={businessType}
-        onChange={(e) => setBusinessType(e.target.value as BusinessType | "")}
-        className={cn(field, "sm:w-auto", !businessType && (dark ? "text-white/70" : "text-muted"))}
-      >
-        <option value="">What do you run? (optional)</option>
-        {BUSINESS_TYPES.map((t) => (
-          <option key={t} value={t} className="text-ink-text">
-            {BUSINESS_LABELS[t]}
-          </option>
-        ))}
-      </select>
+      <div>
+        <label className={label} htmlFor={id("email")}>Email</label>
+        <input id={id("email")} type="email" inputMode="email" autoComplete="email" required maxLength={254} value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@yourbusiness.com" className={field} />
+      </div>
 
       {/* Honeypot: off-screen and skipped by keyboards and screen readers. */}
       <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
@@ -194,6 +154,18 @@ function WaitlistForm({ variant = "light", source }: { variant?: "light" | "dark
           {error}
         </p>
       )}
+      <button
+        type="submit"
+        disabled={sending}
+        className={cn(
+          "group flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3.5 text-sm font-medium transition-transform hover:-translate-y-0.5 disabled:opacity-60 disabled:hover:translate-y-0",
+          dark ? "bg-white text-brass" : "bg-brass text-white"
+        )}
+      >
+        {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        Join the waitlist
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" strokeWidth={2} />
+      </button>
       <p className={cn("text-xs", dark ? "text-white/70" : "text-muted")}>
         We&apos;ll only email you about Vyris access. See our{" "}
         <Link href="/privacy" className="underline underline-offset-2">
@@ -306,8 +278,22 @@ const features = [
   },
 ];
 
+const benefits: { icon: LucideIcon; title: string; body: string }[] = [
+  { icon: Clock, title: "Your mornings back", body: "Start the day with a sorted inbox and a digest, not an hour of triage." },
+  { icon: Target, title: "Nothing slips", body: "Stuck and overdue work is flagged and followed up without you remembering to chase it." },
+  { icon: ShieldCheck, title: "You stay in control", body: "Vyris drafts and suggests. You approve every email and every decision." },
+];
+
+const groupIcons: Record<AgentGroup, LucideIcon> = {
+  Inbox: Inbox,
+  Meetings: CalendarClock,
+  Projects: FolderKanban,
+  Automation: Workflow,
+  Strategy: Split,
+};
+
 const steps = [
-  { n: "01", title: "Join the waitlist", body: "Leave your email. It takes ten seconds and you can tell us what you run." },
+  { n: "01", title: "Join the waitlist", body: "Leave your name and email. It takes ten seconds." },
   { n: "02", title: "Get your invite", body: "We let people in a few at a time, so each new founder gets real attention and a product that works." },
   { n: "03", title: "Connect and delegate", body: "Sign in, connect Gmail and Calendar if you want to, and hand Vyris the busywork." },
 ];
@@ -339,7 +325,9 @@ const faqs = [
 
 export function WaitlistPage() {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [group, setGroup] = useState<AgentGroup | "All">("All");
   const [source, setSource] = useState<string | null>(null);
+  const shownAgents = group === "All" ? AGENTS : AGENTS.filter((a) => a.group === group);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     setSource(q.get("utm_source") ?? q.get("ref"));
@@ -350,12 +338,13 @@ export function WaitlistPage() {
       {/* Nav */}
       <header className="sticky top-0 z-40 border-b border-line bg-ink/80 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="group flex items-center gap-3">
+          <Link href="/waitlist" className="group flex items-center gap-3">
             <VyrisMark size="md" className="transition-transform group-hover:scale-105" />
             <span className="font-display text-lg tracking-wide">Vyris</span>
           </Link>
           <nav className="hidden items-center gap-8 text-sm text-muted md:flex" aria-label="Page sections">
             <a href="#features" className="transition-colors hover:text-ink-text">Features</a>
+            <a href="#agents" className="transition-colors hover:text-ink-text">Agents</a>
             <a href="#how" className="transition-colors hover:text-ink-text">How it works</a>
             <a href="#about" className="transition-colors hover:text-ink-text">About</a>
             <a href="#faq" className="transition-colors hover:text-ink-text">FAQ</a>
@@ -391,7 +380,7 @@ export function WaitlistPage() {
                 Vyris is an AI chief of staff for founders who run the business themselves. It sorts your inbox, briefs
                 you before meetings and chases stuck work, so you can get back to the work that matters.
               </p>
-              <div className="animate-fade-up mt-8 max-w-xl [animation-delay:270ms]">
+              <div className="animate-fade-up mt-8 max-w-xl rounded-2xl border border-line bg-panel p-6 shadow-xl [animation-delay:270ms]">
                 <WaitlistForm source={source} />
               </div>
             </div>
@@ -439,6 +428,78 @@ export function WaitlistPage() {
                 </Reveal>
               ))}
             </div>
+          </div>
+        </section>
+
+        {/* Benefits */}
+        <section className="border-y border-line bg-panel">
+          <div className="mx-auto grid max-w-6xl gap-10 px-6 py-16 md:grid-cols-3">
+            {benefits.map((b, i) => (
+              <Reveal key={b.title} delay={i * 100}>
+                <b.icon className="h-6 w-6 text-brass" strokeWidth={1.75} />
+                <h3 className="mt-4 font-display text-2xl">{b.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-muted">{b.body}</p>
+              </Reveal>
+            ))}
+          </div>
+        </section>
+
+        {/* Agents */}
+        <section id="agents" className="scroll-mt-24">
+          <div className="mx-auto max-w-6xl px-6 py-20 lg:py-28">
+            <Reveal>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted">Your staff</div>
+              <h2 className="mt-3 max-w-3xl font-display text-4xl leading-tight tracking-tight sm:text-5xl">
+                {AGENTS.length} agents, <span className="italic text-brass">one chief of staff.</span>
+              </h2>
+              <p className="mt-4 max-w-2xl text-base leading-relaxed text-muted">
+                Vyris is a team of specialised agents working behind one assistant. Here is what each one does and what
+                it needs from you to work.
+              </p>
+            </Reveal>
+            <div className="mt-8 flex flex-wrap gap-2" role="group" aria-label="Filter agents by area">
+              {(["All", ...AGENT_GROUPS] as const).map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setGroup(g)}
+                  aria-pressed={group === g}
+                  className={cn(
+                    "rounded-full border px-4 py-1.5 text-sm transition-colors",
+                    group === g ? "border-brass bg-brass text-white" : "border-line bg-panel text-muted hover:text-ink-text"
+                  )}
+                >
+                  {g}
+                  <span className="ml-1.5 opacity-70">{g === "All" ? AGENTS.length : AGENTS.filter((a) => a.group === g).length}</span>
+                </button>
+              ))}
+            </div>
+            <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {shownAgents.map((a, i) => {
+                const Icon = groupIcons[a.group];
+                return (
+                  <li
+                    key={a.name}
+                    style={{ animationDelay: `${Math.min(i, 11) * 40}ms` }}
+                    className="group flex animate-fade-up flex-col rounded-2xl border border-line bg-panel p-5 transition-all duration-300 hover:-translate-y-1 hover:border-brass/40 hover:shadow-xl"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brass-soft text-brass transition-colors group-hover:bg-brass group-hover:text-white">
+                        <Icon className="h-4 w-4" strokeWidth={1.75} />
+                      </span>
+                      <span className="text-[10px] uppercase tracking-[0.16em] text-muted">{a.group}</span>
+                    </div>
+                    <h3 className="mt-4 font-display text-lg leading-snug">{a.name}</h3>
+                    <p className="mt-1.5 flex-1 text-sm leading-relaxed text-muted">{a.does}</p>
+                    <div className="mt-4 flex items-start gap-2 border-t border-line pt-3 text-xs leading-relaxed text-ink-text">
+                      <Plug className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brass" strokeWidth={1.75} />
+                      <span>
+                        <span className="font-medium">Needs:</span> {a.needs}
+                      </span>
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
           </div>
         </section>
 
@@ -555,7 +616,6 @@ export function WaitlistPage() {
             <a href="https://www.instagram.com/vyris_app" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink-text">
               Instagram
             </a>
-            <Link href="/login" className="transition-colors hover:text-ink-text">Log in</Link>
           </div>
         </div>
       </footer>

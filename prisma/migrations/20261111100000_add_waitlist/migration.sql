@@ -3,7 +3,7 @@ CREATE TABLE "WaitlistEntry" (
     "id" TEXT NOT NULL,
     "email" TEXT NOT NULL,
     "name" TEXT,
-    "businessType" TEXT,
+    "company" TEXT,
     "source" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 

@@ -18,11 +18,8 @@ export async function POST(req: NextRequest) {
     await prisma.waitlistEntry.upsert({
       where: { email: parsed.email },
       create: parsed,
-      // Keep the original sign-up; only fill in details they add later.
-      update: {
-        ...(parsed.name ? { name: parsed.name } : {}),
-        ...(parsed.businessType ? { businessType: parsed.businessType } : {}),
-      },
+      // Keep the original sign-up date and source; refresh the details they typed.
+      update: { name: parsed.name, ...(parsed.company ? { company: parsed.company } : {}) },
     });
     return NextResponse.json({ ok: true });
   } catch (err: unknown) {
