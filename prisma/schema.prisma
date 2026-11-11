@@ -483,3 +483,17 @@ model Memory {
 
   @@index([userId])
 }
+
+/// Someone who asked for early access on /waitlist. Not a user account.
+model WaitlistEntry {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String?
+  /// What they run: ecommerce | agency | content | other
+  businessType String?
+  /// Where they came from (utm_source or ref), if the link carried one.
+  source       String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
