@@ -19,7 +19,10 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-orbit-drift {
+  .animate-orbit-drift,
+  .animate-fade-up,
+  .animate-float-slow,
+  .animate-pop-in {
     animation: none !important;
   }
 }
