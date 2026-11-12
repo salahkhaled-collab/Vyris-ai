@@ -34,5 +34,6 @@ export const config = {
     "/biz-dev/:path*",
     "/brand/:path*",
     "/onboarding/:path*",
+    "/admin/:path*",
   ],
 };
