@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import { Topbar } from "@/components/layout/Topbar";
+import { AI_ACTION_EVENT } from "@/components/ai/PendingActions";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
 import { ProjectEmails } from "@/components/projects/ProjectEmails";
@@ -132,6 +133,13 @@ export default function ProjectsPage() {
   }, []);
 
   useEffect(load, []);
+
+  // Show projects and tasks the assistant created as soon as they're approved.
+  useEffect(() => {
+    const onAction = () => refreshQuietly();
+    window.addEventListener(AI_ACTION_EVENT, onAction);
+    return () => window.removeEventListener(AI_ACTION_EVENT, onAction);
+  }, []);
 
   function toggleExpanded(id: string) {
     setExpanded((prev) => {

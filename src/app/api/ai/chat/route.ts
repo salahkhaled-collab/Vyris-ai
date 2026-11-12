@@ -141,13 +141,13 @@ export async function POST(req: NextRequest) {
   const page = typeof body.page === "string" ? body.page.slice(0, 40) : null;
 
   try {
-    const reply = await runAssistantTurn({
+    const { reply, pendingActions } = await runAssistantTurn({
       userId: session.user.id,
       text: last.content.trim(),
       history: messages.slice(0, -1),
       page,
     });
-    return NextResponse.json({ reply });
+    return NextResponse.json({ reply, pendingActions });
   } catch (err) {
     const wait = rateLimitWait(err);
     if (wait !== null) {

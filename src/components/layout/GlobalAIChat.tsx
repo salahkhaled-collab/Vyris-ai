@@ -1,5 +1,6 @@
 "use client";
 
+import { PendingActions, type PendingActionView } from "@/components/ai/PendingActions";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -18,6 +19,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  pendingActions?: PendingActionView[];
 }
 
 // Page-specific context labels
@@ -192,6 +194,7 @@ export function GlobalAIChat() {
         role: "assistant",
         content: data.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        pendingActions: Array.isArray(data.pendingActions) ? data.pendingActions : [],
       };
       setMessages((prev) => [...prev, reply]);
 
@@ -319,6 +322,11 @@ export function GlobalAIChat() {
                   <p className="whitespace-pre-wrap">
                     {m.role === "assistant" ? m.content.replace(/\*\*(.+?)\*\*/g, "$1") : m.content}
                   </p>
+                  {m.pendingActions && m.pendingActions.length > 0 && (
+                    <div className="mt-2.5">
+                      <PendingActions actions={m.pendingActions} />
+                    </div>
+                  )}
                   <div
                     className={cn(
                       "text-[10px] mt-1.5 font-mono",
