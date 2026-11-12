@@ -12,7 +12,14 @@ import { VYRIS_TOOLS, runTool, type VyrisToolName } from "@/lib/ai/tools";
 import { VYRIS_SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { buildSystemPromptWithContext } from "@/lib/ai/context";
 import { getScope } from "@/lib/task-access";
-import { AWAITING_APPROVAL, describeAction, isWriteTool, type PendingAction } from "@/lib/ai/actions";
+import {
+  AWAITING_APPROVAL,
+  actionDetails,
+  describeAction,
+  isWriteTool,
+  normalizeActionInput,
+  type PendingAction,
+} from "@/lib/ai/actions";
 
 export const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOOL_ROUNDS = 5;
@@ -102,14 +109,18 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<Assis
         if (!KNOWN_TOOLS.has(call.name)) throw new Error(`Unknown tool: ${call.name}`);
         if (isWriteTool(call.name)) {
           // Never run a change here: propose it, and the user approves it.
+          const normalized = normalizeActionInput(call.name, call.input);
           if (pendingActions.length >= MAX_PENDING_ACTIONS) {
             content = JSON.stringify({ ok: false, error: "Too many proposed changes in one reply. Propose fewer." });
+          } else if (!normalized.ok) {
+            content = JSON.stringify({ ok: false, error: normalized.error });
           } else {
             pendingActions.push({
               id: call.id,
               tool: call.name,
-              input: call.input,
-              summary: await describeAction(call.name, call.input, scope),
+              input: normalized.input,
+              summary: await describeAction(call.name, normalized.input, scope),
+              details: actionDetails(normalized.input),
             });
             content = JSON.stringify(AWAITING_APPROVAL);
           }

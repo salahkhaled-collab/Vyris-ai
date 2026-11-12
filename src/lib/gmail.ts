@@ -7,6 +7,7 @@
 import { MAX_DAYS_WAITING, MIN_DAYS_WAITING, pickUnanswered, type ThreadLastMessage, type Unanswered } from "@/lib/unanswered";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
+const GMAIL_TIMEOUT_MS = 10_000;
 
 export interface GmailHeader {
   name: string;
@@ -129,6 +130,8 @@ async function gmailFetch<T>(token: string, path: string): Promise<T> {
   const res = await fetch(`${GMAIL}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
     cache: "no-store",
+    // A hung Gmail call must not hold a request past the function time limit.
+    signal: AbortSignal.timeout(GMAIL_TIMEOUT_MS),
   });
   if (!res.ok) {
     console.error("Gmail API error:", res.status, await res.text().catch(() => ""));

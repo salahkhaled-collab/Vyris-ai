@@ -25,7 +25,7 @@ export const MAX_DAYS_WAITING = 14;
 /** Mailers: "noreply", "no-reply-abc", "mailer-daemon"... */
 const NO_REPLY = /^(no-?reply|do-?not-?reply|mailer-daemon|postmaster)/;
 /** Role inboxes that send in bulk. Exact local part only, so "sara.news@" is a person. */
-const ROLE = /^(notifications?|notify|newsletters?|news|updates?|alerts?|billing|receipts?|support|hello|info|marketing|team)@/;
+const ROLE = /^(notifications?|notify|newsletters?|news|updates?|alerts?|billing|receipts?|support|info|marketing)@/;
 
 /** The bare address inside a From header, lowercased. */
 export function addressOf(from: string): string {

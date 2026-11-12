@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getScope } from "@/lib/task-access";
 import { runTool } from "@/lib/ai/tools";
-import { isWriteTool } from "@/lib/ai/actions";
+import { isWriteTool, normalizeActionInput } from "@/lib/ai/actions";
 import { consume, MINUTE } from "@/lib/rate-limit";
 
 // Some actions (task status) can run automation rules that send email.
@@ -28,9 +28,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "rate_limited", message: "Too many actions at once. Wait a minute." }, { status: 429 });
   }
 
+  // The same normalisation the proposal went through: what was shown is what runs.
+  const normalized = normalizeActionInput(tool, input);
+  if (!normalized.ok) {
+    return NextResponse.json({ error: "invalid_action", message: normalized.error }, { status: 400 });
+  }
+
   try {
     const scope = await getScope(session.user.id);
-    const result = (await runTool(tool, input, scope)) as { ok?: boolean; error?: string } | null;
+    const result = (await runTool(tool, normalized.input, scope)) as { ok?: boolean; error?: string } | null;
     if (result && result.ok === false) {
       return NextResponse.json({ error: "action_failed", message: result.error ?? "That didn't work.", result }, { status: 422 });
     }

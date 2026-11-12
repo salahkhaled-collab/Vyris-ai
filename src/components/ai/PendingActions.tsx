@@ -8,6 +8,8 @@ export interface PendingActionView {
   tool: string;
   input: Record<string, unknown>;
   summary: string;
+  /** Every field that will be saved. */
+  details?: string[];
 }
 
 type State = { status: "waiting" | "running" | "done" | "dismissed" | "error"; message?: string };
@@ -55,6 +57,15 @@ export function PendingActions({ actions }: { actions: PendingActionView[] }) {
               {st.status === "done" ? "Done" : st.status === "dismissed" ? "Dismissed" : "Needs your approval"}
             </div>
             <div className={st.status === "dismissed" ? "text-muted line-through" : "text-ink-text"}>{a.summary}</div>
+            {a.details && a.details.length > 0 && st.status !== "dismissed" && (
+              <ul className="mt-1.5 space-y-0.5 text-xs text-muted break-words">
+                {a.details.map((d, i) => (
+                  <li key={i} className="whitespace-pre-wrap">
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            )}
             {(st.status === "waiting" || st.status === "error" || st.status === "running") && (
               <div className="flex items-center gap-2 mt-2">
                 <button
