@@ -11,18 +11,18 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { teamId: true },
+    select: { teamId: true, accessLevel: true },
   });
 
   if (!user?.teamId) {
-    return NextResponse.json({ members: [], hasTeam: false });
+    return NextResponse.json({ members: [], hasTeam: false, me: { id: session.user.id, accessLevel: user?.accessLevel ?? null } });
   }
 
   const members = await prisma.user.findMany({
     where: { teamId: user.teamId },
-    select: { id: true, name: true, email: true, image: true },
+    select: { id: true, name: true, email: true, image: true, accessLevel: true },
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json({ members, hasTeam: true });
+  return NextResponse.json({ members, hasTeam: true, me: { id: session.user.id, accessLevel: user.accessLevel } });
 }

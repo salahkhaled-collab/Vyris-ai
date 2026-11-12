@@ -41,6 +41,7 @@ interface TeamMember {
   name: string | null;
   email: string | null;
   image: string | null;
+  accessLevel: "ADMIN" | "MEMBER" | null;
 }
 
 interface InviteOutcome {
@@ -121,6 +122,66 @@ function TeamTab() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [inviteError, setInviteError] = useState<string | null>(null);
   const [switching, setSwitching] = useState(false);
+  const [me, setMe] = useState<{ id: string; accessLevel: "ADMIN" | "MEMBER" | null } | null>(null);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [memberError, setMemberError] = useState<string | null>(null);
+  const isAdmin = me?.accessLevel === "ADMIN";
+
+  async function changeLevel(m: TeamMember, accessLevel: "ADMIN" | "MEMBER") {
+    setBusyId(m.id);
+    setMemberError(null);
+    try {
+      const res = await fetch(`/api/team/members/${encodeURIComponent(m.id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ accessLevel }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message ?? "Couldn't change access.");
+      setMembers((prev) => prev.map((x) => (x.id === m.id ? { ...x, accessLevel } : x)));
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : "Couldn't change access.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function removeMember(m: TeamMember) {
+    const self = m.id === me?.id;
+    const ok = window.confirm(
+      self
+        ? "Leave this team? You'll go back to a personal workspace and lose access to work your teammates shared."
+        : `Remove ${m.name ?? m.email ?? "this person"} from the team? They'll lose access to shared work.`
+    );
+    if (!ok) return;
+    setBusyId(m.id);
+    setMemberError(null);
+    try {
+      const res = await fetch(`/api/team/members/${encodeURIComponent(m.id)}`, { method: "DELETE" });
+      const data = (await res.json().catch(() => ({}))) as { message?: string };
+      if (!res.ok) throw new Error(data.message ?? "Couldn't remove them.");
+      if (self) {
+        window.location.assign("/dashboard"); // reload so the whole app sees the personal workspace
+        return;
+      }
+      setMembers((prev) => prev.filter((x) => x.id !== m.id));
+    } catch (err) {
+      setMemberError(err instanceof Error ? err.message : "Couldn't remove them.");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function revokeInvite(id: string) {
+    setMemberError(null);
+    const res = await fetch(`/api/invites/${encodeURIComponent(id)}`, { method: "DELETE" }).catch(() => null);
+    if (!res?.ok) {
+      const data = (await res?.json().catch(() => ({}))) as { message?: string } | undefined;
+      setMemberError(data?.message ?? "Couldn't revoke the invite.");
+      return;
+    }
+    setInvites((prev) => prev.filter((i) => i.id !== id));
+  }
 
   async function loadTeamData() {
     setLoading(true);
@@ -135,6 +196,7 @@ function TeamTab() {
       if (!membersRes.ok) throw new Error(membersData.message ?? "Could not load team members.");
       setMembers(membersData.members ?? []);
       setHasTeam(membersData.hasTeam ?? false);
+      setMe(membersData.me ?? null);
       if (invitesRes.ok) setInvites(invitesData.invites ?? []);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not load team data.");
@@ -243,6 +305,10 @@ function TeamTab() {
     <div className="space-y-6">
       {error && <div className="text-sm text-signal/80">{error}</div>}
 
+      {!isAdmin && (
+        <p className="text-xs text-muted">Only team admins can invite or remove people.</p>
+      )}
+      {isAdmin && (
       <Panel className="p-5">
         <h3 className="font-display text-lg mb-3">Invite someone</h3>
         <div className="space-y-2.5">
@@ -325,6 +391,7 @@ function TeamTab() {
           </div>
         )}
       </Panel>
+      )}
 
       <div>
         <h3 className="text-xs uppercase tracking-[0.14em] text-muted mb-3">
@@ -339,13 +406,46 @@ function TeamTab() {
               ) : (
                 <div className="w-10 h-10 rounded-full bg-brass-soft shrink-0" />
               )}
-              <div className="min-w-0">
-                <div className="text-sm font-medium truncate">{m.name ?? "Unnamed"}</div>
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-medium truncate">
+                  {m.name ?? "Unnamed"}
+                  {m.id === me?.id && <span className="text-muted font-normal"> (you)</span>}
+                </div>
                 <div className="text-xs text-muted truncate">{m.email}</div>
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {isAdmin && m.id !== me?.id ? (
+                    <select
+                      value={m.accessLevel ?? "MEMBER"}
+                      disabled={busyId === m.id}
+                      onChange={(e) => void changeLevel(m, e.target.value as "ADMIN" | "MEMBER")}
+                      aria-label={`Access for ${m.name ?? m.email ?? "this person"}`}
+                      className="text-xs bg-panel-2 border border-line rounded-lg px-2 py-1"
+                    >
+                      <option value="ADMIN">Admin</option>
+                      <option value="MEMBER">Member</option>
+                    </select>
+                  ) : (
+                    <span className="text-xs text-muted">{m.accessLevel === "ADMIN" ? "Admin" : "Member"}</span>
+                  )}
+                  {(isAdmin || m.id === me?.id) && (
+                    <button
+                      onClick={() => void removeMember(m)}
+                      disabled={busyId === m.id}
+                      className="text-xs text-red-600 hover:underline disabled:opacity-50"
+                    >
+                      {m.id === me?.id ? "Leave team" : "Remove"}
+                    </button>
+                  )}
+                </div>
               </div>
             </Panel>
           ))}
         </div>
+        {memberError && (
+          <p role="alert" className="text-xs text-red-600 mt-3">
+            {memberError}
+          </p>
+        )}
       </div>
 
       {invites.length > 0 && (
@@ -367,6 +467,15 @@ function TeamTab() {
                     {" · "}{inv.accessLevel === "ADMIN" ? "Admin" : "Member"}
                   </div>
                 </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => void revokeInvite(inv.id)}
+                    className="shrink-0 text-xs text-muted hover:text-red-600 hover:underline"
+                    aria-label={`Revoke invite${inv.email ? ` for ${inv.email}` : ""}`}
+                  >
+                    Revoke
+                  </button>
+                )}
                 {inv.token && (
                   <button
                     onClick={() => void copyLink(inv.id, inviteLink(inv.token))}

@@ -33,7 +33,7 @@ export function PendingActions({ actions }: { actions: PendingActionView[] }) {
       const res = await fetch("/api/ai/actions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tool: a.tool, input: a.input }),
+        body: JSON.stringify({ tool: a.tool, input: a.input, actionId: a.id }),
       });
       const data = (await res.json().catch(() => ({}))) as { message?: string };
       if (!res.ok) {

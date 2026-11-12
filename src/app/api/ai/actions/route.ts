@@ -4,7 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { getScope } from "@/lib/task-access";
 import { runTool } from "@/lib/ai/tools";
 import { isWriteTool, normalizeActionInput } from "@/lib/ai/actions";
-import { consume, MINUTE } from "@/lib/rate-limit";
+import { createHash } from "crypto";
+import { consume, isLimited, DAY, MINUTE } from "@/lib/rate-limit";
 
 // Some actions (task status) can run automation rules that send email.
 export const maxDuration = 30;
@@ -18,7 +19,7 @@ export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
 
-  const body = (await req.json().catch(() => null)) as { tool?: unknown; input?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as { tool?: unknown; input?: unknown; actionId?: unknown } | null;
   const tool = typeof body?.tool === "string" ? body.tool : "";
   const input = body?.input && typeof body.input === "object" && !Array.isArray(body.input) ? (body.input as Record<string, unknown>) : null;
   if (!isWriteTool(tool) || !input) {
@@ -34,12 +35,24 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_action", message: normalized.error }, { status: 400 });
   }
 
+  // Each proposal runs at most once: "Try again" after a slow response, or a
+  // double click, mustn't create the same project twice.
+  const actionId = typeof body?.actionId === "string" ? body.actionId.slice(0, 200) : "";
+  const doneKey = actionId
+    ? "ai-action-done:" +
+      createHash("sha256").update(`${session.user.id}|${actionId}|${tool}|${JSON.stringify(normalized.input)}`).digest("hex")
+    : null;
+  if (doneKey && (await isLimited(doneKey, 1, DAY))) {
+    return NextResponse.json({ ok: true, alreadyDone: true });
+  }
+
   try {
     const scope = await getScope(session.user.id);
     const result = (await runTool(tool, normalized.input, scope)) as { ok?: boolean; error?: string } | null;
     if (result && result.ok === false) {
       return NextResponse.json({ error: "action_failed", message: result.error ?? "That didn't work.", result }, { status: 422 });
     }
+    if (doneKey) await consume(doneKey, 1, DAY).catch(() => {});
     return NextResponse.json({ ok: true, result });
   } catch (err) {
     console.error("AI action failed:", err);
