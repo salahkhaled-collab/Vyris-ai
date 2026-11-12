@@ -4,12 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { scopeFilter } from "@/lib/ai/scope";
 import { getScope, isValidAssignee } from "@/lib/task-access";
-
-interface CreateTaskBody {
-  title: string;
-  dueDate?: string;
-  assigneeId?: string | null;
-}
+import { parseTaskCreate } from "@/lib/task-input";
 
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -27,15 +22,9 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
 
-  let body: CreateTaskBody;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
-  }
-
-  if (!body.title?.trim()) {
-    return NextResponse.json({ error: "missing_title" }, { status: 400 });
+  const body = parseTaskCreate(await req.json().catch(() => null));
+  if ("error" in body) {
+    return NextResponse.json(body, { status: 400 });
   }
 
   // Omitted/null assignee means "the owner", which is what every solo user gets.
@@ -45,11 +34,11 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 
   const task = await prisma.task.create({
     data: {
-      title: body.title.trim(),
-      dueDate: body.dueDate ? new Date(body.dueDate) : null,
+      title: body.title,
+      dueDate: body.dueDate,
       projectId: params.id,
       ownerId: session.user.id,
-      assigneeId: body.assigneeId || null,
+      assigneeId: body.assigneeId,
     },
   });
 

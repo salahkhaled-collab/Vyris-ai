@@ -156,11 +156,15 @@ function BetRow({
     setDeleting(true);
     try {
       const res = await fetch(`/api/strategic-bets/${bet.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(data.message ?? "Couldn't delete this. Try again.");
+      }
       onDeleted(bet.id);
-    } catch {
+    } catch (err) {
       setDeleting(false);
       setConfirming(false);
+      window.alert(err instanceof Error && err.message ? err.message : "Couldn't delete this. Try again.");
     }
   }
 
@@ -224,11 +228,15 @@ function ObjectiveCard({
     setDeleting(true);
     try {
       const res = await fetch(`/api/objectives/${o.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(data.message ?? "Couldn't delete this. Try again.");
+      }
       onDeleted(o.id);
-    } catch {
+    } catch (err) {
       setDeleting(false);
       setConfirming(false);
+      window.alert(err instanceof Error && err.message ? err.message : "Couldn't delete this. Try again.");
     }
   }
 

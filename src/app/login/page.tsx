@@ -6,12 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { VyrisMark } from "@/components/ui/VyrisMark";
 import { AuthErrorNotice } from "@/components/auth/AuthErrorNotice";
+import { safeRedirectPath } from "@/lib/utils";
 
 function LoginContent() {
   const { status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
- const callbackUrl = searchParams.get("callbackUrl") || "/dashboard";
+ const callbackUrl = safeRedirectPath(searchParams.get("callbackUrl"), "/dashboard");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");

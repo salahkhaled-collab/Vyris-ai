@@ -479,7 +479,7 @@ model Memory {
   userId    String
   content   String
   createdAt DateTime @default(now())
-  user      User     @relation(fields: [userId], references: [id])
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
@@ -495,4 +495,12 @@ model WaitlistEntry {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// Fixed-window counters for abuse limits (login attempts, invites, signups).
+/// Keys look like "login:<email>" or "invite:<userId>". Safe to empty at any time.
+model RateLimit {
+  key         String   @id
+  count       Int      @default(0)
+  windowStart DateTime
 }

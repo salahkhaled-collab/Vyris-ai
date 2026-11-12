@@ -3,25 +3,13 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { afterTaskStatusChange } from "@/lib/automation/engine";
-import { TaskStatus } from "@prisma/client";
+import { parseTaskPatch } from "@/lib/task-input";
 import {
   getScope,
   isValidAssignee,
   taskAccessWhere,
   taskManageWhere,
 } from "@/lib/task-access";
-
-const MAX_BLOCKED_REASON = 500;
-
-const VALID_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
-
-interface PatchBody {
-  title?: string;
-  status?: TaskStatus;
-  dueDate?: string | null;
-  assigneeId?: string | null;
-  blockedReason?: string | null;
-}
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
@@ -35,15 +23,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   });
   if (!task) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-  let body: PatchBody;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
-  }
-
-  if (body.status && !VALID_STATUSES.includes(body.status)) {
-    return NextResponse.json({ error: "invalid_status" }, { status: 400 });
+  const body = parseTaskPatch(await req.json().catch(() => null));
+  if ("error" in body) {
+    return NextResponse.json(body, { status: 400 });
   }
 
   // Reassigning needs manage rights (owner, or the project is in your scope): being
@@ -68,17 +50,15 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   if (effectiveStatus !== "BLOCKED") {
     blockedReason = task.blockedReason ? null : undefined;
   } else if (body.blockedReason !== undefined) {
-    blockedReason = body.blockedReason?.trim().slice(0, MAX_BLOCKED_REASON) || null;
+    blockedReason = body.blockedReason;
   }
 
   const updated = await prisma.task.update({
     where: { id: params.id },
     data: {
-      ...(body.title !== undefined && { title: body.title.trim() }),
+      ...(body.title !== undefined && { title: body.title }),
       ...(body.status !== undefined && { status: body.status }),
-      ...(body.dueDate !== undefined && {
-        dueDate: body.dueDate ? new Date(body.dueDate) : null,
-      }),
+      ...(body.dueDate !== undefined && { dueDate: body.dueDate }),
       ...(body.assigneeId !== undefined && { assigneeId: body.assigneeId }),
       ...(blockedReason !== undefined && { blockedReason }),
     },

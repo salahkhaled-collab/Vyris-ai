@@ -13,14 +13,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
   }
 
-  let body: AcceptBody;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: "invalid_body" }, { status: 400 });
-  }
+  const raw: unknown = await req.json().catch(() => null);
+  const body = (raw && typeof raw === "object" ? raw : {}) as Partial<AcceptBody>;
 
-  if (!body.token) {
+  if (typeof body.token !== "string" || !body.token || body.token.length > 200) {
     return NextResponse.json({ error: "missing_token" }, { status: 400 });
   }
 
@@ -48,7 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   // If the invite was sent to a specific email, only that account may accept it.
-  if (invite.email && session.user.email && invite.email.toLowerCase() !== session.user.email.toLowerCase()) {
+  if (invite.email && invite.email.toLowerCase() !== (session.user.email ?? "").toLowerCase()) {
     return NextResponse.json(
       {
         error: "email_mismatch",
@@ -58,10 +54,37 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Join the team, mark workspaceType as TEAM so onboarding's workspace
-  // role/accessLevel the inviter chose for this person.
-  await prisma.$transaction([
-    prisma.user.update({
+  // Never silently move someone off a team that has other people on it:
+  // their shared work would stay behind with the old team.
+  const me = await prisma.user.findUnique({ where: { id: session.user.id }, select: { teamId: true } });
+  if (me?.teamId === invite.teamId) {
+    return NextResponse.json(
+      { error: "already_member", message: "You're already on this team." },
+      { status: 409 }
+    );
+  }
+  if (me?.teamId) {
+    const others = await prisma.user.count({ where: { teamId: me.teamId, id: { not: session.user.id } } });
+    if (others > 0) {
+      return NextResponse.json(
+        {
+          error: "already_on_team",
+          message: "You're already on another team with other people. Leaving a team isn't supported yet.",
+        },
+        { status: 409 }
+      );
+    }
+  }
+
+  // Claim the invite and join in one transaction. The conditional update makes
+  // a second, concurrent accept of the same link fail instead of both joining.
+  const joined = await prisma.$transaction(async (tx) => {
+    const claimed = await tx.invite.updateMany({
+      where: { id: invite.id, status: "pending" },
+      data: { status: "accepted", acceptedBy: session.user.id },
+    });
+    if (claimed.count !== 1) return false;
+    await tx.user.update({
       where: { id: session.user.id },
       data: {
         teamId: invite.teamId,
@@ -69,12 +92,15 @@ export async function POST(req: NextRequest) {
         role: invite.role ?? undefined,
         accessLevel: invite.accessLevel,
       },
-    }),
-    prisma.invite.update({
-      where: { id: invite.id },
-      data: { status: "accepted", acceptedBy: session.user.id },
-    }),
-  ]);
+    });
+    return true;
+  });
+  if (!joined) {
+    return NextResponse.json(
+      { error: "already_used", message: "This invite has already been used or revoked." },
+      { status: 410 }
+    );
+  }
 
   const team = await prisma.team.findUnique({ where: { id: invite.teamId } });
 

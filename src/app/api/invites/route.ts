@@ -3,8 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { sendEmail, inviteEmailHtml } from "@/lib/email";
+import { randomBytes } from "crypto";
+import { consume, DAY } from "@/lib/rate-limit";
 
 const INVITE_EXPIRY_DAYS = 7;
+const INVITES_PER_DAY = 20;
+const EMAIL_RE = /^[^\s@<>()"]+@[^\s@<>()"]+\.[^\s@<>()"]+$/;
 
 function getBaseUrl(req: NextRequest): string {
   return process.env.NEXTAUTH_URL || req.nextUrl.origin;
@@ -18,10 +22,11 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { teamId: true },
+    select: { teamId: true, accessLevel: true },
   });
 
-  if (!user?.teamId) {
+  // Pending invites carry live join links: only team admins may see them.
+  if (!user?.teamId || user.accessLevel !== "ADMIN") {
     return NextResponse.json({ invites: [] });
   }
 
@@ -51,13 +56,19 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { teamId: true, name: true },
+    select: { teamId: true, name: true, accessLevel: true },
   });
 
   if (!user?.teamId) {
     return NextResponse.json(
       { error: "no_team", message: "You need a Team workspace before inviting people." },
       { status: 400 }
+    );
+  }
+  if (user.accessLevel !== "ADMIN") {
+    return NextResponse.json(
+      { error: "forbidden", message: "Only team admins can invite people." },
+      { status: 403 }
     );
   }
 
@@ -76,9 +87,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_access_level" }, { status: 400 });
   }
 
+  const inviteEmail = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+  if (inviteEmail && (inviteEmail.length > 254 || !EMAIL_RE.test(inviteEmail))) {
+    return NextResponse.json({ error: "invalid_email", message: "Enter a valid email address." }, { status: 400 });
+  }
+
   const team = await prisma.team.findUnique({ where: { id: user.teamId } });
   if (!team) {
     return NextResponse.json({ error: "team_not_found" }, { status: 404 });
+  }
+
+  if (!(await consume(`invite:${session.user.id}`, INVITES_PER_DAY, DAY))) {
+    return NextResponse.json(
+      { error: "rate_limited", message: `You can send up to ${INVITES_PER_DAY} invites a day.` },
+      { status: 429 }
+    );
   }
 
   const expiresAt = new Date(Date.now() + INVITE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
@@ -87,7 +110,9 @@ export async function POST(req: NextRequest) {
     data: {
       teamId: user.teamId,
       invitedBy: session.user.id,
-      email: body.email?.trim() || null,
+      // Unguessable join token (the column default is a cuid, which is not).
+      token: randomBytes(32).toString("base64url"),
+      email: inviteEmail || null,
       role: (body.role as "CEO" | "FOUNDER" | "EXECUTIVE" | "MANAGER" | "OTHER" | undefined) ?? null,
       accessLevel: (body.accessLevel as "ADMIN" | "MEMBER" | undefined) ?? "MEMBER",
       expiresAt,
@@ -98,9 +123,9 @@ export async function POST(req: NextRequest) {
 
   let emailResult: { sent: boolean; reason?: string } | null = null;
 
-  if (body.email?.trim()) {
+  if (inviteEmail) {
     emailResult = await sendEmail({
-      to: body.email.trim(),
+      to: inviteEmail,
       subject: `You're invited to join ${team.name} on Vyris`,
       html: inviteEmailHtml({
         inviterName: user.name ?? "Someone",
@@ -117,6 +142,6 @@ export async function POST(req: NextRequest) {
     email: invite.email,
     expiresAt: invite.expiresAt,
     emailSent: emailResult?.sent ?? null,
-    emailError: emailResult?.sent === false ? emailResult.reason : null,
+    emailError: emailResult?.sent === false ? "The email couldn't be sent. Share the link instead." : null,
   });
 }
