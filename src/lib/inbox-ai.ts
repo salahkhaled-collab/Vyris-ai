@@ -49,6 +49,19 @@ function extractJsonObject(text: string): unknown {
   }
 }
 
+/** Every complete `{...}` without nested braces in the text that parses as JSON. */
+function completeFlatObjects(text: string): unknown[] {
+  const out: unknown[] = [];
+  for (const m of text.matchAll(/\{[^{}]*\}/g)) {
+    try {
+      out.push(JSON.parse(m[0]));
+    } catch {
+      // skip a fragment that isn't valid JSON
+    }
+  }
+  return out;
+}
+
 /** Waiting longer than this on a needs-reply email earns a "waiting N days" flag. */
 export const WAITING_DAYS = 2;
 
@@ -98,8 +111,10 @@ export function parseTriage(
   projectIds: string[]
 ): Record<string, TriageResult> | null {
   const data = extractJsonObject(text);
-  const list = (data as { results?: unknown } | null)?.results;
-  if (!Array.isArray(list)) return null;
+  const full = (data as { results?: unknown } | null)?.results;
+  // A reply cut off at the token limit still holds every complete result
+  // before the cut: keep those instead of failing the whole inbox.
+  const list = Array.isArray(full) ? full : completeFlatObjects(text);
   const allowedEmails = new Set(emailIds);
   const allowedProjects = new Set(projectIds);
   const out: Record<string, TriageResult> = {};

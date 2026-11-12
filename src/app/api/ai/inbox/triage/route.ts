@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
     const completion = await completeWithPythonLlm({
       system: triagePrompt(projects, user?.name ?? null),
       messages: [{ role: "user", content: triageUserMessage(emails) }],
-      maxTokens: 1500,
+      maxTokens: 2000,
     });
     const parsed = parseTriage(
       completion.text,
@@ -80,6 +80,7 @@ export async function POST(req: NextRequest) {
       projects.map((p) => p.id)
     );
     if (!parsed) {
+      console.error("Inbox triage: unparseable reply", { emails: emails.length, chars: completion.text.length });
       return NextResponse.json({ error: "unparseable", message: "Couldn't sort your inbox right now. Try again." }, { status: 422 });
     }
     // Anyone in the user's Contacts is always work.
