@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -55,6 +56,7 @@ export default function SignUpPage() {
       }
 
       setSuccess(true);
+      track("sign_up", { method: "password" });
 
       // Auto Sign-in with the Credentials Provider
       const signInRes = await signIn("credentials", {

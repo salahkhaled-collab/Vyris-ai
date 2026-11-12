@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-
-const STORAGE_KEY = "vyris-cookie-consent";
+import { CONSENT_KEY as STORAGE_KEY, updateConsent } from "@/lib/analytics";
 
 export function CookieConsent() {
   const [visible, setVisible] = useState(false);
@@ -23,6 +22,7 @@ export function CookieConsent() {
     } catch {
       // ignore
     }
+    updateConsent(value === "accepted");
     setVisible(false);
   }
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -108,6 +109,7 @@ function WaitlistForm({ variant = "light", source }: { variant?: "light" | "dark
       } catch {
         // Private windows can block storage; the success page works without it.
       }
+      track("waitlist_join");
       router.push("/waitlist/success");
     } catch {
       setError("Couldn't reach Vyris. Check your connection and try again.");
@@ -323,7 +325,11 @@ const faqs = [
 
 // ── Page ───────────────────────────────────────────────────────────────────
 
-export function WaitlistPage() {
+/**
+ * `showLogin` adds a small "Log in" link for existing users. It is off on the
+ * separate waitlist site, which only proxies the waitlist pages.
+ */
+export function WaitlistPage({ showLogin = false }: { showLogin?: boolean } = {}) {
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [group, setGroup] = useState<AgentGroup | "All">("All");
   const [source, setSource] = useState<string | null>(null);
@@ -613,6 +619,9 @@ export function WaitlistPage() {
           <div className="flex items-center gap-6">
             <Link href="/privacy" className="transition-colors hover:text-ink-text">Privacy</Link>
             <Link href="/terms" className="transition-colors hover:text-ink-text">Terms</Link>
+            {showLogin && (
+              <Link href="/login" className="transition-colors hover:text-ink-text">Log in</Link>
+            )}
             <a href="https://www.instagram.com/vyris_app" target="_blank" rel="noopener noreferrer" className="transition-colors hover:text-ink-text">
               Instagram
             </a>

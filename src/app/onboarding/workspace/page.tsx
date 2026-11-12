@@ -1,5 +1,6 @@
 "use client";
 
+import { track } from "@/lib/analytics";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useUser, WorkspaceType } from "@/lib/user-context";
@@ -52,7 +53,8 @@ export default function WorkspacePage() {
     setError(null);
     try {
       await completeOnboarding();
-      router.push("/strategy");
+      track("onboarding_complete");
+      router.push("/dashboard");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not finish setup. Try again.");
       setFinishing(false);
