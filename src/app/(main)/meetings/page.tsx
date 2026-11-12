@@ -46,7 +46,7 @@ export default function MeetingsPage() {
     let active = true;
     // Spinner only on the first load; a reload after blocking focus time keeps the list on screen.
     if (events === null) setLoading(true);
-    fetch("/api/calendar?range=week")
+    fetch(`/api/calendar?range=week&tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`)
       .then(async (res) => {
         const data = await res.json();
         if (!active) return;

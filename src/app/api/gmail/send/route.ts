@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const { accessToken, error } = await getGoogleAccessToken(session.user.id, "gmail");
+  const { accessToken, error } = await getGoogleAccessToken(session.user.id, "gmail_send");
 
   if (!accessToken) {
     const message =

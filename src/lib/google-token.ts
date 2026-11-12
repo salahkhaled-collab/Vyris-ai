@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { BASE_GOOGLE_SCOPES, hasFeatureScopes, type GoogleFeature } from "@/lib/google-scopes";
+import { BASE_GOOGLE_SCOPES, hasFeatureScopes, type GoogleNeed } from "@/lib/google-scopes";
 
 /**
  * Returns a valid Google access token for the given user, refreshing it
@@ -13,7 +13,7 @@ import { BASE_GOOGLE_SCOPES, hasFeatureScopes, type GoogleFeature } from "@/lib/
  */
 export async function getGoogleAccessToken(
   userId: string,
-  need?: GoogleFeature
+  need?: GoogleNeed
 ): Promise<{
   accessToken: string | null;
   error?: "no_account" | "missing_scope" | "no_refresh_token" | "refresh_failed";
@@ -32,7 +32,8 @@ export async function getGoogleAccessToken(
   }
 
   const now = Math.floor(Date.now() / 1000);
-  const isExpired = !account.expires_at || account.expires_at < now;
+  // Refresh a minute early so a token can't expire in the middle of a request.
+  const isExpired = !account.expires_at || account.expires_at < now + 60;
 
   if (!isExpired && account.access_token) {
     return { accessToken: account.access_token };

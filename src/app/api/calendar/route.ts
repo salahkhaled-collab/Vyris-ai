@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
+import { calendarWindow, safeTimeZone } from "@/lib/calendar";
 
 interface GoogleEvent {
   id: string;
@@ -46,31 +47,9 @@ export async function GET(req: NextRequest) {
   const rangeParam = req.nextUrl.searchParams.get("range");
   const range = rangeParam === "week" || rangeParam === "month" ? rangeParam : "today";
 
-  const now = new Date();
-  let startOfDay: Date;
-  let rangeEnd: Date;
-
-  if (range === "month") {
-    // Grid covers the full calendar month containing today, padded to
-    // start on a Sunday and end on a Saturday so the UI renders clean weeks.
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-    startOfDay = new Date(monthStart);
-    startOfDay.setDate(startOfDay.getDate() - startOfDay.getDay());
-    startOfDay.setHours(0, 0, 0, 0);
-    rangeEnd = new Date(monthEnd);
-    rangeEnd.setDate(rangeEnd.getDate() + (6 - rangeEnd.getDay()));
-    rangeEnd.setHours(23, 59, 59, 999);
-  } else {
-    startOfDay = new Date(now);
-    startOfDay.setHours(0, 0, 0, 0);
-    rangeEnd = new Date(startOfDay);
-    if (range === "week") {
-      rangeEnd.setDate(rangeEnd.getDate() + 7);
-    } else {
-      rangeEnd.setHours(23, 59, 59, 999);
-    }
-  }
+  // Days and times are the user's, not the server's (UTC on Vercel).
+  const tz = safeTimeZone(req.nextUrl.searchParams.get("tz"));
+  const { start: startOfDay, end: rangeEnd } = calendarWindow(range, new Date(), tz);
 
   const params = new URLSearchParams({
     timeMin: startOfDay.toISOString(),
@@ -107,7 +86,7 @@ export async function GET(req: NextRequest) {
       const time = allDay
         ? "All day"
         : startRaw
-        ? new Date(startRaw).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+        ? new Date(startRaw).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", timeZone: tz })
         : "";
 
       const attendeeCount = e.attendees?.length ?? 0;

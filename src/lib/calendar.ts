@@ -115,3 +115,74 @@ export function findFocusSlots(events: CalendarItem[], now: Date, opts: FocusOpt
 
 /** The title Vyris gives focus blocks it creates. */
 export const FOCUS_TITLE = "Focus time";
+
+// ── Time zones ─────────────────────────────────────────────────────────────
+// The server runs in UTC, so "today" and event times must be computed in the
+// user's own zone (sent by the browser), not the server's.
+
+/** A valid IANA zone name, or "UTC". */
+export function safeTimeZone(tz: string | null | undefined): string {
+  if (!tz || tz.length > 64) return "UTC";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch {
+    return "UTC";
+  }
+}
+
+/** Calendar date (and weekday, 0 = Sunday) of an instant in a zone. */
+export function zonedDate(at: Date, tz: string): { y: number; m: number; d: number; weekday: number } {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    weekday: "short",
+  }).formatToParts(at);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const weekday = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(get("weekday"));
+  return { y: Number(get("year")), m: Number(get("month")) - 1, d: Number(get("day")), weekday };
+}
+
+/** Minutes the zone is ahead of UTC at an instant. */
+function offsetMinutes(at: Date, tz: string): number {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: tz,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+    second: "numeric",
+  }).formatToParts(at);
+  const n = (t: string) => Number(parts.find((p) => p.type === t)?.value ?? 0);
+  const asUtc = Date.UTC(n("year"), n("month") - 1, n("day"), n("hour"), n("minute"), n("second"));
+  return Math.round((asUtc - Math.floor(at.getTime() / 1000) * 1000) / 60000);
+}
+
+/** The instant of local midnight starting day (y, m, d) in a zone. m is 0-based and may overflow. */
+export function zonedMidnight(y: number, m: number, d: number, tz: string): Date {
+  const guess = Date.UTC(y, m, d);
+  let t = guess - offsetMinutes(new Date(guess), tz) * 60000;
+  t = guess - offsetMinutes(new Date(t), tz) * 60000; // second pass settles DST edges
+  return new Date(t);
+}
+
+/** Query window for the calendar page ranges, in the user's zone. */
+export function calendarWindow(range: "today" | "week" | "month", now: Date, tz: string): { start: Date; end: Date } {
+  const today = zonedDate(now, tz);
+  if (range === "month") {
+    const first = zonedDate(zonedMidnight(today.y, today.m, 1, tz), tz);
+    const lastDay = new Date(Date.UTC(today.y, today.m + 1, 0)).getUTCDate();
+    const last = zonedDate(zonedMidnight(today.y, today.m, lastDay, tz), tz);
+    // Pad to whole weeks (Sunday to Saturday) for the grid.
+    const start = zonedMidnight(today.y, today.m, 1 - first.weekday, tz);
+    const end = new Date(zonedMidnight(today.y, today.m, lastDay + (6 - last.weekday) + 1, tz).getTime() - 1);
+    return { start, end };
+  }
+  const start = zonedMidnight(today.y, today.m, today.d, tz);
+  const days = range === "week" ? 7 : 1;
+  return { start, end: new Date(zonedMidnight(today.y, today.m, today.d + days, tz).getTime() - 1) };
+}

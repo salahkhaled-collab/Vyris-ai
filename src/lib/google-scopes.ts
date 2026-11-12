@@ -17,10 +17,23 @@ export const GOOGLE_FEATURE_SCOPES = {
 
 export type GoogleFeature = keyof typeof GOOGLE_FEATURE_SCOPES;
 
-/** Whether a stored, space-separated scope string covers every scope a feature needs. */
-export function hasFeatureScopes(granted: string | null | undefined, feature: GoogleFeature): boolean {
+/**
+ * What each server action actually needs. Connect asks for the whole feature,
+ * but reading mail must keep working if the user unticked "send" on Google's
+ * screen; only sending needs the send scope.
+ */
+export const REQUIRED_SCOPES = {
+  gmail: ["https://www.googleapis.com/auth/gmail.readonly"],
+  gmail_send: ["https://www.googleapis.com/auth/gmail.send"],
+  calendar: ["https://www.googleapis.com/auth/calendar"],
+} as const;
+
+export type GoogleNeed = keyof typeof REQUIRED_SCOPES;
+
+/** Whether a stored, space-separated scope string covers what an action needs. */
+export function hasFeatureScopes(granted: string | null | undefined, need: GoogleNeed): boolean {
   const set = new Set((granted ?? "").split(/\s+/).filter(Boolean));
-  return GOOGLE_FEATURE_SCOPES[feature].every((s) => set.has(s));
+  return REQUIRED_SCOPES[need].every((s) => set.has(s));
 }
 
 /** Whether the scopes in `next` include every scope in `previous`. */

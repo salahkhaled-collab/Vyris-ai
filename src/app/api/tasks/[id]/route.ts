@@ -11,6 +11,9 @@ import {
   taskManageWhere,
 } from "@/lib/task-access";
 
+// Status changes can run automation rules that send email.
+export const maxDuration = 30;
+
 const MAX_BLOCKED_REASON = 500;
 
 const VALID_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"];

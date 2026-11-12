@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { rateLimitWait } from "@/lib/inbox-ai";
+import { assistantBusyMessage } from "@/lib/ai/assistant";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
@@ -15,7 +17,7 @@ export const maxDuration = 60;
 export async function POST(req: NextRequest) {
   if (!pythonLlmConfigured()) {
     return NextResponse.json(
-      { error: "missing_llm_url", message: "PYTHON_LLM_URL is not set on the server." },
+      { error: "missing_llm_url", message: "The AI is temporarily unavailable." },
       { status: 500 }
     );
   }
@@ -85,6 +87,13 @@ export async function POST(req: NextRequest) {
   try {
     return finish(await runAssistantTurn({ userId, text, history, page }));
   } catch (err) {
+    const wait = rateLimitWait(err);
+    if (wait !== null) {
+      return NextResponse.json(
+        { error: "rate_limited", message: assistantBusyMessage(wait), retryAfter: wait },
+        { status: 429 }
+      );
+    }
     console.error("Python LLM query error:", err);
     return NextResponse.json(
       { error: "python_llm_error", message: "Vyris couldn't respond right now. Try again." },

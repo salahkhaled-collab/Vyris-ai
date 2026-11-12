@@ -17,6 +17,10 @@ export const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOOL_ROUNDS = 5;
 const MAX_TOKENS = 1200;
 const MAX_TOOL_RESULT_CHARS = 12_000;
+/** Whole-turn budget: the chat routes allow 60s, so leave room to save and respond. */
+export const TURN_BUDGET_MS = 50_000;
+/** Don't start another model call with less time than this left. */
+const MIN_CALL_MS = 8_000;
 const KNOWN_TOOLS = new Set<string>(VYRIS_TOOLS.map((t) => t.name));
 
 export type ChatMessage = { role: "user" | "assistant"; content: string };
@@ -47,6 +51,7 @@ export function sanitizeHistory(raw: unknown): ChatMessage[] {
 }
 
 export async function runAssistantTurn(input: AssistantTurnInput): Promise<string> {
+  const deadline = Date.now() + TURN_BUDGET_MS;
   const scope = await getScope(input.userId);
   const system = await buildSystemPromptWithContext(VYRIS_SYSTEM_PROMPT, {
     userId: input.userId,
@@ -58,11 +63,16 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
   ];
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const left = deadline - Date.now();
+    if (left < MIN_CALL_MS) {
+      return "That took longer than I can spend on one reply. Anything I already changed is saved; ask again to continue.";
+    }
     const completion = await completeWithPythonLlm({
       system,
       messages,
       tools: VYRIS_TOOLS,
       maxTokens: MAX_TOKENS,
+      timeoutMs: left,
     });
 
     if (completion.toolCalls.length === 0) return completion.text;
@@ -85,4 +95,12 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
   }
 
   return "I gathered some information but hit my tool-call limit before finishing. Try narrowing the question.";
+}
+
+/**
+ * Shown when the AI provider's per-minute limit is hit. Says plainly that
+ * earlier steps may already be saved, so a retry doesn't create duplicates.
+ */
+export function assistantBusyMessage(seconds: number): string {
+  return `Vyris is busy right now (free AI plan limit). Wait about ${seconds} seconds and ask again. If I was in the middle of creating something, check it first so it isn't added twice.`;
 }
