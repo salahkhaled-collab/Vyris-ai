@@ -17,8 +17,11 @@ export const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOOL_ROUNDS = 5;
 const MAX_TOKENS = 1200;
 const MAX_TOOL_RESULT_CHARS = 12_000;
-/** Whole-turn budget: the chat routes allow 60s, so leave room to save and respond. */
-export const TURN_BUDGET_MS = 50_000;
+/**
+ * Whole-turn budget: the chat routes allow 60s. Tools (which can send email)
+ * run between model calls, so leave a wide margin to finish, save and respond.
+ */
+export const TURN_BUDGET_MS = 40_000;
 /** Don't start another model call with less time than this left. */
 const MIN_CALL_MS = 8_000;
 const KNOWN_TOOLS = new Set<string>(VYRIS_TOOLS.map((t) => t.name));
@@ -79,6 +82,10 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
 
     messages.push(completion.assistantMessage);
     for (const call of completion.toolCalls) {
+      // Out of time: don't start more tools; say so instead of being cut off.
+      if (deadline - Date.now() < MIN_CALL_MS) {
+        return "That took longer than I can spend on one reply. Anything I already changed is saved; ask again to continue.";
+      }
       let content: string;
       try {
         if (!KNOWN_TOOLS.has(call.name)) throw new Error(`Unknown tool: ${call.name}`);

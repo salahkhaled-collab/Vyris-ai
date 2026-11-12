@@ -167,6 +167,14 @@ export function zonedMidnight(y: number, m: number, d: number, tz: string): Date
   const guess = Date.UTC(y, m, d);
   let t = guess - offsetMinutes(new Date(guess), tz) * 60000;
   t = guess - offsetMinutes(new Date(t), tz) * 60000; // second pass settles DST edges
+  // Where DST starts at midnight (e.g. Santiago) local midnight doesn't exist:
+  // move to the first instant of that day instead of 23:00 the day before.
+  const want = Date.UTC(y, m, d);
+  for (let i = 0; i < 3; i++) {
+    const got = zonedDate(new Date(t), tz);
+    if (Date.UTC(got.y, got.m, got.d) >= want) break;
+    t += 3_600_000;
+  }
   return new Date(t);
 }
 

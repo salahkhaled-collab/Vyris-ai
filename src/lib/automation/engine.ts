@@ -106,6 +106,7 @@ export async function emailOwner(userId: string, subject: string, body: string):
     if (mailbox) {
       const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
         method: "POST",
+        signal: AbortSignal.timeout(10_000),
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ raw: buildRawMessage({ to: mailbox, subject, body }) }),
       });
@@ -267,10 +268,13 @@ export async function runScheduled(
   const rules = await prisma.automationRule.findMany({
     where: { status: "ACTIVE", trigger: { in: triggers } },
     select: { id: true, ownerId: true, trigger: true, action: true },
-    // Stable order, so the same rules don't always end up last.
     orderBy: { createdAt: "asc" },
     take: 500,
   });
+  // Start at a different rule each day, so if the budget runs out it isn't
+  // always the same (newest) rules that miss out.
+  const shift = rules.length ? Math.floor(now.getTime() / 86_400_000) % rules.length : 0;
+  const ordered = [...rules.slice(shift), ...rules.slice(0, shift)];
   let failed = 0;
   let next = 0;
   let notReached = 0;
@@ -281,7 +285,7 @@ export async function runScheduled(
         next = rules.length;
         return;
       }
-      const rule = rules[next++];
+      const rule = ordered[next++];
       try {
         const outcome = await runScheduledRule(rule, now);
         if (outcome?.status === "FAILED") failed += 1;
