@@ -299,7 +299,7 @@ export const VYRIS_TOOLS = [
   {
     name: "get_risk_signals",
     description:
-      "Evidence of what could go wrong, across modules: active projects with overdue or blocked tasks (with blocked reasons), workload per person (overloaded people are bottlenecks), objectives behind pace or missed for their quarter, strategic bets at risk, and already-tracked high or critical risks. Use for 'what are my risks', 'where are the bottlenecks', 'are we on track'. Propose risks with severity and evidence; don't log them without approval.",
+      "Evidence of what could go wrong, across modules: active projects with overdue or blocked tasks (with blocked reasons), workload per person (overloaded people are bottlenecks), objectives behind pace or missed for their quarter (missed targets), strategic bets at risk, unusual changes (today's overdue/blocked/open/finished counts against the user's recent days), and already-tracked high or critical risks. Use for 'what are my risks', 'where are the bottlenecks', 'are we on track'. Propose risks with severity and evidence; don't log them without approval.",
     input_schema: { type: "object", properties: {} },
   },
   {

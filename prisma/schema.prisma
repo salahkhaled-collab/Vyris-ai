@@ -72,6 +72,7 @@ enum WorkspaceType {
 
 model User {
   memories      Memory[]
+  snapshots     WorkspaceSnapshot[]
   id            String    @id @default(cuid())
   name          String?
   email         String?   @unique
@@ -545,4 +546,22 @@ model RateLimit {
   key         String   @id
   count       Int      @default(0)
   windowStart DateTime
+}
+
+/// One row per user per day: the numbers behind "unusual changes".
+/// Written by the daily cron and when risk signals are loaded.
+model WorkspaceSnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "YYYY-MM-DD" (UTC)
+  day          String
+  openTasks    Int
+  overdue      Int
+  blocked      Int
+  doneLast7    Int
+  createdLast7 Int
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, day])
 }

@@ -31,9 +31,12 @@ export function RiskSignalsPanel() {
       .catch(() => setFailed(true));
   }, []);
 
-  if (failed || signals === null || signals.total === 0) return null;
+  const unusual = (signals?.unusualChanges ?? []).filter((c) => c.direction === "worse");
+  if (failed || signals === null || (signals.total === 0 && unusual.length === 0)) return null;
 
   const overloaded = signals.workload.filter((w) => w.overloaded);
+  const missed = signals.objectivesBehind.filter((o) => o.missed);
+  const behind = signals.objectivesBehind.filter((o) => !o.missed);
 
   return (
     <Panel className="p-5">
@@ -42,7 +45,7 @@ export function RiskSignalsPanel() {
         <h3 className="text-sm font-medium">Signals from your workspace</h3>
       </div>
       <p className="text-xs text-muted mb-4">
-        Computed from your projects, team and objectives. Ask Vyris to turn any of these into a tracked risk.
+        Computed from your projects, team, goals and how your numbers moved this week. Ask Vyris to turn any of these into a tracked risk.
       </p>
       <div className="grid gap-5 md:grid-cols-2">
         {signals.projects.length > 0 && (
@@ -74,17 +77,27 @@ export function RiskSignalsPanel() {
             ))}
           </Group>
         )}
-        {signals.objectivesBehind.length > 0 && (
+        {unusual.length > 0 && (
+          <Group label="Unusual changes">
+            {unusual.slice(0, PREVIEW).map((c) => (
+              <Item key={c.metric} title={c.label} detail="Compared with your last few days" />
+            ))}
+          </Group>
+        )}
+        {missed.length > 0 && (
+          <Group label="Missed targets">
+            {missed.slice(0, PREVIEW).map((o) => (
+              <Item key={o.objectiveId} title={o.title} detail={`${o.quarter} ended at ${o.progress}%`} />
+            ))}
+          </Group>
+        )}
+        {behind.length > 0 && (
           <Group label="Objectives behind pace">
-            {signals.objectivesBehind.slice(0, PREVIEW).map((o) => (
+            {behind.slice(0, PREVIEW).map((o) => (
               <Item
                 key={o.objectiveId}
                 title={o.title}
-                detail={
-                  o.missed
-                    ? `${o.quarter} ended at ${o.progress}%`
-                    : `${o.progress}% done, ${o.expected}% of ${o.quarter} elapsed`
-                }
+                detail={`${o.progress}% done, ${o.expected}% of ${o.quarter} elapsed`}
               />
             ))}
           </Group>

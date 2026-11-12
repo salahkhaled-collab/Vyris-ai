@@ -6,8 +6,10 @@
 
 import { prisma } from "@/lib/prisma";
 import { scopeFilter, type Scope } from "@/lib/ai/scope";
-import { taskAccessWhere } from "@/lib/task-access";
+import { getScope, taskAccessWhere } from "@/lib/task-access";
 import { buildRiskSignals, type RiskSignals } from "@/lib/risk-signals";
+import { detectUnusualChanges, snapshotDay, HISTORY_DAYS, type TrendMetrics } from "@/lib/trends";
+import { overdueCutoff } from "@/lib/attention";
 
 const MAX_TASKS = 1000;
 
@@ -52,7 +54,7 @@ export async function loadRiskSignals(scope: Scope, now: Date = new Date()): Pro
     }),
   ]);
 
-  return buildRiskSignals(
+  const signals = buildRiskSignals(
     {
       tasks: tasks.map((t) => ({ ...t, projectTitle: t.project.title })),
       projects,
@@ -63,4 +65,70 @@ export async function loadRiskSignals(scope: Scope, now: Date = new Date()): Pro
     },
     now
   );
+
+  // Unusual changes: today's numbers against the user's own recent days.
+  try {
+    const today = await captureSnapshot(scope, now);
+    const history = await prisma.workspaceSnapshot.findMany({
+      where: { userId: scope.userId, day: { lt: snapshotDay(now) } },
+      orderBy: { day: "desc" },
+      take: HISTORY_DAYS,
+      select: { openTasks: true, overdue: true, blocked: true, doneLast7: true, createdLast7: true },
+    });
+    signals.unusualChanges = detectUnusualChanges(history.reverse(), today);
+    signals.total += signals.unusualChanges.filter((c) => c.direction === "worse").length;
+  } catch (err) {
+    console.error("Unusual-change check failed:", err); // signals still work without it
+  }
+  return signals;
+}
+
+/** Today's numbers for one user's view of the workspace. */
+export async function measureWorkspace(scope: Scope, now: Date = new Date()): Promise<TrendMetrics> {
+  const access = taskAccessWhere(scope);
+  const weekAgo = new Date(now.getTime() - 7 * 86_400_000);
+  const [openTasks, overdue, blocked, doneLast7, createdLast7] = await Promise.all([
+    prisma.task.count({ where: { ...access, status: { not: "DONE" } } }),
+    prisma.task.count({ where: { ...access, status: { not: "DONE" }, dueDate: { lt: overdueCutoff(now) } } }),
+    prisma.task.count({ where: { ...access, status: "BLOCKED" } }),
+    prisma.task.count({ where: { ...access, status: "DONE", updatedAt: { gte: weekAgo } } }),
+    prisma.task.count({ where: { ...access, createdAt: { gte: weekAgo } } }),
+  ]);
+  return { openTasks, overdue, blocked, doneLast7, createdLast7 };
+}
+
+/** Measure and save today's snapshot (one row per user per day; re-running updates it). */
+export async function captureSnapshot(scope: Scope, now: Date = new Date()): Promise<TrendMetrics> {
+  const metrics = await measureWorkspace(scope, now);
+  const day = snapshotDay(now);
+  await prisma.workspaceSnapshot.upsert({
+    where: { userId_day: { userId: scope.userId, day } },
+    create: { userId: scope.userId, day, ...metrics },
+    update: metrics,
+  });
+  return metrics;
+}
+
+/**
+ * Called by the daily cron: today's snapshot for everyone who owns or is
+ * assigned tasks, so the comparison has history even on days nobody opens
+ * Risks. Stops at `deadline` (ms timestamp).
+ */
+export async function captureDailySnapshots(now: Date, deadline: number): Promise<{ users: number; saved: number }> {
+  const [owners, assignees] = await Promise.all([
+    prisma.task.findMany({ distinct: ["ownerId"], select: { ownerId: true }, take: 500 }),
+    prisma.task.findMany({ where: { assigneeId: { not: null } }, distinct: ["assigneeId"], select: { assigneeId: true }, take: 500 }),
+  ]);
+  const userIds = [...new Set([...owners.map((o) => o.ownerId), ...assignees.map((a) => a.assigneeId as string)])];
+  let saved = 0;
+  for (const userId of userIds) {
+    if (Date.now() > deadline) break;
+    try {
+      await captureSnapshot(await getScope(userId), now);
+      saved += 1;
+    } catch (err) {
+      console.error(`[snapshots] user ${userId} failed:`, err);
+    }
+  }
+  return { users: userIds.length, saved };
 }
