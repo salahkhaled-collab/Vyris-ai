@@ -50,7 +50,7 @@ export function PendingActions({ actions }: { actions: PendingActionView[] }) {
       {actions.map((a) => {
         const st = states[a.id] ?? { status: "waiting" };
         return (
-          <div key={a.id} className="rounded-xl border border-brass/30 bg-brass-soft/40 px-3 py-2.5 text-sm">
+          <div key={a.id} className="rounded-xl border border-brass/30 bg-panel px-3 py-2.5 text-sm">
             <div className="text-[10px] uppercase tracking-wider text-muted mb-1">
               {st.status === "done" ? "Done" : st.status === "dismissed" ? "Dismissed" : "Needs your approval"}
             </div>
