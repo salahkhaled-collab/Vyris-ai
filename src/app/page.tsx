@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
+import { prisma } from "@/lib/prisma";
 import { WaitlistPage } from "@/components/marketing/WaitlistPage";
 
 export const metadata: Metadata = {
@@ -14,6 +15,11 @@ export const metadata: Metadata = {
 /** One front door: the waitlist. Signed-in users go straight to the app. */
 export default async function Home() {
   const session = await getServerSession(authOptions);
-  if (session?.user?.id) redirect(session.user.onboarded ? "/dashboard" : "/onboarding");
+  if (session?.user?.id) {
+    // Read from the database: the session token keeps the value from sign-in,
+    // so it can still say "not onboarded" after onboarding is finished.
+    const user = await prisma.user.findUnique({ where: { id: session.user.id }, select: { onboarded: true } });
+    redirect(user?.onboarded ? "/dashboard" : "/onboarding");
+  }
   return <WaitlistPage showLogin />;
 }
