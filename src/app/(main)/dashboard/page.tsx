@@ -22,6 +22,7 @@ import { ChartsToggle } from "@/components/dashboard/ChartsToggle";
 import { BetsCard } from "@/components/dashboard/BetsCard";
 import { RisksCard } from "@/components/dashboard/RisksCard";
 import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
+import { GetStartedCard } from "@/components/dashboard/GetStartedCard";
 import { computeProgress } from "@/lib/okr";
 
 const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: string }> = {
@@ -293,6 +294,7 @@ export default function DashboardPage() {
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8">
+        <GetStartedCard />
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs text-muted">
             {editing ? "Drag the handle to reorder. Use × to hide a card." : ""}

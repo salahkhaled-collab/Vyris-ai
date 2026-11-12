@@ -13,6 +13,11 @@ const overviewGroup = navigation.find((g) => g.label === "Overview");
 const advisoryGroup = navigation.find((g) => g.label === "Advisory");
 const dashboardItem = overviewGroup?.items.find((i) => i.href === "/dashboard");
 const decisionsItem = advisoryGroup?.items.find((i) => i.href === "/decisions");
+// Daily work first: Inbox and Projects get their own buttons on phones.
+const allItems = navigation.flatMap((g) => g.items);
+const inboxItem = allItems.find((i) => i.href === "/inbox");
+const projectsItem = allItems.find((i) => i.href === "/projects");
+const barItems = [inboxItem, projectsItem].filter((i): i is NonNullable<typeof i> => Boolean(i));
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -22,8 +27,7 @@ export function MobileNav() {
   const bottomBarActive = (href?: string) => href && pathname === href;
   // "More" is active whenever we're on a page that isn't one of the two
   // primary bottom-bar destinations — covers everything the drawer holds.
-  const moreActive =
-    pathname !== dashboardItem?.href && pathname !== decisionsItem?.href;
+  const moreActive = ![dashboardItem?.href, decisionsItem?.href, ...barItems.map((i) => i.href)].includes(pathname);
 
   return (
     <>
@@ -44,6 +48,19 @@ export function MobileNav() {
             {dashboardItem.label}
           </Link>
         )}
+        {barItems.map((item) => (
+          <Link
+            key={item.href}
+            href={item.href}
+            className={cn(
+              "flex-1 flex flex-col items-center justify-center gap-1 text-[11px]",
+              bottomBarActive(item.href) ? "text-brass" : "text-muted"
+            )}
+          >
+            <item.icon className="w-5 h-5" strokeWidth={1.75} />
+            {item.label}
+          </Link>
+        ))}
         {decisionsItem && (
           <Link
             href={decisionsItem.href}

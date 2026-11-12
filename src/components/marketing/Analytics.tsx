@@ -14,6 +14,11 @@ export function Analytics() {
         {`
           window.dataLayer = window.dataLayer || [];
           function gtag(){dataLayer.push(arguments);}
+          window.gtag = gtag;
+          // Consent Mode: no analytics cookies until the visitor accepts them.
+          var accepted = false;
+          try { accepted = localStorage.getItem('vyris-cookie-consent') === 'accepted'; } catch (e) {}
+          gtag('consent', 'default', { analytics_storage: accepted ? 'granted' : 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' });
           gtag('js', new Date());
           gtag('config', '${gaId}');
         `}
