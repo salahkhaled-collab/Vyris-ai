@@ -11,9 +11,6 @@ import {
   taskManageWhere,
 } from "@/lib/task-access";
 
-// Status changes can run automation rules that send email.
-export const maxDuration = 30;
-
 const MAX_BLOCKED_REASON = 500;
 
 const VALID_STATUSES: TaskStatus[] = ["TODO", "IN_PROGRESS", "BLOCKED", "DONE"];
@@ -92,6 +89,9 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
   return NextResponse.json(updated);
 }
+
+// Status changes can run automation rules that send email.
+export const maxDuration = 30;
 
 export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions);
