@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { ChatMessage } from "@/types";
+import { PendingActions } from "@/components/ai/PendingActions";
 import { cn } from "@/lib/utils";
 import { Send, Zap, Pause, Plus, Trash2, X, Play } from "lucide-react";
 import {
@@ -108,6 +109,7 @@ export default function AutomationPage() {
         role: "assistant",
         content: data.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        pendingActions: Array.isArray(data.pendingActions) ? data.pendingActions : [],
       };
       setMessages((prev) => [...prev, reply]);
     } catch {
@@ -253,7 +255,12 @@ export default function AutomationPage() {
                       : "bg-panel-2 text-ink-text/90"
                   )}
                 >
-                  <p>{m.content}</p>
+                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  {m.pendingActions && m.pendingActions.length > 0 && (
+                    <div className="mt-3">
+                      <PendingActions actions={m.pendingActions} />
+                    </div>
+                  )}
                   <div className="text-[10px] text-muted mt-2 font-mono">{m.timestamp}</div>
                 </div>
               </div>

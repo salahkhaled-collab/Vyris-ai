@@ -8,6 +8,7 @@ import { pythonLlmConfigured } from "@/lib/ai/python-client";
 import {
   MAX_HISTORY_MESSAGES,
   runAssistantTurn,
+  type AssistantTurnResult,
   sanitizeHistory,
   type ChatMessage,
 } from "@/lib/ai/assistant";
@@ -62,7 +63,7 @@ export async function POST(req: NextRequest) {
     history = sanitizeHistory(body?.history);
   }
 
-  async function finish(reply: string) {
+  async function finish({ reply, pendingActions }: AssistantTurnResult) {
     try {
       if (!convoId) {
         const created = await prisma.aiConversation.create({
@@ -81,7 +82,7 @@ export async function POST(req: NextRequest) {
     } catch (err) {
       console.error("Saving AI history failed:", err); // never lose the reply because of this
     }
-    return NextResponse.json({ reply, conversationId: convoId });
+    return NextResponse.json({ reply, pendingActions, conversationId: convoId });
   }
 
   try {

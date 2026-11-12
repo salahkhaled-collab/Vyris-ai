@@ -20,7 +20,8 @@ import { overdueCutoff } from "@/lib/attention";
 import { loadAttention } from "@/lib/attention-server";
 import { loadRiskSignals } from "@/lib/risk-signals-server";
 import { getGoogleAccessToken } from "@/lib/google-token";
-import { buildRawMessage, getMailboxAddress } from "@/lib/gmail";
+import { buildRawMessage, findUnansweredThreads, getMailboxAddress } from "@/lib/gmail";
+import type { Unanswered } from "@/lib/unanswered";
 import { sendEmail } from "@/lib/email";
 import { dayKey, parseAction, renderTitle, weekKey, type RuleAction, type TriggerKey } from "./rules";
 import { digestEmail, overdueEmail, taskEventEmail, weeklyEmail } from "./messages";
@@ -208,8 +209,25 @@ async function runOverdueRule(rule: RuleRow, action: RuleAction, scope: Scope, n
 
 async function digestOutcome(rule: RuleRow, scope: Scope, now: Date): Promise<Outcome> {
   const report = await loadAttention(scope, now);
-  const email = digestEmail(report, now, APP_URL);
+  const email = digestEmail(report, now, APP_URL, await unansweredFor(rule.ownerId, now));
   return emailOwner(rule.ownerId, email.subject, email.body);
+}
+
+/** Emails waiting on the owner's reply, or null if Gmail isn't connected or fails. Never blocks the digest. */
+async function unansweredFor(userId: string, now: Date): Promise<Unanswered[] | null> {
+  try {
+    const { accessToken } = await getGoogleAccessToken(userId, "gmail");
+    if (!accessToken) return null;
+    const me = await getMailboxAddress(accessToken);
+    if (!me) return null;
+    return await Promise.race([
+      findUnansweredThreads(accessToken, me, now),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
+    ]);
+  } catch (err) {
+    console.error("[automation] unanswered-email check failed:", err);
+    return null;
+  }
 }
 
 async function weeklyOutcome(rule: RuleRow, scope: Scope, now: Date): Promise<Outcome> {

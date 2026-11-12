@@ -117,7 +117,7 @@ export function GetStartedCard() {
     {
       key: "digest",
       title: "Get a morning digest",
-      detail: "One email each morning with what needs your attention today.",
+      detail: "One email each morning: blocked and overdue work, and emails still waiting on your reply.",
       action: (
         <button
           onClick={() => void enableDigest()}

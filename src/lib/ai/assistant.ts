@@ -12,6 +12,14 @@ import { VYRIS_TOOLS, runTool, type VyrisToolName } from "@/lib/ai/tools";
 import { VYRIS_SYSTEM_PROMPT } from "@/lib/ai/system-prompt";
 import { buildSystemPromptWithContext } from "@/lib/ai/context";
 import { getScope } from "@/lib/task-access";
+import {
+  AWAITING_APPROVAL,
+  actionDetails,
+  describeAction,
+  isWriteTool,
+  normalizeActionInput,
+  type PendingAction,
+} from "@/lib/ai/actions";
 
 export const MAX_HISTORY_MESSAGES = 10;
 const MAX_TOOL_ROUNDS = 5;
@@ -53,7 +61,17 @@ export function sanitizeHistory(raw: unknown): ChatMessage[] {
     .map((m) => ({ role: m.role, content: m.content }));
 }
 
-export async function runAssistantTurn(input: AssistantTurnInput): Promise<string> {
+export interface AssistantTurnResult {
+  reply: string;
+  /** Changes the assistant proposed; none has run. The user approves each one. */
+  pendingActions: PendingAction[];
+}
+
+const MAX_PENDING_ACTIONS = 5;
+
+export async function runAssistantTurn(input: AssistantTurnInput): Promise<AssistantTurnResult> {
+  const pendingActions: PendingAction[] = [];
+  const done = (reply: string): AssistantTurnResult => ({ reply, pendingActions });
   const deadline = Date.now() + TURN_BUDGET_MS;
   const scope = await getScope(input.userId);
   const system = await buildSystemPromptWithContext(VYRIS_SYSTEM_PROMPT, {
@@ -68,7 +86,7 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     const left = deadline - Date.now();
     if (left < MIN_CALL_MS) {
-      return "That took longer than I can spend on one reply. Anything I already changed is saved; ask again to continue.";
+      return done("That took longer than I can spend on one reply. Ask again to continue.");
     }
     const completion = await completeWithPythonLlm({
       system,
@@ -78,17 +96,38 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
       timeoutMs: left,
     });
 
-    if (completion.toolCalls.length === 0) return completion.text;
+    if (completion.toolCalls.length === 0) return done(completion.text);
 
     messages.push(completion.assistantMessage);
     for (const call of completion.toolCalls) {
       // Out of time: don't start more tools; say so instead of being cut off.
       if (deadline - Date.now() < MIN_CALL_MS) {
-        return "That took longer than I can spend on one reply. Anything I already changed is saved; ask again to continue.";
+        return done("That took longer than I can spend on one reply. Ask again to continue.");
       }
       let content: string;
       try {
         if (!KNOWN_TOOLS.has(call.name)) throw new Error(`Unknown tool: ${call.name}`);
+        if (isWriteTool(call.name)) {
+          // Never run a change here: propose it, and the user approves it.
+          const normalized = normalizeActionInput(call.name, call.input);
+          if (pendingActions.length >= MAX_PENDING_ACTIONS) {
+            content = JSON.stringify({ ok: false, error: "Too many proposed changes in one reply. Propose fewer." });
+          } else if (!normalized.ok) {
+            content = JSON.stringify({ ok: false, error: normalized.error });
+          } else {
+            pendingActions.push({
+              id: call.id,
+              tool: call.name,
+              input: normalized.input,
+              summary: await describeAction(call.name, normalized.input, scope),
+              details: actionDetails(normalized.input),
+            });
+            content = JSON.stringify(AWAITING_APPROVAL);
+          }
+          if (content.length > MAX_TOOL_RESULT_CHARS) content = content.slice(0, MAX_TOOL_RESULT_CHARS);
+          messages.push({ role: "tool", tool_call_id: call.id, content });
+          continue;
+        }
         const result = await runTool(call.name as VyrisToolName, call.input, scope);
         content = JSON.stringify(result);
       } catch (err: unknown) {
@@ -101,7 +140,7 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
     }
   }
 
-  return "I gathered some information but hit my tool-call limit before finishing. Try narrowing the question.";
+  return done("I gathered some information but hit my tool-call limit before finishing. Try narrowing the question.");
 }
 
 /**
@@ -109,5 +148,5 @@ export async function runAssistantTurn(input: AssistantTurnInput): Promise<strin
  * earlier steps may already be saved, so a retry doesn't create duplicates.
  */
 export function assistantBusyMessage(seconds: number): string {
-  return `Vyris is busy right now (free AI plan limit). Wait about ${seconds} seconds and ask again. If I was in the middle of creating something, check it first so it isn't added twice.`;
+  return `Vyris is busy right now (free AI plan limit). Wait about ${seconds} seconds and ask again.`;
 }

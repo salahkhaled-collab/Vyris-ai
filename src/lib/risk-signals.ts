@@ -9,6 +9,7 @@
 
 import { buildAttentionReport, type AttentionTaskInput } from "./attention";
 import { objectivePace, type KeyResultLike } from "./okr";
+import type { UnusualChange } from "./trends";
 
 export interface SignalTaskInput extends AttentionTaskInput {
   ownerId: string;
@@ -59,6 +60,8 @@ export interface RiskSignals {
   objectivesBehind: ObjectiveSignal[];
   betsAtRisk: { id: string; title: string; status: string }[];
   openHighRisks: { id: string; title: string; severity: string; status: string }[];
+  /** Today's numbers that moved sharply against the user's recent days. */
+  unusualChanges: UnusualChange[];
   total: number;
 }
 
@@ -151,6 +154,7 @@ export function buildRiskSignals(input: SignalInput, now: Date): RiskSignals {
     objectivesBehind,
     betsAtRisk,
     openHighRisks,
+    unusualChanges: [],
     total: projects.length + overloaded + objectivesBehind.length + betsAtRisk.length,
   };
 }

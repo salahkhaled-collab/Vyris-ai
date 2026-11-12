@@ -94,4 +94,6 @@ export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
   timestamp: string;
+  /** Changes the assistant proposed that still need the user's approval. */
+  pendingActions?: { id: string; tool: string; input: Record<string, unknown>; summary: string; details?: string[] }[];
 }
