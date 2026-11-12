@@ -28,6 +28,7 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@index([userId])
 }
 
 model Session {
@@ -37,6 +38,8 @@ model Session {
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model VerificationToken {
@@ -106,6 +109,8 @@ model User {
   risks           Risk[]           @relation("RiskOwner")
   aiConversations AiConversation[]
   linkedEmails    ProjectEmail[]   @relation("ProjectEmailLinker")
+
+  @@index([teamId])
 }
 
 model Team {
@@ -138,6 +143,8 @@ model TeamMessage {
   author   User   @relation("MessageAuthor", fields: [authorId], references: [id], onDelete: Cascade)
 
   recipientId String?
+
+  @@index([teamId, createdAt])
 }
 
 model Invite {
@@ -156,6 +163,8 @@ model Invite {
   createdAt  DateTime @default(now())
   expiresAt  DateTime
   acceptedBy String?
+
+  @@index([teamId, status])
 }
 
 enum ProjectStatus {
@@ -189,6 +198,9 @@ model Project {
   tasks     Task[]
   documents Document[]
   emails    ProjectEmail[]
+
+  @@index([ownerId])
+  @@index([teamId])
 }
 
 /// A Gmail thread the user saved to a project. Only metadata (subject, sender,
@@ -236,6 +248,9 @@ model Decision {
   team   Team?   @relation(fields: [teamId], references: [id])
 
   options DecisionOption[]
+
+  @@index([ownerId])
+  @@index([teamId])
 }
 
 model DecisionOption {
@@ -247,6 +262,8 @@ model DecisionOption {
 
   decisionId String
   decision   Decision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+
+  @@index([decisionId])
 }
 
 model Objective {
@@ -265,6 +282,9 @@ model Objective {
 
   keyResults KeyResult[]
   tasks      Task[]
+
+  @@index([ownerId])
+  @@index([teamId])
 }
 
 model KeyResult {
@@ -276,6 +296,8 @@ model KeyResult {
 
   objectiveId String
   objective   Objective @relation(fields: [objectiveId], references: [id], onDelete: Cascade)
+
+  @@index([objectiveId])
 }
 
 enum BetStatus {
@@ -301,6 +323,9 @@ model StrategicBet {
   team   Team?   @relation(fields: [teamId], references: [id])
 
   tasks Task[]
+
+  @@index([ownerId])
+  @@index([teamId])
 }
 
 enum RiskSeverity {
@@ -331,6 +356,9 @@ model Risk {
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
+
+  @@index([ownerId])
+  @@index([teamId])
 }
 
 enum RuleStatus {
@@ -352,6 +380,9 @@ model AutomationRule {
   owner   User   @relation("AutomationRuleOwner", fields: [ownerId], references: [id], onDelete: Cascade)
 
   runs AutomationRun[]
+
+  @@index([ownerId])
+  @@index([status, trigger])
 }
 
 enum AutomationRunStatus {
@@ -407,6 +438,10 @@ model Task {
   strategicBet   StrategicBet? @relation(fields: [strategicBetId], references: [id], onDelete: SetNull)
 
   @@index([assigneeId])
+  @@index([projectId])
+  @@index([ownerId])
+  @@index([objectiveId])
+  @@index([strategicBetId])
 }
 
 model Contact {
@@ -427,6 +462,9 @@ model Contact {
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
+
+  @@index([ownerId])
+  @@index([teamId])
 }
 
 model Document {
@@ -446,6 +484,10 @@ model Document {
 
   teamId String?
   team   Team?   @relation(fields: [teamId], references: [id])
+
+  @@index([ownerId])
+  @@index([teamId])
+  @@index([projectId])
 }
 
 model AiConversation {
@@ -486,13 +528,13 @@ model Memory {
 
 /// Someone who asked for early access on /waitlist. Not a user account.
 model WaitlistEntry {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String?
-  company      String?
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  company   String?
   /// Where they came from (utm_source or ref), if the link carried one.
-  source       String?
-  createdAt    DateTime @default(now())
+  source    String?
+  createdAt DateTime @default(now())
 
   @@index([createdAt])
 }

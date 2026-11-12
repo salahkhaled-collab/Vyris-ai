@@ -1,0 +1,30 @@
+-- Indexes for the columns every list and access check filters on.
+-- Additive only: no table or row is changed. IF NOT EXISTS makes a re-run safe.
+CREATE INDEX IF NOT EXISTS "Account_userId_idx" ON "Account"("userId");
+CREATE INDEX IF NOT EXISTS "Session_userId_idx" ON "Session"("userId");
+CREATE INDEX IF NOT EXISTS "User_teamId_idx" ON "User"("teamId");
+CREATE INDEX IF NOT EXISTS "TeamMessage_teamId_createdAt_idx" ON "TeamMessage"("teamId", "createdAt");
+CREATE INDEX IF NOT EXISTS "Invite_teamId_status_idx" ON "Invite"("teamId", "status");
+CREATE INDEX IF NOT EXISTS "Project_ownerId_idx" ON "Project"("ownerId");
+CREATE INDEX IF NOT EXISTS "Project_teamId_idx" ON "Project"("teamId");
+CREATE INDEX IF NOT EXISTS "Decision_ownerId_idx" ON "Decision"("ownerId");
+CREATE INDEX IF NOT EXISTS "Decision_teamId_idx" ON "Decision"("teamId");
+CREATE INDEX IF NOT EXISTS "DecisionOption_decisionId_idx" ON "DecisionOption"("decisionId");
+CREATE INDEX IF NOT EXISTS "Objective_ownerId_idx" ON "Objective"("ownerId");
+CREATE INDEX IF NOT EXISTS "Objective_teamId_idx" ON "Objective"("teamId");
+CREATE INDEX IF NOT EXISTS "KeyResult_objectiveId_idx" ON "KeyResult"("objectiveId");
+CREATE INDEX IF NOT EXISTS "StrategicBet_ownerId_idx" ON "StrategicBet"("ownerId");
+CREATE INDEX IF NOT EXISTS "StrategicBet_teamId_idx" ON "StrategicBet"("teamId");
+CREATE INDEX IF NOT EXISTS "Risk_ownerId_idx" ON "Risk"("ownerId");
+CREATE INDEX IF NOT EXISTS "Risk_teamId_idx" ON "Risk"("teamId");
+CREATE INDEX IF NOT EXISTS "AutomationRule_ownerId_idx" ON "AutomationRule"("ownerId");
+CREATE INDEX IF NOT EXISTS "AutomationRule_status_trigger_idx" ON "AutomationRule"("status", "trigger");
+CREATE INDEX IF NOT EXISTS "Task_projectId_idx" ON "Task"("projectId");
+CREATE INDEX IF NOT EXISTS "Task_ownerId_idx" ON "Task"("ownerId");
+CREATE INDEX IF NOT EXISTS "Task_objectiveId_idx" ON "Task"("objectiveId");
+CREATE INDEX IF NOT EXISTS "Task_strategicBetId_idx" ON "Task"("strategicBetId");
+CREATE INDEX IF NOT EXISTS "Contact_ownerId_idx" ON "Contact"("ownerId");
+CREATE INDEX IF NOT EXISTS "Contact_teamId_idx" ON "Contact"("teamId");
+CREATE INDEX IF NOT EXISTS "Document_ownerId_idx" ON "Document"("ownerId");
+CREATE INDEX IF NOT EXISTS "Document_teamId_idx" ON "Document"("teamId");
+CREATE INDEX IF NOT EXISTS "Document_projectId_idx" ON "Document"("projectId");
