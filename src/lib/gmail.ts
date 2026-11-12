@@ -4,6 +4,8 @@
 // body parsing, inbox listing, thread loading, and building outgoing messages.
 // Server-only. Callers pass a Google access token from getGoogleAccessToken.
 
+import { MAX_DAYS_WAITING, MIN_DAYS_WAITING, pickUnanswered, type ThreadLastMessage, type Unanswered } from "@/lib/unanswered";
+
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 
 export interface GmailHeader {
@@ -277,4 +279,38 @@ export function buildRawMessage(input: {
   if (ref) headers.push(`In-Reply-To: ${ref}`, `References: ${ref}`);
   const message = [...headers, "", input.body].join("\r\n");
   return Buffer.from(message).toString("base64").replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+/**
+ * Inbox threads still waiting on the user's reply (see lib/unanswered).
+ * At most `max` threads are checked: one list call plus one per thread.
+ */
+export async function findUnansweredThreads(token: string, myAddress: string, now: Date, max = 10): Promise<Unanswered[]> {
+  const q = `in:inbox -from:me older_than:${MIN_DAYS_WAITING}d newer_than:${MAX_DAYS_WAITING}d -category:promotions -category:social -category:updates -category:forums`;
+  const list = await gmailFetch<{ threads?: { id: string }[] }>(
+    token,
+    `/threads?${new URLSearchParams({ q, maxResults: String(max) }).toString()}`
+  );
+  const ids = (list.threads ?? []).map((t) => t.id);
+  const meta = new URLSearchParams({ format: "metadata" });
+  ["From", "Subject"].forEach((h) => meta.append("metadataHeaders", h));
+  const threads = await Promise.all(
+    ids.map((id) =>
+      gmailFetch<{ id: string; messages?: GmailMessageMeta[] }>(token, `/threads/${encodeURIComponent(id)}?${meta.toString()}`).catch(
+        () => null
+      )
+    )
+  );
+  const last: ThreadLastMessage[] = [];
+  for (const t of threads) {
+    const newest = t?.messages?.[t.messages.length - 1];
+    if (!t || !newest) continue;
+    last.push({
+      threadId: t.id,
+      from: getHeader(newest.payload?.headers, "From"),
+      subject: getHeader(t.messages?.[0]?.payload?.headers, "Subject"),
+      at: new Date(newest.internalDate ? parseInt(newest.internalDate, 10) : now.getTime()),
+    });
+  }
+  return pickUnanswered(last, myAddress, now);
 }

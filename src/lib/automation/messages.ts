@@ -3,6 +3,7 @@
 // The text of automation emails, built from real data (no AI), so reports are
 // exact, free, and never hit the AI provider's rate limit. Pure.
 
+import type { Unanswered } from "@/lib/unanswered";
 import type { AttentionReport } from "@/lib/attention";
 import type { RiskSignals } from "@/lib/risk-signals";
 
@@ -57,7 +58,13 @@ export function overdueEmail(
   };
 }
 
-export function digestEmail(report: AttentionReport, now: Date, appUrl = APP_URL_FALLBACK): { subject: string; body: string } {
+export function digestEmail(
+  report: AttentionReport,
+  now: Date,
+  appUrl = APP_URL_FALLBACK,
+  /** Emails waiting on the user's reply; null when Gmail isn't connected. */
+  unanswered: Unanswered[] | null = null
+): { subject: string; body: string } {
   const counts = `${report.blocked.length} blocked, ${report.overdue.length} overdue, ${report.dueSoon.length} due soon`;
   return {
     subject: `Vyris daily digest: ${report.total === 0 ? "all clear" : counts}`,
@@ -72,6 +79,16 @@ export function digestEmail(report: AttentionReport, now: Date, appUrl = APP_URL
       "",
       section("Active projects with no open tasks", report.idleProjects.slice(0, 10).map((p) => p.title), "None."),
       "",
+      ...(unanswered
+        ? [
+            section(
+              "Waiting on your reply",
+              unanswered.slice(0, 10).map((u) => `${u.from}: "${u.subject}", ${u.daysWaiting} days`),
+              "Nobody is waiting on you."
+            ),
+            "",
+          ]
+        : []),
       `Open Vyris: ${appUrl}/projects`,
       "",
       "Sent by a Vyris automation rule.",
