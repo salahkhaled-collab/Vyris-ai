@@ -112,63 +112,13 @@ export function GlobalAIChat() {
     }
   }, [open]);
 
-  // Try to perform page actions based on the user message
+  // Navigation shortcuts ("open inbox") run alongside the assistant's reply.
   const tryPageAction = useCallback(
     async (userMessage: string): Promise<string | null> => {
-      const msg = userMessage.toLowerCase();
 
-      // Project creation
-      if (
-        (msg.includes("create") || msg.includes("add") || msg.includes("new")) &&
-        msg.includes("project")
-      ) {
-        const titleMatch =
-          userMessage.match(/project (?:called|named|titled) ["']?([^"'\n]+?)["']?(?:\s|$)/i) ||
-          userMessage.match(/["']([^"']+)["'] project/i) ||
-          userMessage.match(/new project[:\s]+([^\n.?!]+)/i);
-        if (titleMatch) {
-          const title = titleMatch[1].trim();
-          try {
-            const res = await fetch("/api/projects", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ title }),
-            });
-            if (res.ok) {
-              if (!pathname.startsWith("/projects")) router.push("/projects");
-              return `✓ Project "${title}" created successfully.`;
-            }
-          } catch {
-            // silent fail
-          }
-        }
-      }
-
-      // Contact creation
-      if (
-        (msg.includes("add") || msg.includes("create") || msg.includes("new")) &&
-        msg.includes("contact")
-      ) {
-        const nameMatch =
-          userMessage.match(/contact (?:called|named) ["']?([^"'\n]+?)["']?(?:\s|$)/i) ||
-          userMessage.match(/add ["']?([^"'\n]+?)["']? (?:as a |to )?contact/i);
-        if (nameMatch) {
-          const name = nameMatch[1].trim();
-          try {
-            const res = await fetch("/api/contacts", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ name }),
-            });
-            if (res.ok) {
-              if (!pathname.startsWith("/contacts")) router.push("/contacts");
-              return `✓ Contact "${name}" added successfully.`;
-            }
-          } catch {
-            // silent fail
-          }
-        }
-      }
+      // Creating records is left to the assistant (its tools check access and
+      // the reply says what it did). A keyword match here used to create a
+      // project for questions like "should I add a project called X?".
 
       // Navigation commands
       const navMap: [RegExp, string][] = [
@@ -196,7 +146,7 @@ export function GlobalAIChat() {
 
       return null;
     },
-    [pathname, router]
+    [router]
   );
 
   async function handleSend(overrideInput?: string) {

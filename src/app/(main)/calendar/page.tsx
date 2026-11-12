@@ -38,7 +38,7 @@ export default function CalendarPage() {
 
   const fetchEvents = useCallback(() => {
     setLoading(true);
-    fetch("/api/calendar?range=month")
+    fetch(`/api/calendar?range=month&tz=${encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone)}`)
       .then(async (res) => {
         const data = await res.json();
         if (!res.ok) {

@@ -43,17 +43,35 @@ type Outcome = { status: "SUCCESS" | "FAILED" | "SKIPPED"; detail: string };
 
 // ── Claiming runs (dedupe) ─────────────────────────────────────────────────
 
-/** Returns the run id, or null if this rule already fired for this key. */
-async function claimRun(ruleId: string, dedupeKey: string): Promise<string | null> {
+const RUNNING = "Running...";
+/** A claim still "Running..." after this long was cut off (function timeout) and may be retried. */
+export const STALE_CLAIM_MS = 10 * 60_000;
+
+/**
+ * Returns the run id, or null if this rule already fired for this key. A claim
+ * left "Running..." by a run that was killed part way is taken over once it is
+ * stale, so a timeout can't block that rule for that key forever.
+ */
+async function claimRun(ruleId: string, dedupeKey: string, now: Date = new Date()): Promise<string | null> {
   try {
     const run = await prisma.automationRun.create({
-      data: { ruleId, dedupeKey, status: "SKIPPED", detail: "Running..." },
+      data: { ruleId, dedupeKey, status: "SKIPPED", detail: RUNNING },
       select: { id: true },
     });
     return run.id;
   } catch (err: unknown) {
-    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") return null;
-    throw err;
+    if (!(err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002")) throw err;
+    const existing = await prisma.automationRun.findFirst({
+      where: { ruleId, dedupeKey, detail: RUNNING, createdAt: { lt: new Date(now.getTime() - STALE_CLAIM_MS) } },
+      select: { id: true, createdAt: true },
+    });
+    if (!existing) return null;
+    // Conditional on the old timestamp: of two runs taking over, only one wins.
+    const taken = await prisma.automationRun.updateMany({
+      where: { id: existing.id, detail: RUNNING, createdAt: existing.createdAt },
+      data: { createdAt: now },
+    });
+    return taken.count === 1 ? existing.id : null;
   }
 }
 
@@ -82,12 +100,13 @@ async function runOnce(rule: RuleRow, dedupeKey: string, work: () => Promise<Out
 
 /** Email the rule owner: through their own Gmail if connected, else via Resend. */
 export async function emailOwner(userId: string, subject: string, body: string): Promise<Outcome> {
-  const { accessToken } = await getGoogleAccessToken(userId, "gmail");
+  const { accessToken } = await getGoogleAccessToken(userId, "gmail_send");
   if (accessToken) {
     const mailbox = await getMailboxAddress(accessToken);
     if (mailbox) {
       const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
         method: "POST",
+        signal: AbortSignal.timeout(10_000),
         headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
         body: JSON.stringify({ raw: buildRawMessage({ to: mailbox, subject, body }) }),
       });
@@ -234,25 +253,51 @@ export async function runScheduledRule(rule: RuleRow, now: Date, force = false):
   }
 }
 
+/** Rules run this many at a time: enough to finish well inside the cron's 60s. */
+const CRON_CONCURRENCY = 5;
+/** Stop starting new rules after this long, so in-flight ones can finish and be recorded. */
+export const CRON_BUDGET_MS = 45_000;
+
 /** Called by the daily cron. Weekly reports only go out on Mondays (UTC). */
-export async function runScheduled(now: Date = new Date()): Promise<{ rules: number; failed: number }> {
+export async function runScheduled(
+  now: Date = new Date(),
+  budgetMs: number = CRON_BUDGET_MS
+): Promise<{ rules: number; failed: number; notReached: number }> {
+  const started = Date.now();
   const triggers = ["task_overdue", "daily_digest", ...(now.getUTCDay() === 1 ? ["weekly_report"] : [])];
   const rules = await prisma.automationRule.findMany({
     where: { status: "ACTIVE", trigger: { in: triggers } },
     select: { id: true, ownerId: true, trigger: true, action: true },
+    orderBy: { createdAt: "asc" },
     take: 500,
   });
+  // Start at a different rule each day, so if the budget runs out it isn't
+  // always the same (newest) rules that miss out.
+  const shift = rules.length ? Math.floor(now.getTime() / 86_400_000) % rules.length : 0;
+  const ordered = [...rules.slice(shift), ...rules.slice(0, shift)];
   let failed = 0;
-  for (const rule of rules) {
-    try {
-      const outcome = await runScheduledRule(rule, now);
-      if (outcome?.status === "FAILED") failed += 1;
-    } catch (err: unknown) {
-      failed += 1;
-      console.error(`[automation] scheduled rule ${rule.id} crashed:`, err);
+  let next = 0;
+  let notReached = 0;
+  async function worker(): Promise<void> {
+    while (next < rules.length) {
+      if (Date.now() - started > budgetMs) {
+        notReached = rules.length - next;
+        next = rules.length;
+        return;
+      }
+      const rule = ordered[next++];
+      try {
+        const outcome = await runScheduledRule(rule, now);
+        if (outcome?.status === "FAILED") failed += 1;
+      } catch (err: unknown) {
+        failed += 1;
+        console.error(`[automation] scheduled rule ${rule.id} crashed:`, err);
+      }
     }
   }
-  return { rules: rules.length, failed };
+  await Promise.all(Array.from({ length: Math.min(CRON_CONCURRENCY, rules.length) }, () => worker()));
+  if (notReached > 0) console.error(`[automation] time budget reached: ${notReached} rule(s) not run today`);
+  return { rules: rules.length, failed, notReached };
 }
 
 /**

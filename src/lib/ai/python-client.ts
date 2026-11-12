@@ -109,6 +109,8 @@ export async function completeWithPythonLlm(input: {
   messages: PythonMessage[];
   tools?: readonly PythonTool[];
   maxTokens?: number;
+  /** Abort after this many ms (default 45s, never more). Lets callers fit a function time limit. */
+  timeoutMs?: number;
 }): Promise<PythonCompletion> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (process.env.PYTHON_LLM_API_KEY) {
@@ -131,7 +133,8 @@ export async function completeWithPythonLlm(input: {
     : undefined;
 
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  const timeout = Math.min(input.timeoutMs ?? REQUEST_TIMEOUT_MS, REQUEST_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), Math.max(timeout, 1));
 
   try {
     const response = await fetch(getPythonLlmUrl(), {

@@ -28,6 +28,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const result = await runScheduled(new Date());
-  console.log(`[cron] automations: ${result.rules} rule(s), ${result.failed} failed`);
+  console.log(`[cron] automations: ${result.rules} rule(s), ${result.failed} failed, ${result.notReached} not reached`);
   return NextResponse.json(result);
 }
