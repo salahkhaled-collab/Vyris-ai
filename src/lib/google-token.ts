@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { hasFeatureScopes, type GoogleFeature } from "@/lib/google-scopes";
+import { BASE_GOOGLE_SCOPES, hasFeatureScopes, type GoogleFeature } from "@/lib/google-scopes";
 
 /**
  * Returns a valid Google access token for the given user, refreshing it
@@ -69,6 +69,14 @@ export async function getGoogleAccessToken(
     return { accessToken: refreshed.access_token };
   } catch (err) {
     console.error("Failed to refresh Google access token:", err);
+    // The grant is dead (expired or revoked at Google). Forget its Gmail and
+    // Calendar scopes so the app asks to reconnect instead of retrying forever.
+    if ((err as { error?: unknown } | null)?.error === "invalid_grant") {
+      await prisma.account
+        .update({ where: { id: account.id }, data: { scope: BASE_GOOGLE_SCOPES.join(" "), access_token: null } })
+        .catch(() => {});
+      return { accessToken: null, error: "missing_scope" };
+    }
     return { accessToken: null, error: "refresh_failed" };
   }
 }

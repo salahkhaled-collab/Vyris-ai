@@ -19,7 +19,7 @@ export async function GET() {
   if (!accessToken) {
     const message =
       error === "no_refresh_token" || error === "refresh_failed"
-        ? "Your Google session expired. Please sign in again."
+        ? "Your Google connection expired. Click Connect to reconnect."
         : "Connect Gmail to see your inbox.";
     return NextResponse.json({ error: error ?? "not_authenticated", message }, { status: 401 });
   }

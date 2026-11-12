@@ -29,6 +29,23 @@ export function coversScopes(next: string | null | undefined, previous: string |
   return (previous ?? "").split(/\s+/).filter(Boolean).every((s) => have.has(s));
 }
 
+/** Whether a scope string includes any Gmail or Calendar scope. */
+export function hasAnyFeatureScope(granted: string | null | undefined): boolean {
+  const set = new Set((granted ?? "").split(/\s+/).filter(Boolean));
+  return Object.values(GOOGLE_FEATURE_SCOPES).some((scopes) => scopes.some((s) => set.has(s)));
+}
+
+/**
+ * Whether a new Google grant should replace the stored one. Only a plain
+ * sign-in (profile scopes only) is kept from overwriting a stored Gmail or
+ * Calendar grant. A Connect click always carries a feature scope, so it always
+ * wins, even when it grants fewer scopes than before: the stored grant may be
+ * dead (expired or revoked), and keeping it would block reconnecting forever.
+ */
+export function shouldReplaceGrant(stored: string | null | undefined, incoming: string | null | undefined): boolean {
+  return hasAnyFeatureScope(incoming) || !hasAnyFeatureScope(stored);
+}
+
 /**
  * Authorization params for the Connect buttons. include_granted_scopes keeps
  * whatever the user granted before (connecting Calendar does not drop Gmail);

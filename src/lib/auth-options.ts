@@ -4,7 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
-import { BASE_GOOGLE_SCOPES, coversScopes } from "@/lib/google-scopes";
+import { BASE_GOOGLE_SCOPES, shouldReplaceGrant } from "@/lib/google-scopes";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -88,12 +88,9 @@ export const authOptions: NextAuthOptions = {
           where: { provider: "google", providerAccountId: account.providerAccountId },
           select: { scope: true },
         });
-        // A plain sign-in asks for profile scopes only. Never let it replace a
-        // stored token that carries Gmail/Calendar access with a narrower one.
-        // A grant that adds anything new (a Connect click) always wins.
-        const narrower =
-          coversScopes(existing?.scope, account.scope) && !coversScopes(account.scope, existing?.scope);
-        if (existing && !narrower) {
+        // A plain sign-in asks for profile scopes only and must not replace a
+        // stored Gmail/Calendar grant. A Connect click always replaces it.
+        if (existing && shouldReplaceGrant(existing.scope, account.scope)) {
           await prisma.account.updateMany({
             where: {
               provider: "google",
