@@ -1,5 +1,9 @@
 import { prisma } from "@/lib/prisma";
 
+export const MINUTE = 60_000;
+export const HOUR = 60 * MINUTE;
+export const DAY = 24 * HOUR;
+
 /**
  * Fixed-window abuse limits stored in Postgres, so they hold across
  * serverless instances. Not for high-volume traffic: one upsert per call.
@@ -13,6 +17,12 @@ export function windowOpen(windowStart: Date, windowMs: number, now: Date): bool
 /** Count one event for `key`. Returns false once more than `limit` happened in the window. */
 export async function consume(key: string, limit: number, windowMs: number): Promise<boolean> {
   const now = new Date();
+  // Now and then, drop counters older than a day so the table stays small.
+  if (Math.random() < 0.02) {
+    await prisma.rateLimit
+      .deleteMany({ where: { windowStart: { lt: new Date(now.getTime() - DAY) } } })
+      .catch(() => {});
+  }
   const row = await prisma.rateLimit.upsert({
     where: { key },
     create: { key, count: 1, windowStart: now },
@@ -41,6 +51,3 @@ export function clientIp(headers: Headers): string {
   return headers.get("x-forwarded-for")?.split(",")[0]?.trim() || headers.get("x-real-ip") || "unknown";
 }
 
-export const MINUTE = 60_000;
-export const HOUR = 60 * MINUTE;
-export const DAY = 24 * HOUR;

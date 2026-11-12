@@ -5,10 +5,13 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { BASE_GOOGLE_SCOPES, shouldReplaceGrant } from "@/lib/google-scopes";
-import { consume, isLimited, resetLimit, MINUTE } from "@/lib/rate-limit";
+import { clientIp, consume, resetLimit, MINUTE } from "@/lib/rate-limit";
 
 const LOGIN_FAILURES_ALLOWED = 10;
+const LOGIN_FAILURES_PER_EMAIL = 50;
 const LOGIN_WINDOW_MS = 15 * MINUTE;
+/** bcrypt hash of a random string, compared when an account has no password. */
+const DUMMY_HASH = "$2b$10$Z9XIXdCTxQgJm4FDEm7RKe.1.m.3IcpG10nJFE5kp787u8XrxIOGC";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -43,27 +46,40 @@ export const authOptions: NextAuthOptions = {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials?.email || !credentials?.password) {
           return null;
         }
 
         try {
           const email = credentials.email.toLowerCase().trim();
-          // Slow down password guessing: after too many failures for one email,
-          // refuse further attempts until the window passes.
-          const throttleKey = `login:${email}`;
-          if (await isLimited(throttleKey, LOGIN_FAILURES_ALLOWED, LOGIN_WINDOW_MS)) {
-            return null;
+          // Slow down password guessing. Each attempt is counted before the
+          // password is checked (one atomic increment), so parallel requests
+          // can't all slip under the limit. The tight limit is per email AND
+          // network, so a stranger can't lock the real owner out from elsewhere;
+          // the loose per-email limit caps guessing spread across many networks.
+          const raw = (req?.headers ?? {}) as Record<string, unknown>;
+          const ip = clientIp(
+            new Headers(
+              Object.entries(raw).filter((e): e is [string, string] => typeof e[1] === "string")
+            )
+          );
+          const keys = [
+            { key: `login:${email}:${ip}`, limit: LOGIN_FAILURES_ALLOWED },
+            { key: `login:${email}`, limit: LOGIN_FAILURES_PER_EMAIL },
+          ];
+          for (const k of keys) {
+            if (!(await consume(k.key, k.limit, LOGIN_WINDOW_MS))) return null;
           }
           const user = await prisma.user.findUnique({ where: { email } });
 
-          const valid = Boolean(user?.password) && (await compare(credentials.password, user?.password as string));
-          if (!user || !valid) {
-            await consume(throttleKey, LOGIN_FAILURES_ALLOWED, LOGIN_WINDOW_MS);
+          // Compare against a dummy hash when there is no password, so response
+          // time doesn't reveal which emails have accounts.
+          const valid = await compare(credentials.password, user?.password ?? DUMMY_HASH);
+          if (!user?.password || !valid) {
             return null;
           }
-          await resetLimit(throttleKey);
+          await Promise.all(keys.map((k) => resetLimit(k.key)));
 
           return {
             id: user.id,
