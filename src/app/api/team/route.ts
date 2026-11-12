@@ -24,9 +24,15 @@ export async function GET() {
     select: { id: true, name: true, email: true, image: true },
   });
 
-  const messages = await prisma.teamMessage.findMany({
-    where: { teamId: user.teamId },
-    orderBy: { createdAt: "asc" },
+  // Team-wide posts plus direct messages this user sent or received; other
+  // members' direct messages stay private. Latest 200, shown oldest first.
+  const recent = await prisma.teamMessage.findMany({
+    where: {
+      teamId: user.teamId,
+      OR: [{ recipientId: null }, { authorId: session.user.id }, { recipientId: session.user.id }],
+    },
+    orderBy: { createdAt: "desc" },
+    take: 200,
     select: {
       id: true,
       content: true,
@@ -37,6 +43,7 @@ export async function GET() {
     },
   });
 
+  const messages = recent.reverse();
   return NextResponse.json({ members, messages, teamId: user.teamId });
 }
 

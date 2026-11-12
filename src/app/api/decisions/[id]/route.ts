@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { callerMayDelete } from "@/lib/permissions";
 import { NewDecisionForm } from "@/components/decisions/NewDecisionForm";
 
 async function canAccessDecision(userId: string, decisionId: string) {
@@ -61,6 +62,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const { decision, allowed } = await canAccessDecision(session.user.id, params.id);
   if (!decision) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!(await callerMayDelete(session.user.id, decision))) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Only the person who created this, or a team admin, can delete it." },
+      { status: 403 }
+    );
+  }
 
   await prisma.decision.delete({ where: { id: params.id } });
 

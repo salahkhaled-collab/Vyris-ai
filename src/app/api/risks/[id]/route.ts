@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { callerMayDelete } from "@/lib/permissions";
 
 async function canAccessRisk(userId: string, riskId: string) {
   const risk = await prisma.risk.findUnique({ where: { id: riskId } });
@@ -63,6 +64,12 @@ export async function DELETE(_req: NextRequest, { params }: { params: { id: stri
   const { risk, allowed } = await canAccessRisk(session.user.id, params.id);
   if (!risk) return NextResponse.json({ error: "not_found" }, { status: 404 });
   if (!allowed) return NextResponse.json({ error: "forbidden" }, { status: 403 });
+  if (!(await callerMayDelete(session.user.id, risk))) {
+    return NextResponse.json(
+      { error: "forbidden", message: "Only the person who created this, or a team admin, can delete it." },
+      { status: 403 }
+    );
+  }
 
   await prisma.risk.delete({ where: { id: params.id } });
 

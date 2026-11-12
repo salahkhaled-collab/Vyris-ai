@@ -11,7 +11,11 @@ export interface KeyResultLike {
 /** Average completion of the key results, each capped at 100%, as a whole percentage. */
 export function computeProgress(keyResults: KeyResultLike[]): number {
   if (keyResults.length === 0) return 0;
-  const pcts = keyResults.map((kr) => Math.min(kr.target === 0 ? 0 : kr.current / kr.target, 1));
+  // Each key result counts between 0% and 100%; bad numbers count as 0%.
+  const pcts = keyResults.map((kr) => {
+    const p = kr.target === 0 ? 0 : kr.current / kr.target;
+    return Number.isFinite(p) ? Math.min(Math.max(p, 0), 1) : 0;
+  });
   const avg = pcts.reduce((sum, p) => sum + p, 0) / pcts.length;
   return Math.round(avg * 100);
 }

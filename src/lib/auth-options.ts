@@ -5,6 +5,10 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import { compare } from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { BASE_GOOGLE_SCOPES, shouldReplaceGrant } from "@/lib/google-scopes";
+import { consume, isLimited, resetLimit, MINUTE } from "@/lib/rate-limit";
+
+const LOGIN_FAILURES_ALLOWED = 10;
+const LOGIN_WINDOW_MS = 15 * MINUTE;
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -46,19 +50,20 @@ export const authOptions: NextAuthOptions = {
 
         try {
           const email = credentials.email.toLowerCase().trim();
+          // Slow down password guessing: after too many failures for one email,
+          // refuse further attempts until the window passes.
+          const throttleKey = `login:${email}`;
+          if (await isLimited(throttleKey, LOGIN_FAILURES_ALLOWED, LOGIN_WINDOW_MS)) {
+            return null;
+          }
           const user = await prisma.user.findUnique({ where: { email } });
 
-          if (!user) {
+          const valid = Boolean(user?.password) && (await compare(credentials.password, user?.password as string));
+          if (!user || !valid) {
+            await consume(throttleKey, LOGIN_FAILURES_ALLOWED, LOGIN_WINDOW_MS);
             return null;
           }
-          if (!user.password) {
-            return null;
-          }
-
-          const valid = await compare(credentials.password, user.password);
-          if (!valid) {
-            return null;
-          }
+          await resetLimit(throttleKey);
 
           return {
             id: user.id,

@@ -54,24 +54,40 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "invalid_body" }, { status: 400 });
   }
 
-  if (!body.title || !body.quarter || !Array.isArray(body.keyResults)) {
+  if (
+    typeof body?.title !== "string" ||
+    !body.title.trim() ||
+    typeof body.quarter !== "string" ||
+    !body.quarter.trim() ||
+    !Array.isArray(body.keyResults) ||
+    body.keyResults.length > 20
+  ) {
     return NextResponse.json({ error: "missing_fields" }, { status: 400 });
+  }
+  const keyResults: { label: string; current: number; target: number; unit: string }[] = [];
+  for (const kr of body.keyResults as unknown[]) {
+    const k = (kr ?? {}) as Record<string, unknown>;
+    const label = typeof k.label === "string" ? k.label.trim().slice(0, 200) : "";
+    const target = Number(k.target);
+    const current = k.current === undefined || k.current === "" ? 0 : Number(k.current);
+    if (!label || !Number.isFinite(target) || target <= 0 || !Number.isFinite(current)) {
+      return NextResponse.json(
+        { error: "invalid_key_result", message: "Each key result needs a name and a target above 0." },
+        { status: 400 }
+      );
+    }
+    keyResults.push({ label, current, target, unit: typeof k.unit === "string" ? k.unit.slice(0, 20) : "" });
   }
 
   const objective = await prisma.objective.create({
     data: {
-      title: body.title.trim(),
-      quarter: body.quarter.trim(),
+      title: body.title.trim().slice(0, 300),
+      quarter: body.quarter.trim().slice(0, 20),
       ownerId: session.user.id,
       // Never trust a teamId from the client: share only into the caller's own team.
       teamId: body.shareWithTeam ? await callerTeamId(session.user.id) : null,
       keyResults: {
-        create: body.keyResults.map((kr: any) => ({
-          label: kr.label,
-          current: Number(kr.current) || 0,
-          target: Number(kr.target),
-          unit: kr.unit ?? "",
-        })),
+        create: keyResults,
       },
     },
     include: { keyResults: true },

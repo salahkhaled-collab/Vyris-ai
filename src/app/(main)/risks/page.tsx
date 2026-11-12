@@ -92,9 +92,13 @@ export default function RisksPage() {
     setRisks((prev) => prev.filter((r) => r.id !== id));
     try {
       const res = await fetch(`/api/risks/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-    } catch {
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { message?: string };
+        throw new Error(data.message ?? "Couldn't delete this risk. Try again.");
+      }
+    } catch (err) {
       setRisks(previous);
+      window.alert(err instanceof Error && err.message ? err.message : "Couldn't delete this risk. Try again.");
     }
   }
 

@@ -93,8 +93,12 @@ export default function DecisionsPage() {
   }
 
   async function deleteDecision(decisionId: string) {
-    const res = await fetch(`/api/decisions/${decisionId}`, { method: "DELETE" });
-    if (!res.ok) throw new Error("Failed to delete");
+    const res = await fetch(`/api/decisions/${decisionId}`, { method: "DELETE" }).catch(() => null);
+    if (!res?.ok) {
+      const data = (await res?.json().catch(() => ({}))) as { message?: string } | undefined;
+      window.alert(data?.message ?? "Couldn't delete this decision. Try again.");
+      return;
+    }
     setDecisions((prev) => prev.filter((d) => d.id !== decisionId));
   }
 
