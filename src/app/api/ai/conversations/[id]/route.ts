@@ -16,7 +16,7 @@ export async function GET(
     select: {
       id: true,
       title: true,
-      messages: { orderBy: { createdAt: "asc" }, take: 200, select: { role: true, content: true, createdAt: true } },
+      messages: { orderBy: { createdAt: "asc" }, take: 200, select: { id: true, role: true, content: true, actions: true, createdAt: true } },
     },
   });
   if (!convo) return NextResponse.json({ error: "not_found" }, { status: 404 });

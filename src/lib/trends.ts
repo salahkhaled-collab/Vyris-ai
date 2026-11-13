@@ -76,7 +76,12 @@ export function detectUnusualChanges(history: TrendMetrics[], today: TrendMetric
   });
 }
 
-/** "YYYY-MM-DD" in UTC: one snapshot row per user per day. */
-export function snapshotDay(at: Date): string {
-  return at.toISOString().slice(0, 10);
+/** "YYYY-MM-DD" in the user's own zone (UTC if unknown): one snapshot row per user per day. */
+export function snapshotDay(at: Date, timeZone: string = "UTC"): string {
+  try {
+    // en-CA formats dates as YYYY-MM-DD
+    return new Intl.DateTimeFormat("en-CA", { timeZone, year: "numeric", month: "2-digit", day: "2-digit" }).format(at);
+  } catch {
+    return at.toISOString().slice(0, 10);
+  }
 }
