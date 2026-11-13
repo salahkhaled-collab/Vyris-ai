@@ -84,6 +84,9 @@ export function actionDetails(input: Record<string, unknown>): string[] {
   const lines: string[] = [];
   for (const [k, v] of Object.entries(input)) {
     if (v === undefined || v === null || v === "") continue;
+    // Record ids are internal; the summary already names the record (looked
+    // up in the caller's scope), and an id carries nothing that gets saved.
+    if (/Id$/.test(k)) continue;
     if (Array.isArray(v)) {
       v.forEach((item, i) => {
         if (item && typeof item === "object") {
