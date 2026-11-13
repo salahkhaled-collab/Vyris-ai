@@ -54,6 +54,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
           onboarded: data.onboarded ?? false,
           dashboardLayout: data.dashboardLayout ?? [],
         });
+        // Remember the browser's time zone, so daily numbers use the user's own day.
+        try {
+          const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+          if (tz && tz !== data.timeZone) {
+            void fetch("/api/profile", {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ timeZone: tz }),
+            }).catch(() => {});
+          }
+        } catch {
+          // Intl unavailable: snapshots fall back to UTC days
+        }
       })
       .catch(() => {
         if (active) setProfile(defaultProfile);

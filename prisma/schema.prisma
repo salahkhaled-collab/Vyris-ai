@@ -84,6 +84,9 @@ model User {
   accessLevel     AccessLevel    @default(MEMBER)
   dashboardLayout String[]       @default([])
   workspaceType   WorkspaceType?
+  /// IANA zone from the user's browser, e.g. "Africa/Cairo". Decides which
+  /// calendar day the daily numbers belong to.
+  timeZone        String?
   onboarded       Boolean        @default(false)
 
   createdAt DateTime @default(now())
@@ -509,6 +512,8 @@ model AiMessage {
   id        String   @id @default(cuid())
   role      String
   content   String   @db.Text
+  /// Changes the assistant proposed in this reply (shown again after a reload).
+  actions   Json?
   createdAt DateTime @default(now())
 
   conversationId String

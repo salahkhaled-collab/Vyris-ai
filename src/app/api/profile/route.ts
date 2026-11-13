@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
+import { safeTimeZone } from "@/lib/calendar";
 import { Role, WorkspaceType } from "@prisma/client";
 import { isValidLayout } from "@/lib/dashboard-layout";
 
@@ -16,7 +17,7 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { role: true, workspaceType: true, onboarded: true, dashboardLayout: true },
+    select: { role: true, workspaceType: true, onboarded: true, dashboardLayout: true, timeZone: true },
   });
 
   return NextResponse.json(user);
@@ -27,6 +28,7 @@ interface ProfilePatchBody {
   workspaceType?: WorkspaceType;
   onboarded?: boolean;
   dashboardLayout?: string[];
+  timeZone?: string;
 }
 
 export async function PATCH(req: NextRequest) {
@@ -78,6 +80,14 @@ export async function PATCH(req: NextRequest) {
     data.onboarded = body.onboarded;
   }
 
+  if (body.timeZone !== undefined) {
+    const tz = typeof body.timeZone === "string" ? safeTimeZone(body.timeZone) : "UTC";
+    if (tz !== body.timeZone) {
+      return NextResponse.json({ error: "invalid_time_zone" }, { status: 400 });
+    }
+    data.timeZone = tz;
+  }
+
   if (body.dashboardLayout !== undefined) {
     if (!isValidLayout(body.dashboardLayout)) {
       return NextResponse.json({ error: "invalid_dashboard_layout" }, { status: 400 });
@@ -88,7 +98,7 @@ export async function PATCH(req: NextRequest) {
   const updated = await prisma.user.update({
     where: { id: session.user.id },
     data,
-    select: { role: true, workspaceType: true, onboarded: true, dashboardLayout: true },
+    select: { role: true, workspaceType: true, onboarded: true, dashboardLayout: true, timeZone: true },
   });
 
   return NextResponse.json(updated);

@@ -75,7 +75,13 @@ export async function POST(req: NextRequest) {
       await prisma.aiMessage.createMany({
         data: [
           { conversationId: convoId, role: "user", content: text },
-          { conversationId: convoId, role: "assistant", content: reply },
+          {
+            conversationId: convoId,
+            role: "assistant",
+            content: reply,
+            // Proposals are saved with the reply so they survive a reload.
+            ...(pendingActions.length ? { actions: JSON.parse(JSON.stringify(pendingActions)) } : {}),
+          },
         ],
       });
       await prisma.aiConversation.update({ where: { id: convoId }, data: { updatedAt: new Date() } });

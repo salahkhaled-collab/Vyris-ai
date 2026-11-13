@@ -69,6 +69,45 @@ export default function AutomationPage() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Pick up the latest conversation after a reload, proposals included.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const list = await fetch("/api/ai/conversations").then((r) => (r.ok ? r.json() : null));
+        const latest = (list?.conversations ?? [])[0] as { id: string; updatedAt: string } | undefined;
+        // Only continue a recent one; an old chat would just be clutter.
+        if (!latest || Date.now() - new Date(latest.updatedAt).getTime() > 24 * 3600_000) return;
+        const data = await fetch(`/api/ai/conversations/${encodeURIComponent(latest.id)}`).then((r) => (r.ok ? r.json() : null));
+        const rows = (data?.conversation?.messages ?? []) as {
+          id: string;
+          role: "user" | "assistant";
+          content: string;
+          actions: ChatMessage["pendingActions"] | null;
+          createdAt: string;
+        }[];
+        if (!active || rows.length === 0) return;
+        setConversationId(latest.id);
+        setMessages((current) =>
+          current.length > 0
+            ? current // the user already started typing; don't overwrite
+            : rows.slice(-30).map((m) => ({
+                id: m.id,
+                role: m.role,
+                content: m.content,
+                timestamp: new Date(m.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+                pendingActions: Array.isArray(m.actions) ? m.actions : [],
+              }))
+        );
+      } catch {
+        // No saved chat: start fresh.
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
   async function handleSend() {
     if (!input.trim() || pending) return;
 

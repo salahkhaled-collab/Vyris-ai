@@ -68,9 +68,10 @@ export async function loadRiskSignals(scope: Scope, now: Date = new Date()): Pro
 
   // Unusual changes: today's numbers against the user's own recent days.
   try {
-    const today = await captureSnapshot(scope, now);
+    const tz = await userTimeZone(scope.userId);
+    const today = await captureSnapshot(scope, now, tz);
     const history = await prisma.workspaceSnapshot.findMany({
-      where: { userId: scope.userId, day: { lt: snapshotDay(now) } },
+      where: { userId: scope.userId, day: { lt: snapshotDay(now, tz) } },
       orderBy: { day: "desc" },
       take: HISTORY_DAYS,
       select: { openTasks: true, overdue: true, blocked: true, doneLast7: true, createdLast7: true },
@@ -98,9 +99,9 @@ export async function measureWorkspace(scope: Scope, now: Date = new Date()): Pr
 }
 
 /** Measure and save today's snapshot (one row per user per day; re-running updates it). */
-export async function captureSnapshot(scope: Scope, now: Date = new Date()): Promise<TrendMetrics> {
+export async function captureSnapshot(scope: Scope, now: Date = new Date(), timeZone?: string): Promise<TrendMetrics> {
   const metrics = await measureWorkspace(scope, now);
-  const day = snapshotDay(now);
+  const day = snapshotDay(now, timeZone ?? (await userTimeZone(scope.userId)));
   await prisma.workspaceSnapshot.upsert({
     where: { userId_day: { userId: scope.userId, day } },
     create: { userId: scope.userId, day, ...metrics },
@@ -131,4 +132,14 @@ export async function captureDailySnapshots(now: Date, deadline: number): Promis
     }
   }
   return { users: userIds.length, saved };
+}
+
+/** The user's saved IANA zone, or UTC. */
+async function userTimeZone(userId: string): Promise<string> {
+  try {
+    const u = await prisma.user.findUnique({ where: { id: userId }, select: { timeZone: true } });
+    return u?.timeZone ?? "UTC";
+  } catch {
+    return "UTC"; // a missing zone must never stop the numbers being saved
+  }
 }
