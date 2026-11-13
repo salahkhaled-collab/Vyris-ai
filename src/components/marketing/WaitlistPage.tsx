@@ -371,14 +371,7 @@ export function WaitlistPage({ showLogin = false }: { showLogin?: boolean } = {}
           </svg>
           <div className="mx-auto grid max-w-6xl items-center gap-14 px-6 pb-20 pt-16 lg:grid-cols-2 lg:pb-28 lg:pt-24">
             <div>
-              <div className="animate-fade-up inline-flex items-center gap-2 rounded-full border border-line bg-panel px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-muted">
-                <span className="relative flex h-2 w-2">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-signal opacity-60 motion-reduce:hidden" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-signal" />
-                </span>
-                Early access is opening
-              </div>
-              <h1 className="animate-fade-up mt-6 font-display text-5xl leading-[1.04] tracking-tight [animation-delay:90ms] sm:text-6xl">
+              <h1 className="animate-fade-up font-display text-5xl leading-[1.04] tracking-tight [animation-delay:90ms] sm:text-6xl">
                 Every CEO has a chief of staff.
                 <span className="mt-2 block italic text-brass">Now you do too.</span>
               </h1>
