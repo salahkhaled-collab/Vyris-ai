@@ -23,7 +23,6 @@ import { getGoogleAccessToken } from "@/lib/google-token";
 import { buildRawMessage, getMailboxAddress } from "@/lib/gmail";
 import { loadBrief } from "@/lib/morning-brief-server";
 import { briefEmail } from "@/lib/morning-brief";
-import { loadOpenCommitments } from "@/lib/commitments-server";
 import { sendEmail } from "@/lib/email";
 import { dayKey, parseAction, renderTitle, weekKey, type RuleAction, type TriggerKey } from "./rules";
 import { overdueEmail, taskEventEmail, weeklyEmail } from "./messages";
@@ -232,10 +231,7 @@ async function runOverdueRule(rule: RuleRow, action: RuleAction, scope: Scope, n
 async function digestOutcome(rule: RuleRow, _scope: Scope, now: Date): Promise<Outcome> {
   // The daily digest is now the morning brief: tasks, today's meetings, who's
   // waiting on a reply, what changed and goals, led by the few that matter.
-  const { brief, timeZone } = await loadBrief(rule.ownerId, now, {
-    withInbox: true,
-    commitments: await loadOpenCommitments(rule.ownerId, now).catch(() => []),
-  });
+  const { brief, timeZone } = await loadBrief(rule.ownerId, now, { withInbox: true });
   const email = briefEmail(brief, now, timeZone, APP_URL);
   return emailOwner(rule.ownerId, email.subject, email.body);
 }
