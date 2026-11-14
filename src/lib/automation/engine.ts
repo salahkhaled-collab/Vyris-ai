@@ -100,20 +100,40 @@ async function runOnce(rule: RuleRow, dedupeKey: string, work: () => Promise<Out
 // ── Actions ────────────────────────────────────────────────────────────────
 
 /** Email the rule owner: through their own Gmail if connected, else via Resend. */
+/** Send through the user's own Gmail. "unauthorized" means Google rejected the token. */
+async function sendViaGmail(accessToken: string, subject: string, body: string): Promise<{ sent: string } | "unauthorized" | "failed"> {
+  const mailbox = await getMailboxAddress(accessToken);
+  if (!mailbox) {
+    // The profile call is the first to see a rejected token.
+    const probe = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: AbortSignal.timeout(10_000),
+    }).catch(() => null);
+    return probe?.status === 401 ? "unauthorized" : "failed";
+  }
+  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    signal: AbortSignal.timeout(10_000),
+    headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ raw: buildRawMessage({ to: mailbox, subject, body }) }),
+  });
+  if (res.ok) return { sent: mailbox };
+  console.error("[automation] Gmail send failed:", res.status, await res.text().catch(() => ""));
+  return res.status === 401 ? "unauthorized" : "failed";
+}
+
 export async function emailOwner(userId: string, subject: string, body: string): Promise<Outcome> {
   const { accessToken } = await getGoogleAccessToken(userId, "gmail_send");
   if (accessToken) {
-    const mailbox = await getMailboxAddress(accessToken);
-    if (mailbox) {
-      const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
-        method: "POST",
-        signal: AbortSignal.timeout(10_000),
-        headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ raw: buildRawMessage({ to: mailbox, subject, body }) }),
-      });
-      if (res.ok) return { status: "SUCCESS", detail: `Emailed ${mailbox}` };
-      console.error("[automation] Gmail send failed:", res.status, await res.text().catch(() => ""));
+    let result = await sendViaGmail(accessToken, subject, body);
+    if (result === "unauthorized") {
+      // Google rejected a token that looked valid. Refresh once and retry; if
+      // the refresh fails for good, the connection is marked dead and the
+      // user sees Connect instead of this failing silently every morning.
+      const retry = await getGoogleAccessToken(userId, "gmail_send", { forceRefresh: true });
+      if (retry.accessToken) result = await sendViaGmail(retry.accessToken, subject, body);
     }
+    if (typeof result === "object") return { status: "SUCCESS", detail: `Emailed ${result.sent}` };
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (!user?.email) return { status: "FAILED", detail: "No email address to send to." };

@@ -13,7 +13,9 @@ import { BASE_GOOGLE_SCOPES, hasFeatureScopes, type GoogleNeed } from "@/lib/goo
  */
 export async function getGoogleAccessToken(
   userId: string,
-  need?: GoogleNeed
+  need?: GoogleNeed,
+  /** Refresh even if the stored token looks valid: Google just rejected it (401). */
+  opts: { forceRefresh?: boolean } = {}
 ): Promise<{
   accessToken: string | null;
   error?: "no_account" | "missing_scope" | "no_refresh_token" | "refresh_failed";
@@ -35,7 +37,7 @@ export async function getGoogleAccessToken(
   // Refresh a minute early so a token can't expire in the middle of a request.
   const isExpired = !account.expires_at || account.expires_at < now + 60;
 
-  if (!isExpired && account.access_token) {
+  if (!isExpired && account.access_token && !opts.forceRefresh) {
     return { accessToken: account.access_token };
   }
 
