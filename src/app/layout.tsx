@@ -5,6 +5,7 @@ import { UserProvider } from "@/lib/user-context";
 import { AuthProvider } from "@/lib/auth-provider";
 import { CookieConsent } from "@/components/marketing/CookieConsent";
 import { Analytics } from "@/components/marketing/Analytics";
+import { SITE_URL } from "@/lib/site-url";
 
 const fraunces = Fraunces({
   subsets: ["latin"],
@@ -25,7 +26,7 @@ const plexMono = IBM_Plex_Mono({
   display: "swap",
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3002";
+const siteUrl = SITE_URL;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
