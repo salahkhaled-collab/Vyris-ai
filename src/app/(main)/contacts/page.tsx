@@ -312,7 +312,7 @@ function TeamTab() {
       <Panel className="p-5">
         <h3 className="font-display text-lg mb-3">Invite someone</h3>
         <div className="space-y-2.5">
-          <input
+          <input dir="auto"
             value={inviteEmail}
             onChange={(e) => setInviteEmail(e.target.value)}
             placeholder="teammate@company.com"
@@ -373,7 +373,7 @@ function TeamTab() {
               {outcome.emailSent === null && <>Invite link created. Send it to the person you&apos;re inviting:</>}
             </div>
             <div className="flex items-center gap-2">
-              <input
+              <input dir="auto"
                 readOnly
                 value={outcome.inviteUrl}
                 onFocus={(e) => e.currentTarget.select()}
@@ -580,17 +580,17 @@ function PersonalTab() {
             <button onClick={() => setCreating(false)} className="text-muted hover:text-ink-text"><X className="w-4 h-4" strokeWidth={1.75}/></button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <input autoFocus value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="Name *" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
-            <input value={form.company} onChange={(e) => setForm({...form, company: e.target.value})} placeholder="Company" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
-            <input value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} placeholder="Email" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
-            <input value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} placeholder="Phone" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
-            <input value={form.role} onChange={(e) => setForm({...form, role: e.target.value})} placeholder="Role / title" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
+            <input dir="auto" autoFocus value={form.name} onChange={(e) => setForm({...form, name: e.target.value})} placeholder="Name *" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
+            <input dir="auto" value={form.company} onChange={(e) => setForm({...form, company: e.target.value})} placeholder="Company" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
+            <input dir="auto" value={form.email} onChange={(e) => setForm({...form, email: e.target.value})} placeholder="Email" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
+            <input dir="auto" value={form.phone} onChange={(e) => setForm({...form, phone: e.target.value})} placeholder="Phone" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
+            <input dir="auto" value={form.role} onChange={(e) => setForm({...form, role: e.target.value})} placeholder="Role / title" className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"/>
             <select value={form.tag} onChange={(e) => setForm({...form, tag: e.target.value})} className="bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm text-muted focus:outline-none focus:ring-1 focus:ring-brass">
               <option value="">No tag</option>
               {TAGS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </div>
-          <textarea value={form.notes} onChange={(e) => setForm({...form, notes: e.target.value})} placeholder="Notes..." rows={2} className="w-full mt-3 bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass resize-none"/>
+          <textarea dir="auto" value={form.notes} onChange={(e) => setForm({...form, notes: e.target.value})} placeholder="Notes..." rows={2} className="w-full mt-3 bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass resize-none"/>
           <div className="flex items-center justify-between mt-3">
             {workspaceType === "TEAM" ? (
               <label className="flex items-center gap-2 text-xs text-muted cursor-pointer">

@@ -51,20 +51,20 @@ export function NewStrategicBetForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <div className="rounded-xl bg-panel-2 border border-line p-6 space-y-4 mb-6">
-      <input
+      <input dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Bet title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
-      <textarea
+      <textarea dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Signal — what evidence supports or challenges this bet?"
         rows={2}
         value={signal}
         onChange={(e) => setSignal(e.target.value)}
       />
-      <input
+      <input dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Horizon (e.g. 6 months)"
         value={horizon}

@@ -4,6 +4,8 @@
 // the route gathers the data. Event descriptions and emails are written by
 // other people, so they are passed as DATA and the model can only summarise.
 
+import { sourceLanguageRule } from "./language";
+
 export interface BriefAttendee {
   email: string;
   name: string | null;
@@ -43,6 +45,7 @@ export const BRIEF_PROMPT = [
   "- talkingPoints: 2-4 concrete things the user should raise or decide.",
   "If the data is little more than a title, keep talkingPoints to 2 and do not pad them with generic advice.",
   "Keep every string under 25 words.",
+  sourceLanguageRule("the meeting title and the notes and emails in the data (English if unclear)"),
 ].join("\n");
 
 export function briefUserMessage(input: BriefInput): string {

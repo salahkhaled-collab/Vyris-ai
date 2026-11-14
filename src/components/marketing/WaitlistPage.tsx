@@ -131,11 +131,11 @@ function WaitlistForm({ variant = "light", source }: { variant?: "light" | "dark
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
           <label className={label} htmlFor={id("name")}>Name</label>
-          <input id={id("name")} autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={field} />
+          <input dir="auto" id={id("name")} autoComplete="name" required maxLength={80} value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" className={field} />
         </div>
         <div>
           <label className={label} htmlFor={id("company")}>Company <span className="font-normal opacity-70">(optional)</span></label>
-          <input id={id("company")} autoComplete="organization" maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Your business" className={field} />
+          <input dir="auto" id={id("company")} autoComplete="organization" maxLength={120} value={company} onChange={(e) => setCompany(e.target.value)} placeholder="Your business" className={field} />
         </div>
       </div>
       <div>
@@ -147,7 +147,7 @@ function WaitlistForm({ variant = "light", source }: { variant?: "light" | "dark
       <div aria-hidden="true" className="absolute -left-[9999px] h-0 w-0 overflow-hidden">
         <label>
           Website
-          <input tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+          <input dir="auto" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
         </label>
       </div>
 

@@ -103,7 +103,7 @@ export default function SignUpPage() {
             <label className="block text-xs font-medium text-ink-text mb-1.5" htmlFor="name">
               Full Name (Optional)
             </label>
-            <input
+            <input dir="auto"
               id="name"
               type="text"
               value={name}

@@ -365,7 +365,7 @@ export default function ProjectsPage() {
 
         {creating && (
           <Panel className="p-5">
-            <input
+            <input dir="auto"
               autoFocus
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
@@ -373,7 +373,7 @@ export default function ProjectsPage() {
               placeholder="Project title..."
               className="w-full bg-panel-2 border border-line rounded-lg px-4 py-2.5 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass mb-3"
             />
-            <textarea
+            <textarea dir="auto"
               value={newDescription}
               onChange={(e) => setNewDescription(e.target.value)}
               placeholder="Description (optional)..."
@@ -572,8 +572,9 @@ export default function ProjectsPage() {
                               />
                             </button>
                             <span
+                              dir="auto"
                               className={cn(
-                                "flex-1 text-sm",
+                                "flex-1 text-sm break-words",
                                 task.status === "DONE" && "text-muted line-through"
                               )}
                             >
@@ -645,7 +646,7 @@ export default function ProjectsPage() {
                           )}
                           {blockingTaskId === task.id && (
                             <div className="flex items-center gap-2 mt-2 ml-7">
-                              <input
+                              <input dir="auto"
                                 autoFocus
                                 value={blockReason}
                                 onChange={(e) => setBlockReason(e.target.value)}
@@ -677,7 +678,7 @@ export default function ProjectsPage() {
                     </div>
 
                     <div className="px-5 py-3 flex items-center gap-2">
-                      <input
+                      <input dir="auto"
                         value={newTaskInputs[project.id] ?? ""}
                         onChange={(e) =>
                           setNewTaskInputs((prev) => ({ ...prev, [project.id]: e.target.value }))
