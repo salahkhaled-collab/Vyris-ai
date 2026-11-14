@@ -8,7 +8,7 @@ export const TRIGGERS = {
   task_blocked: { label: "A task becomes blocked", runs: "instantly", taskTrigger: true },
   task_done: { label: "A task is marked done", runs: "instantly", taskTrigger: true },
   task_overdue: { label: "A task becomes overdue", runs: "daily check, once per task", taskTrigger: true },
-  daily_digest: { label: "Every morning (daily digest)", runs: "daily", taskTrigger: false },
+  daily_digest: { label: "Every morning (morning brief)", runs: "daily", taskTrigger: false },
   weekly_report: { label: "Every Monday (weekly report)", runs: "weekly", taskTrigger: false },
 } as const;
 
