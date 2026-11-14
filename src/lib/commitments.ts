@@ -14,6 +14,8 @@ export const STATUSES = ["OPEN", "DONE", "DROPPED"] as const;
 export type CommitmentStatusValue = (typeof STATUSES)[number];
 
 export const MAX_TEXT = 300;
+/** Open promises one user may track at once (the API and the assistant both enforce it). */
+export const MAX_OPEN = 200;
 export const MAX_COUNTERPART = 120;
 /** Promises the model may propose from one thread. */
 export const MAX_PROPOSALS = 5;

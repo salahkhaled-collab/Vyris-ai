@@ -81,7 +81,9 @@ export async function POST(req: NextRequest) {
           ),
         },
       ],
-      maxTokens: 1500,
+      // Room for the summary, a reply draft (Arabic takes more tokens) and up
+      // to 5 promises without cutting the JSON off.
+      maxTokens: 2200,
     });
     const summary = parseThreadSummary(completion.text);
     if (!summary) {
