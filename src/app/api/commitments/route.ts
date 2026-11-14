@@ -3,11 +3,10 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { safeTimeZone } from "@/lib/calendar";
-import { isOverdue, sortCommitments, validateCommitment } from "@/lib/commitments";
+import { MAX_OPEN, isOverdue, sortCommitments, validateCommitment } from "@/lib/commitments";
 
 export const dynamic = "force-dynamic";
 
-const MAX_OPEN = 200;
 const SOURCES = new Set(["manual", "email", "assistant"]);
 
 const SELECT = {
@@ -29,7 +28,12 @@ export async function GET() {
   if (!session?.user?.id) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
   const userId = session.user.id;
   const [open, closed, user] = await Promise.all([
-    prisma.commitment.findMany({ where: { ownerId: userId, status: "OPEN" }, select: SELECT, take: MAX_OPEN }),
+    prisma.commitment.findMany({
+      where: { ownerId: userId, status: "OPEN" },
+      select: SELECT,
+      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+      take: MAX_OPEN,
+    }),
     prisma.commitment.findMany({
       where: { ownerId: userId, status: { not: "OPEN" } },
       select: SELECT,

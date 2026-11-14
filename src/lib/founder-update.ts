@@ -90,9 +90,18 @@ export function parseUpdateDraft(text: string): UpdateDraft | null {
   }
 }
 
-/** Numbers in a text, normalised: "1,200" -> "1200", "62%" -> "62". */
+/** Arabic-Indic (٠-٩) and Persian (۰-۹) digits and separators as ASCII, so the check sees them. */
+function asciiDigits(text: string): string {
+  return text
+    .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660))
+    .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06f0))
+    .replace(/\u066B/g, ".") // Arabic decimal separator
+    .replace(/\u066C/g, ","); // Arabic thousands separator
+}
+
+/** Numbers in a text, normalised: "1,200" -> "1200", "62%" -> "62", "١٢" -> "12". */
 function numbersIn(text: string): string[] {
-  return Array.from(text.matchAll(/\d[\d,]*(?:\.\d+)?/g), (m) => {
+  return Array.from(asciiDigits(text).matchAll(/\d[\d,]*(?:\.\d+)?/g), (m) => {
     const n = Number(m[0].replace(/,/g, ""));
     return Number.isFinite(n) ? fmtNum(n) : m[0];
   });
@@ -152,9 +161,9 @@ export function templateUpdate(facts: UpdateFacts, audience: Audience, note: str
   return { subject: `Update: ${facts.period}`, body: lines.join("\n").trim() };
 }
 
-/** "10–16 Nov 2026": the 7 days ending today, in the user's zone. */
+/** "7–14 Nov 2026": the same window the facts cover (the last 7 × 24 hours), in the user's zone. */
 export function periodLabel(now: Date, timeZone: string): string {
-  const start = new Date(now.getTime() - 6 * 86_400_000);
+  const start = new Date(now.getTime() - 7 * 86_400_000);
   const fmt = (d: Date, o: Intl.DateTimeFormatOptions) => {
     try {
       return d.toLocaleDateString("en-GB", { ...o, timeZone });
