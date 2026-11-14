@@ -71,22 +71,27 @@ export async function todaysMeetings(
 }
 
 /** Emails waiting on the user's reply, or null if Gmail isn't connected or fails. */
-export async function unansweredFor(userId: string, now: Date): Promise<Unanswered[] | null> {
+export type InboxStatus = "ok" | "not_connected" | "failed" | "not_checked";
+
+export async function unansweredFor(userId: string, now: Date): Promise<{ list: Unanswered[] | null; status: InboxStatus }> {
   try {
     const { accessToken } = await getGoogleAccessToken(userId, "gmail");
-    if (!accessToken) return null;
+    if (!accessToken) return { list: null, status: "not_connected" };
     const me = await getMailboxAddress(accessToken);
-    if (!me) return null;
-    return await withTimeout(findUnansweredThreads(accessToken, me, now), GOOGLE_TIMEOUT_MS);
+    if (!me) return { list: null, status: "failed" };
+    const list = await withTimeout(findUnansweredThreads(accessToken, me, now), GOOGLE_TIMEOUT_MS);
+    return list ? { list, status: "ok" } : { list: null, status: "failed" };
   } catch (err) {
     console.error("[brief] unanswered-email check failed:", err);
-    return null;
+    return { list: null, status: "failed" };
   }
 }
 
 export interface LoadedBrief {
   brief: MorningBrief;
   timeZone: string;
+  /** Why "waiting on your reply" is missing, so the card doesn't say "connect Gmail" after a timeout. */
+  inbox: InboxStatus;
 }
 
 /**
@@ -110,15 +115,16 @@ export async function loadBrief(
     loadAttention(scope, now),
     loadRiskSignals(scope, now).catch(() => null),
     withTimeout(todaysMeetings(userId, timeZone, now, projects).catch(() => null), GOOGLE_TIMEOUT_MS),
-    opts.withInbox ? unansweredFor(userId, now) : Promise.resolve(null),
+    opts.withInbox ? unansweredFor(userId, now) : Promise.resolve({ list: null, status: "not_checked" as const }),
   ]);
 
   return {
     timeZone,
+    inbox: unanswered.status,
     brief: buildBrief({
       report,
       meetings,
-      unanswered,
+      unanswered: unanswered.list,
       changes: signals?.unusualChanges ?? [],
       goals: signals?.objectivesBehind ?? [],
       commitments: opts.commitments,

@@ -17,11 +17,11 @@ export async function GET(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
   const now = new Date();
   try {
-    const { brief, timeZone } = await loadBrief(session.user.id, now, {
+    const { brief, timeZone, inbox } = await loadBrief(session.user.id, now, {
       withInbox: req.nextUrl.searchParams.get("inbox") === "1",
       commitments: await loadOpenCommitments(session.user.id, now).catch(() => []),
     });
-    return NextResponse.json({ brief, timeZone }, { headers: { "Cache-Control": "no-store" } });
+    return NextResponse.json({ brief, timeZone, inbox }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {
     console.error("Brief failed:", err);
     return NextResponse.json({ error: "brief_failed", message: "Couldn't build today's brief." }, { status: 500 });

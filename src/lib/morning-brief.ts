@@ -3,7 +3,8 @@
 // The morning brief: one message that pulls together what the separate pages
 // know (tasks, inbox, calendar, numbers, goals) and leads with the few things
 // that matter today. Pure: the server gathers the data, this decides what to
-// say. Used by the 07:25 email and by the "Today" card on Home.
+// say. Used by the daily email (05:00 UTC cron, 07:00 in Cairo) and by the
+// "Today" card on Home.
 
 import type { AttentionReport } from "./attention";
 import type { ObjectiveSignal } from "./risk-signals";
@@ -121,8 +122,11 @@ export function pickFocus(input: BriefInput): BriefFocus[] {
     }))
   );
 
+  // Due dates are calendar days stored at midnight UTC: compare the stored
+  // day itself, not that instant converted to the user's zone (which moves it
+  // to the day before anywhere west of UTC).
   const todayKey = dateIn(input.now, input.timeZone);
-  const dueToday = input.report.dueSoon.filter((d) => d.dueDate && dateIn(new Date(d.dueDate), input.timeZone) === todayKey);
+  const dueToday = input.report.dueSoon.filter((d) => d.dueDate && d.dueDate.slice(0, 10) === todayKey);
   candidates.push(
     dueToday.map((d) => ({ kind: "due" as const, title: `"${d.title}" is due today`, why: d.projectTitle }))
   );
@@ -152,6 +156,7 @@ export function buildBrief(input: BriefInput): MorningBrief {
     allClear:
       focus.length === 0 &&
       changes.length === 0 &&
+      (input.unanswered ?? []).length === 0 &&
       (input.meetings ?? []).length === 0 &&
       input.goals.length === 0 &&
       commitments.length === 0,
@@ -192,7 +197,10 @@ export function briefEmail(brief: MorningBrief, now: Date, timeZone: string, app
 
   const lines: string[] = [`Good morning. Your brief for ${day}.`, ""];
   if (brief.allClear) {
-    lines.push("Nothing is blocked, late or waiting on you. A good day to get ahead on the work that matters.", "");
+    lines.push(
+      `Nothing is blocked or late${brief.unanswered ? ", and nobody is waiting on your reply" : ""}. A good day to get ahead on the work that matters.`,
+      ""
+    );
   }
   lines.push(
     ...section(
