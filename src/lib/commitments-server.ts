@@ -14,6 +14,8 @@ export async function loadOpenCommitments(userId: string, now: Date, timeZone = 
     const rows = await prisma.commitment.findMany({
       where: { ownerId: userId, status: "OPEN" },
       select: { text: true, counterpart: true, direction: true, dueDate: true },
+      // Oldest due first, so the latest promises are never the ones cut off.
+      orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
       take: 100,
     });
     return sortCommitments(rows)

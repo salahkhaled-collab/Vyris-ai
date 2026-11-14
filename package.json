@@ -9,7 +9,8 @@
     "lint": "next lint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate dev",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "test:unit": "node tests/run.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.4.2",

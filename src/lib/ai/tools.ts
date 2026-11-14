@@ -9,7 +9,7 @@ import { afterTaskStatusChange } from "@/lib/automation/engine";
 import { TRIGGERS, describeRule, isTriggerKey, parseAction } from "@/lib/automation/rules";
 import { getGoogleAccessToken } from "@/lib/google-token";
 import { searchMessages } from "@/lib/gmail";
-import { isOverdue, sortCommitments, validateCommitment } from "@/lib/commitments";
+import { MAX_OPEN, isOverdue, sortCommitments, validateCommitment } from "@/lib/commitments";
 import { safeTimeZone } from "@/lib/calendar";
 
 const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
@@ -929,30 +929,41 @@ export async function runTool(
 
     case "get_commitments": {
       // Promises are personal: always the caller's own, even in a team.
-      const [rows, user] = await Promise.all([
+      const select = { id: true, text: true, counterpart: true, direction: true, dueDate: true, status: true } as const;
+      const [openRows, closedRows, user] = await Promise.all([
+        // Oldest due first, so late promises are never the ones left out.
         prisma.commitment.findMany({
-          where: { ownerId: scope.userId, ...(input.includeClosed === true ? {} : { status: "OPEN" as const }) },
-          select: { id: true, text: true, counterpart: true, direction: true, dueDate: true, status: true },
-          orderBy: { updatedAt: "desc" },
+          where: { ownerId: scope.userId, status: "OPEN" },
+          select,
+          orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
           take: 60,
         }),
+        input.includeClosed === true
+          ? prisma.commitment.findMany({
+              where: { ownerId: scope.userId, status: { not: "OPEN" } },
+              select,
+              orderBy: { updatedAt: "desc" },
+              take: 10,
+            })
+          : Promise.resolve([]),
         prisma.user.findUnique({ where: { id: scope.userId }, select: { timeZone: true } }),
       ]);
       const tz = safeTimeZone(user?.timeZone);
       const now = new Date();
-      const show = (r: (typeof rows)[number]) => ({
+      const show = (r: (typeof openRows)[number]) => ({
         ...r,
         dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
         late: r.status === "OPEN" && isOverdue(r.dueDate, now, tz),
       });
-      const open = sortCommitments(rows.filter((r) => r.status === "OPEN")).map(show);
-      const closed = rows.filter((r) => r.status !== "OPEN").slice(0, 10).map(show);
-      return { open, ...(input.includeClosed === true ? { closed } : {}) };
+      const open = sortCommitments(openRows).map(show);
+      return { open, ...(input.includeClosed === true ? { closed: closedRows.map(show) } : {}) };
     }
 
     case "track_commitment": {
       const v = validateCommitment(input);
       if (!v.ok) return { ok: false, error: v.error };
+      const openCount = await prisma.commitment.count({ where: { ownerId: scope.userId, status: "OPEN" } });
+      if (openCount >= MAX_OPEN) return { ok: false, error: `${MAX_OPEN} promises are already open. Close some first.` };
       const created = await prisma.commitment.create({
         data: {
           ownerId: scope.userId,
