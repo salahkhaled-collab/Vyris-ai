@@ -434,6 +434,10 @@ model Task {
   // Only meaningful while status is BLOCKED; cleared when the task is unblocked.
   blockedReason String? @db.Text
 
+  /// When the task was last marked DONE; cleared if it is reopened. Null for
+  /// tasks finished before this column existed (their finish time is unknown).
+  completedAt DateTime?
+
   // Drift Signals: a task optionally points at ONE of these two —
   // enforced in the API layer, not the DB (Prisma has no native XOR constraint).
   objectiveId String?

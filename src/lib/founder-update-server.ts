@@ -20,9 +20,10 @@ export async function loadUpdateFacts(userId: string, now: Date = new Date()): P
 
   const [done, report, signals, keyResults, newProjects, kept, openPromises] = await Promise.all([
     prisma.task.findMany({
-      where: { ...taskAccessWhere(scope), status: "DONE", updatedAt: { gte: since } },
+      // Finished in the period: completedAt, not updatedAt (a rename would count).
+      where: { ...taskAccessWhere(scope), status: "DONE", completedAt: { gte: since } },
       select: { title: true, project: { select: { title: true } } },
-      orderBy: { updatedAt: "desc" },
+      orderBy: { completedAt: "desc" },
       take: 20,
     }),
     loadAttention(scope, now),
