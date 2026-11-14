@@ -116,7 +116,7 @@ export function RiskSignalsPanel() {
 
 function Group({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="text-[11px] uppercase tracking-[0.14em] text-muted mb-2">{label}</div>
       <ul className="space-y-2">{children}</ul>
     </div>
@@ -125,10 +125,11 @@ function Group({ label, children }: { label: string; children: React.ReactNode }
 
 function Item({ title, detail, note }: { title: string; detail: string; note?: string }) {
   return (
-    <li>
-      <div className="text-sm truncate">{title}</div>
-      <div className="text-xs text-muted truncate">{detail}</div>
-      {note && <div className="text-xs text-muted truncate">{note}</div>}
+    <li className="min-w-0">
+      {/* Titles wrap: unusual-change sentences are long, and a phone is narrow. */}
+      <div className="text-sm break-words">{title}</div>
+      <div className="text-xs text-muted break-words">{detail}</div>
+      {note && <div className="text-xs text-muted break-words">{note}</div>}
     </li>
   );
 }
