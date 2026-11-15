@@ -143,6 +143,8 @@ export default function InboxPage() {
   const [triageProjects, setTriageProjects] = useState<Record<string, string>>({});
   const [triaging, setTriaging] = useState(false);
   const [triageError, setTriageError] = useState<string | null>(null);
+  /** Set when the built-in rules sorted instead of the AI. */
+  const [triageNotice, setTriageNotice] = useState<string | null>(null);
 
   const [summary, setSummary] = useState<SummaryResponse | null>(null);
   const [summarizing, setSummarizing] = useState(false);
@@ -300,10 +302,15 @@ export default function InboxPage() {
     if (triaging) return;
     setTriaging(true);
     setTriageError(null);
+    setTriageNotice(null);
     try {
       const cache = readTriageCache();
       const knownIds = force ? [] : Object.keys(cache.results);
-      const data = await postJson<{ results: Record<string, TriageResult>; projects?: Record<string, string> }>(
+      const data = await postJson<{
+        results: Record<string, TriageResult>;
+        projects?: Record<string, string>;
+        notice?: string | null;
+      }>(
         "/api/ai/inbox/triage",
         { knownIds }
       );
@@ -313,6 +320,7 @@ export default function InboxPage() {
       const current = new Set((emails ?? []).map((e) => e.id));
       setTriage(Object.fromEntries(Object.entries(results).filter(([id]) => current.has(id))));
       setTriageProjects(projects);
+      setTriageNotice(data.notice ?? null);
     } catch (err) {
       setTriageError(err instanceof Error ? err.message : "Couldn't sort your inbox.");
     } finally {
@@ -491,6 +499,7 @@ export default function InboxPage() {
               {triageError}
             </div>
           )}
+          {triageNotice && !triageError && <div className="text-xs text-muted">{triageNotice}</div>}
 
           {triage && emails && emails.length > 0 && (
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Inbox filters">

@@ -30,6 +30,10 @@ export interface InboxMessage {
   snippet: string;
   unread: boolean;
   timestamp: string;
+  /** Gmail's own labels (CATEGORY_PROMOTIONS, IMPORTANT, ...): signals for built-in sorting. */
+  labels: string[];
+  /** Sent to a mailing list (List-Unsubscribe or Precedence: bulk/list). */
+  bulk: boolean;
 }
 
 export interface ThreadMessage {
@@ -161,6 +165,8 @@ function toInboxMessage(m: GmailMessageMeta): InboxMessage {
     snippet: decodeEntities(m.snippet ?? ""),
     unread: m.labelIds?.includes("UNREAD") ?? false,
     timestamp: new Date(m.internalDate ? parseInt(m.internalDate, 10) : Date.now()).toISOString(),
+    labels: m.labelIds ?? [],
+    bulk: Boolean(getHeader(headers, "List-Unsubscribe")) || /^(bulk|list|junk)$/i.test(getHeader(headers, "Precedence").trim()),
   };
 }
 
@@ -189,7 +195,7 @@ export async function searchMessages(token: string, q: string, max = 10, labelId
   if (ids.length === 0) return [];
 
   const meta = new URLSearchParams({ format: "metadata" });
-  ["From", "Subject", "Date"].forEach((h) => meta.append("metadataHeaders", h));
+  ["From", "Subject", "Date", "List-Unsubscribe", "Precedence"].forEach((h) => meta.append("metadataHeaders", h));
 
   const messages = await Promise.all(
     ids.map((id) =>
