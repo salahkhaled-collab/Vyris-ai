@@ -8,6 +8,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
 import { SaveToProject } from "@/components/inbox/SaveToProject";
+import { GmailLabelsButton } from "@/components/inbox/GmailLabelsButton";
 import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
 import {
   FILTERS,
@@ -500,6 +501,7 @@ export default function InboxPage() {
             </div>
           )}
           {triageNotice && !triageError && <div className="text-xs text-muted">{triageNotice}</div>}
+          {status === "authenticated" && <GmailLabelsButton triage={triage} />}
 
           {triage && emails && emails.length > 0 && (
             <div className="flex flex-wrap gap-2" role="tablist" aria-label="Inbox filters">

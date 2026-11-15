@@ -13,6 +13,8 @@ export const BASE_GOOGLE_SCOPES = ["openid", "email", "profile"] as const;
 export const GOOGLE_FEATURE_SCOPES = {
   gmail: ["https://www.googleapis.com/auth/gmail.readonly", "https://www.googleapis.com/auth/gmail.send"],
   calendar: ["https://www.googleapis.com/auth/calendar"],
+  /** Optional: lets Vyris add its priority labels to messages in Gmail. Asked only when the user turns labels on. */
+  gmail_labels: ["https://www.googleapis.com/auth/gmail.modify"],
 } as const;
 
 export type GoogleFeature = keyof typeof GOOGLE_FEATURE_SCOPES;
@@ -26,6 +28,7 @@ export const REQUIRED_SCOPES = {
   gmail: ["https://www.googleapis.com/auth/gmail.readonly"],
   gmail_send: ["https://www.googleapis.com/auth/gmail.send"],
   calendar: ["https://www.googleapis.com/auth/calendar"],
+  gmail_labels: ["https://www.googleapis.com/auth/gmail.modify"],
 } as const;
 
 export type GoogleNeed = keyof typeof REQUIRED_SCOPES;
