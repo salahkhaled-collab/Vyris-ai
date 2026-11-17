@@ -4,6 +4,8 @@ import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
 import { completeWithPythonLlm, pythonLlmConfigured } from "@/lib/ai/python-client";
 import { listNotes } from "@/lib/ai/context";
+import { prisma } from "@/lib/prisma";
+import { safeTimeZone } from "@/lib/calendar";
 import { GmailError, getMailboxAddress, getThreadForMessage, parseRecipient } from "@/lib/gmail";
 import {
   parseThreadSummary,
@@ -59,11 +61,17 @@ export async function POST(req: NextRequest) {
       used += m.text.length;
     }
 
-    const { notes } = await listNotes(session.user.id, { limit: 50 });
+    const [{ notes }, user] = await Promise.all([
+      listNotes(session.user.id, { limit: 50 }),
+      prisma.user.findUnique({ where: { id: session.user.id }, select: { timeZone: true } }).catch(() => null),
+    ]);
+    const today = new Date().toLocaleDateString("en-CA", {
+      timeZone: safeTimeZone(user?.timeZone), weekday: "long", year: "numeric", month: "2-digit", day: "2-digit",
+    });
     const toneNotes = notes.map((n) => n.content).filter((c) => TONE_NOTE.test(c)).slice(0, 5);
 
     const completion = await completeWithPythonLlm({
-      system: threadPrompt(session.user.name ?? null, myEmail, toneNotes),
+      system: threadPrompt(session.user.name ?? null, myEmail, toneNotes, today),
       messages: [
         {
           role: "user",
@@ -73,7 +81,9 @@ export async function POST(req: NextRequest) {
           ),
         },
       ],
-      maxTokens: 1500,
+      // Room for the summary, a reply draft (Arabic takes more tokens) and up
+      // to 5 promises without cutting the JSON off.
+      maxTokens: 2200,
     });
     const summary = parseThreadSummary(completion.text);
     if (!summary) {
@@ -84,6 +94,7 @@ export async function POST(req: NextRequest) {
     const lastOther = [...thread.messages].reverse().find((m) => parseRecipient(m.from) !== null && !isMe(m.from));
     return NextResponse.json({
       ...summary,
+      threadId: thread.threadId,
       reply: lastOther
         ? {
             to: parseRecipient(lastOther.from),

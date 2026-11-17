@@ -84,7 +84,7 @@ export function CommandPalette() {
       >
         <div className="flex items-center gap-3 px-5 py-4 border-b border-line">
           <Search className="w-4 h-4 text-muted" strokeWidth={1.75} />
-          <input
+          <input dir="auto"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}

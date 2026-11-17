@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { VyrisMark } from "@/components/ui/VyrisMark";
+import { SITE_URL } from "@/lib/site-url";
 
 export const metadata: Metadata = {
   title: "Privacy Policy",
@@ -19,12 +20,13 @@ export default function PrivacyPolicyPage() {
             Vyris
           </span>
         </Link>
-        <Link
-          href="/login"
+        {/* Absolute: this page is also served through the waitlist proxy, which has no /login. */}
+        <a
+          href={`${SITE_URL}/login`}
           className="text-xs font-mono text-muted hover:text-brass transition-colors"
         >
           &larr; Return to Login
-        </Link>
+        </a>
       </header>
 
       {/* Main Privacy Policy Container */}

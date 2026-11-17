@@ -20,11 +20,12 @@ import { overdueCutoff } from "@/lib/attention";
 import { loadAttention } from "@/lib/attention-server";
 import { loadRiskSignals } from "@/lib/risk-signals-server";
 import { getGoogleAccessToken } from "@/lib/google-token";
-import { buildRawMessage, findUnansweredThreads, getMailboxAddress } from "@/lib/gmail";
-import type { Unanswered } from "@/lib/unanswered";
+import { buildRawMessage, getMailboxAddress } from "@/lib/gmail";
+import { loadBrief } from "@/lib/morning-brief-server";
+import { briefEmail } from "@/lib/morning-brief";
 import { sendEmail } from "@/lib/email";
 import { dayKey, parseAction, renderTitle, weekKey, type RuleAction, type TriggerKey } from "./rules";
-import { digestEmail, overdueEmail, taskEventEmail, weeklyEmail } from "./messages";
+import { overdueEmail, taskEventEmail, weeklyEmail } from "./messages";
 
 const MAX_OVERDUE_PER_RULE = 20;
 const APP_URL = process.env.NEXTAUTH_URL || "https://vyris.vercel.app";
@@ -137,7 +138,7 @@ export async function emailOwner(userId: string, subject: string, body: string):
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (!user?.email) return { status: "FAILED", detail: "No email address to send to." };
-  const html = `<pre style="font-family:inherit;white-space:pre-wrap">${body
+  const html = `<pre dir="auto" style="font-family:inherit;white-space:pre-wrap">${body
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")}</pre>`;
@@ -227,27 +228,12 @@ async function runOverdueRule(rule: RuleRow, action: RuleAction, scope: Scope, n
   return fired;
 }
 
-async function digestOutcome(rule: RuleRow, scope: Scope, now: Date): Promise<Outcome> {
-  const report = await loadAttention(scope, now);
-  const email = digestEmail(report, now, APP_URL, await unansweredFor(rule.ownerId, now));
+async function digestOutcome(rule: RuleRow, _scope: Scope, now: Date): Promise<Outcome> {
+  // The daily digest is now the morning brief: tasks, today's meetings, who's
+  // waiting on a reply, what changed and goals, led by the few that matter.
+  const { brief, timeZone } = await loadBrief(rule.ownerId, now, { withInbox: true });
+  const email = briefEmail(brief, now, timeZone, APP_URL);
   return emailOwner(rule.ownerId, email.subject, email.body);
-}
-
-/** Emails waiting on the owner's reply, or null if Gmail isn't connected or fails. Never blocks the digest. */
-async function unansweredFor(userId: string, now: Date): Promise<Unanswered[] | null> {
-  try {
-    const { accessToken } = await getGoogleAccessToken(userId, "gmail");
-    if (!accessToken) return null;
-    const me = await getMailboxAddress(accessToken);
-    if (!me) return null;
-    return await Promise.race([
-      findUnansweredThreads(accessToken, me, now),
-      new Promise<null>((resolve) => setTimeout(() => resolve(null), 10_000)),
-    ]);
-  } catch (err) {
-    console.error("[automation] unanswered-email check failed:", err);
-    return null;
-  }
 }
 
 async function weeklyOutcome(rule: RuleRow, scope: Scope, now: Date): Promise<Outcome> {

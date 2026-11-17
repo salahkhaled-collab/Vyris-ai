@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
 import { afterTaskStatusChange } from "@/lib/automation/engine";
 import { parseTaskPatch } from "@/lib/task-input";
+import { completedAtChange } from "@/lib/task-completion";
 import {
   getScope,
   isValidAssignee,
@@ -53,9 +54,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     blockedReason = body.blockedReason;
   }
 
+  const completedAt = completedAtChange(task.status, effectiveStatus);
   const updated = await prisma.task.update({
     where: { id: params.id },
     data: {
+      ...(completedAt !== undefined && { completedAt }),
       ...(body.title !== undefined && { title: body.title }),
       ...(body.status !== undefined && { status: body.status }),
       ...(body.dueDate !== undefined && { dueDate: body.dueDate }),

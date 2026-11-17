@@ -7,6 +7,8 @@
 // The model's output is untrusted. Everything is shape-checked, size-capped,
 // and nothing is created from it until the user reviews and clicks Create.
 
+import { sourceLanguageRule } from "./language";
+
 export const MAX_NOTES_CHARS = 20_000;
 export const MAX_ACTION_ITEMS = 15;
 const MAX_DECISIONS = 10;
@@ -119,6 +121,7 @@ export function meetingNotesPrompt(today: string, memberNames: string[]): string
     `- Today is ${today}.`,
     memberNames.length > 0 ? `- Team members (for spelling owner names): ${memberNames.join(", ")}.` : "",
     `- At most ${MAX_ACTION_ITEMS} action items.`,
+    sourceLanguageRule("the meeting notes"),
   ]
     .filter(Boolean)
     .join("\n");

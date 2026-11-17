@@ -73,9 +73,10 @@ enum WorkspaceType {
 model User {
   memories      Memory[]
   snapshots     WorkspaceSnapshot[]
-  id            String    @id @default(cuid())
+  commitments   Commitment[]
+  id            String              @id @default(cuid())
   name          String?
-  email         String?   @unique
+  email         String?             @unique
   emailVerified DateTime?
   image         String?
   password      String? //new
@@ -433,6 +434,10 @@ model Task {
   // Only meaningful while status is BLOCKED; cleared when the task is unblocked.
   blockedReason String? @db.Text
 
+  /// When the task was last marked DONE; cleared if it is reopened. Null for
+  /// tasks finished before this column existed (their finish time is unknown).
+  completedAt DateTime?
+
   // Drift Signals: a task optionally points at ONE of these two —
   // enforced in the API layer, not the DB (Prisma has no native XOR constraint).
   objectiveId String?
@@ -569,4 +574,40 @@ model WorkspaceSnapshot {
   createdAt    DateTime @default(now())
 
   @@unique([userId, day])
+}
+
+enum CommitmentDirection {
+  MINE // the user promised it to someone
+  THEIRS // someone promised it to the user
+}
+
+enum CommitmentStatus {
+  OPEN
+  DONE
+  DROPPED
+}
+
+/// A promise made in an email, a meeting or by hand: "I'll send the proposal
+/// Thursday" (MINE) or "Omar will confirm the budget" (THEIRS). Personal to
+/// the user who tracks it.
+model Commitment {
+  id          String              @id @default(cuid())
+  ownerId     String
+  owner       User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  text        String              @db.Text
+  /// Who it's owed to (MINE) or who owes it (THEIRS): a name or email.
+  counterpart String?
+  direction   CommitmentDirection
+  /// Calendar date the promise is due, stored at midnight UTC.
+  dueDate     DateTime?
+  status      CommitmentStatus    @default(OPEN)
+  /// "email", "manual" or "assistant".
+  source      String              @default("manual")
+  /// Gmail thread id when it came from an email.
+  sourceRef   String?
+  doneAt      DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  @@index([ownerId, status])
 }

@@ -9,6 +9,7 @@ import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
 import { SaveToProject } from "@/components/inbox/SaveToProject";
 import { GmailLabelsButton } from "@/components/inbox/GmailLabelsButton";
+import { ThreadPromises } from "@/components/inbox/ThreadPromises";
 import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
 import {
   FILTERS,
@@ -42,6 +43,7 @@ interface OpenEmailBody {
 type ReplyTarget = { to: string | null; subject: string; threadId: string; inReplyTo: string | null };
 
 interface SummaryResponse extends ThreadSummary {
+  threadId?: string;
   reply: ReplyTarget | null;
 }
 
@@ -541,14 +543,14 @@ export default function InboxPage() {
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
                         <div className="text-sm font-medium truncate">{q.email.from}</div>
-                        <div className="text-xs text-muted truncate">{q.email.subject}</div>
+                        <div className="text-xs text-muted truncate" dir="auto">{q.email.subject}</div>
                       </div>
                       {q.state === "drafting" && <Loader2 className="w-4 h-4 animate-spin text-muted shrink-0" />}
                     </div>
-                    {q.summary?.summary && <p className="text-xs text-ink-text/80">{q.summary.summary}</p>}
+                    {q.summary?.summary && <p className="text-xs text-ink-text/80" dir="auto">{q.summary.summary}</p>}
                     {(q.state === "ready" || q.state === "sending") && (
                       <>
-                        <textarea
+                        <textarea dir="auto"
                           value={q.draft}
                           onChange={(e) => updateQueue(q.email.id, { draft: e.target.value })}
                           placeholder="Write a reply..."
@@ -650,10 +652,10 @@ export default function InboxPage() {
                         {e.unread && <span className="w-1.5 h-1.5 rounded-full bg-signal shrink-0" />}
                         <div className={cn("text-sm truncate", e.unread ? "font-semibold" : "font-medium")}>{e.from}</div>
                       </div>
-                      <div className={cn("text-xs mt-0.5 truncate", e.unread ? "text-ink-text font-medium" : "text-ink-text/80")}>
+                      <div dir="auto" className={cn("text-xs mt-0.5 truncate", e.unread ? "text-ink-text font-medium" : "text-ink-text/80")}>
                         {e.subject}
                       </div>
-                      <div className="text-xs text-muted mt-1 leading-relaxed line-clamp-1">
+                      <div dir="auto" className="text-xs text-muted mt-1 leading-relaxed line-clamp-1">
                         {e.snippet}
                       </div>
                       {t && (
@@ -713,7 +715,7 @@ export default function InboxPage() {
 
                 <div>
                   <label className="text-xs text-muted block mb-1">Subject</label>
-                  <input
+                  <input dir="auto"
                     value={composeSubject}
                     onChange={(e) => setComposeSubject(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-line text-sm"
@@ -722,7 +724,7 @@ export default function InboxPage() {
 
                 <div>
                   <label className="text-xs text-muted block mb-1">Message</label>
-                  <textarea
+                  <textarea dir="auto"
                     value={composeBody}
                     onChange={(e) => setComposeBody(e.target.value)}
                     rows={6}
@@ -778,9 +780,9 @@ export default function InboxPage() {
                 {summaryError && <div className="text-xs text-red-500 mt-2">{summaryError}</div>}
                 {summary && (
                   <div className="rounded-lg border border-line bg-panel-2 p-4 space-y-3">
-                    {summary.summary && <p className="text-sm">{summary.summary}</p>}
+                    {summary.summary && <p className="text-sm" dir="auto">{summary.summary}</p>}
                     {summary.keyPoints.length > 0 && (
-                      <ul className="list-disc pl-5 text-xs space-y-1 text-ink-text/90">
+                      <ul dir="auto" className="list-disc ps-5 text-xs space-y-1 text-ink-text/90">
                         {summary.keyPoints.map((k) => (
                           <li key={k}>{k}</li>
                         ))}
@@ -792,7 +794,7 @@ export default function InboxPage() {
                           Reply to {summary.reply.to} · {summary.reply.subject}
                           {!summary.needsReply && " · no reply seems needed"}
                         </div>
-                        <textarea
+                        <textarea dir="auto"
                           value={draft}
                           onChange={(e) => setDraft(e.target.value)}
                           rows={6}
@@ -814,6 +816,7 @@ export default function InboxPage() {
                     ) : (
                       <div className="text-[11px] text-muted">No one to reply to in this thread.</div>
                     )}
+                    <ThreadPromises proposals={summary.commitments ?? []} threadId={summary.threadId ?? null} />
                   </div>
                 )}
               </div>
@@ -823,11 +826,12 @@ export default function InboxPage() {
               {openEmailBody !== null && (
                 openEmailBody.html ? (
                   <div
-                    className="text-sm leading-relaxed pr-6"
+                    dir="auto"
+                    className="text-sm leading-relaxed pe-6"
                     dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(openEmailBody.html) }}
                   />
                 ) : (
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed pr-6">
+                  <div dir="auto" className="whitespace-pre-wrap text-sm leading-relaxed pe-6">
                     {openEmailBody.text}
                   </div>
                 )

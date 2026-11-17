@@ -357,7 +357,7 @@ export default function CalendarPage() {
               <div className="space-y-3">
                 <div>
                   <label className="text-xs text-muted block mb-1">Title</label>
-                  <input
+                  <input dir="auto"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-line text-sm"

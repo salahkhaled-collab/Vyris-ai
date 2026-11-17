@@ -56,7 +56,7 @@ export function PendingActions({ actions }: { actions: PendingActionView[] }) {
             <div className="text-[10px] uppercase tracking-wider text-muted mb-1">
               {st.status === "done" ? "Done" : st.status === "dismissed" ? "Dismissed" : "Needs your approval"}
             </div>
-            <div className={st.status === "dismissed" ? "text-muted line-through" : "text-ink-text"}>{a.summary}</div>
+            <div dir="auto" className={st.status === "dismissed" ? "text-muted line-through" : "text-ink-text"}>{a.summary}</div>
             {a.details && a.details.length > 0 && st.status !== "dismissed" && (
               <ul className="mt-1.5 space-y-0.5 text-xs text-muted break-words">
                 {a.details.map((d, i) => (

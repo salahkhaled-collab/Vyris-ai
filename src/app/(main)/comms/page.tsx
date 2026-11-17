@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Mail, MessageSquare, Sparkles, Copy, Check } from "lucide-react";
 import { DictationButton } from "@/components/ui/DictationButton";
 import Link from "next/link";
+import { FounderUpdatePanel } from "@/components/comms/FounderUpdatePanel";
 
 interface TeamMsg {
   id: string;
@@ -156,7 +157,7 @@ function DraftPanel() {
             What do you want to say?
           </label>
           <div className="relative">
-            <textarea
+            <textarea dir="auto"
               value={draftNote}
               onChange={(e) => setDraftNote(e.target.value)}
               placeholder="e.g. Follow up on the Q3 partnership terms we discussed last week. Friendly but push for a decision by Friday."
@@ -260,6 +261,9 @@ export default function CommsPage() {
           .
         </p>
 
+        {/* ── Weekly founder update ── */}
+        <FounderUpdatePanel />
+
         {/* ── Draft with Vyris ── */}
         <DraftPanel />
 
@@ -312,7 +316,7 @@ export default function CommsPage() {
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="text-sm">{m.content}</div>
+                        <div className="text-sm break-words" dir="auto">{m.content}</div>
                         <div className="text-[11px] text-muted mt-1 font-mono">
                           {new Date(m.createdAt).toLocaleString([], {
                             month: "short",

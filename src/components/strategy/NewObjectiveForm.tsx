@@ -73,13 +73,13 @@ export function NewObjectiveForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <div className="rounded-xl bg-panel-2 border border-line p-6 space-y-4 mb-6">
-      <input
+      <input dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Objective title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
-      <input
+      <input dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Quarter (e.g. Q3 2026)"
         value={quarter}
@@ -89,7 +89,7 @@ export function NewObjectiveForm({ onCreated }: { onCreated: () => void }) {
       <div className="space-y-3">
         {krs.map((kr, i) => (
           <div key={i} className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-            <input
+            <input dir="auto"
               className="bg-panel rounded-lg px-3 py-2 text-xs border border-line lg:col-span-2"
               placeholder="Key result label"
               value={kr.label}
@@ -102,7 +102,7 @@ export function NewObjectiveForm({ onCreated }: { onCreated: () => void }) {
               value={kr.target}
               onChange={(e) => updateKR(i, { target: e.target.value })}
             />
-            <input
+            <input dir="auto"
               className="bg-panel rounded-lg px-3 py-2 text-xs border border-line"
               placeholder="Unit (e.g. %, optional)"
               value={kr.unit}
