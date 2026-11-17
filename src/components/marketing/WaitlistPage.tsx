@@ -355,9 +355,14 @@ export function WaitlistPage({ showLogin = false }: { showLogin?: boolean } = {}
             <a href="#about" className="transition-colors hover:text-ink-text">About</a>
             <a href="#faq" className="transition-colors hover:text-ink-text">FAQ</a>
           </nav>
-          <a href="#join" className="rounded-lg bg-brass px-4 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5">
-            Join the waitlist
-          </a>
+          <div className="flex items-center gap-3">
+            <Link href="/waitlist/ar" lang="ar" dir="rtl" className="text-sm text-muted transition-colors hover:text-ink-text">
+              العربية
+            </Link>
+            <a href="#join" className="rounded-lg bg-brass px-4 py-2 text-sm font-medium text-white transition-transform hover:-translate-y-0.5">
+              Join the waitlist
+            </a>
+          </div>
         </div>
       </header>
 
