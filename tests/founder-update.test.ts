@@ -78,7 +78,9 @@ const req = (body: unknown) => ({ json: async () => body }) as any;
   const { POST } = require("@/app/api/ai/founder-update/route");
   await check("API needs a session", async () => { me = null; assert.equal((await POST(req({}))).status, 401); me = { id: "u1", name: "Salah" }; });
   await check("AI draft returned with facts and the number check", async () => {
-    llm = reply(JSON.stringify({ subject: "Vyris update: 7–14 Nov 2026", body: "Highlights\n- Revenue up 35%\nShipped\n- Launch pricing page" }));
+    // The route uses today's date, so the subject must too (a fixed date fails once the week moves on).
+    const period = F.periodLabel(new Date(), "Africa/Cairo");
+    llm = reply(JSON.stringify({ subject: `Vyris update: ${period}`, body: "Highlights\n- Revenue up 35%\nShipped\n- Launch pricing page" }));
     const d = await (await POST(req({ audience: "investors", note: "" }))).json();
     assert.equal(d.source, "ai"); assert.deepEqual(d.check, ["35"]); assert.ok(d.facts.includes("Launch pricing page"));
     assert.ok(lastBody.messages[1].content.includes("<facts>")); assert.ok(lastBody.messages[1].content.includes("(none)"));

@@ -6,8 +6,8 @@
 
 import { MAX_DAYS_WAITING, MIN_DAYS_WAITING, pickUnanswered, type ThreadLastMessage, type Unanswered } from "@/lib/unanswered";
 
-const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
-const GMAIL_TIMEOUT_MS = 10_000;
+export const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
+export const GMAIL_TIMEOUT_MS = 10_000;
 
 export interface GmailHeader {
   name: string;
