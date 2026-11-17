@@ -55,7 +55,7 @@ export function GetStartedCard() {
       const res = await fetch("/api/automation-rules", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: "Morning digest", trigger: "daily_digest", action: { type: "email_me" } }),
+        body: JSON.stringify({ name: "Morning brief", trigger: "daily_digest", action: { type: "email_me" } }),
       });
       if (!res.ok) {
         const data = (await res.json().catch(() => ({}))) as { message?: string };
@@ -116,8 +116,8 @@ export function GetStartedCard() {
     },
     {
       key: "digest",
-      title: "Get a morning digest",
-      detail: "One email each morning: blocked and overdue work, and emails still waiting on your reply.",
+      title: "Get a morning brief",
+      detail: "One email each morning: the 3 things that matter today, your meetings, and who is waiting on your reply.",
       action: (
         <button
           onClick={() => void enableDigest()}
