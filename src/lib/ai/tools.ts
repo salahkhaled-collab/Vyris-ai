@@ -11,6 +11,7 @@ import { getGoogleAccessToken } from "@/lib/google-token";
 import { searchMessages } from "@/lib/gmail";
 import { MAX_OPEN, isOverdue, sortCommitments, validateCommitment } from "@/lib/commitments";
 import { safeTimeZone } from "@/lib/calendar";
+import { completedAtChange } from "@/lib/task-completion";
 
 const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
@@ -613,9 +614,10 @@ export async function runTool(
       if (!task) return { ok: false, error: "Task not found." };
       // A blocked reason only lives while the task is BLOCKED; any other status clears it.
       const blockedReason = status === "BLOCKED" ? s(input.blockedReason).slice(0, MAX_BLOCKED_REASON) || null : null;
+      const completedAt = completedAtChange(task.status, status);
       const updated = await prisma.task.update({
         where: { id: task.id },
-        data: { status, blockedReason },
+        data: { status, blockedReason, ...(completedAt !== undefined && { completedAt }) },
         select: { id: true, title: true, status: true, blockedReason: true },
       });
       await afterTaskStatusChange(updated.id, task.status, updated.status);

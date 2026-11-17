@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { Mail, MessageSquare, Sparkles, Copy, Check } from "lucide-react";
 import { DictationButton } from "@/components/ui/DictationButton";
 import Link from "next/link";
+import { FounderUpdatePanel } from "@/components/comms/FounderUpdatePanel";
 
 interface TeamMsg {
   id: string;
@@ -259,6 +260,9 @@ export default function CommsPage() {
           </Link>
           .
         </p>
+
+        {/* ── Weekly founder update ── */}
+        <FounderUpdatePanel />
 
         {/* ── Draft with Vyris ── */}
         <DraftPanel />
