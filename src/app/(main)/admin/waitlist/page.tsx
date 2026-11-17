@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { Download, Search, Users } from "lucide-react";
+import Link from "next/link";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 
@@ -46,6 +47,12 @@ export default function WaitlistAdminPage() {
     <>
       <Topbar eyebrow="Owner" title="Waitlist" titleIcon={Users} />
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">
+        <p className="text-xs text-muted">
+          <Link href="/admin/metrics" className="underline">
+            See all metrics
+          </Link>{" "}
+          (active users, retention, sign-ups).
+        </p>
         {state === "loading" && <p className="text-sm text-muted py-8 text-center">Loading…</p>}
         {state === "error" && (
           <p role="alert" className="text-sm text-red-600">

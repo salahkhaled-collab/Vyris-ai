@@ -1,0 +1,147 @@
+// src/lib/investor-metrics.ts
+//
+// The numbers an investor asks for, computed from real data: sign-ups,
+// activation, daily/weekly/monthly active users, week-by-week retention by
+// sign-up cohort, and waitlist size. Pure: the server gathers rows, this
+// counts them. Days and weeks are UTC (weeks start Monday) so the numbers are
+// the same whoever looks at them.
+
+export const WEEKS = 8;
+const DAY_MS = 86_400_000;
+
+/** "YYYY-MM-DD" in UTC. */
+export function dayKey(at: Date): string {
+  return at.toISOString().slice(0, 10);
+}
+
+/** Monday 00:00 UTC of the week containing `at`. */
+export function weekStart(at: Date): Date {
+  const d = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+  const dow = (d.getUTCDay() + 6) % 7; // Monday = 0
+  return new Date(d.getTime() - dow * DAY_MS);
+}
+
+export interface MetricsUser {
+  id: string;
+  createdAt: Date;
+  /** Connected Gmail or Calendar, created a project, or used the assistant. */
+  activated: boolean;
+}
+
+export interface MetricsInput {
+  now: Date;
+  users: MetricsUser[];
+  /** Days each user did something in the app ("YYYY-MM-DD", UTC). */
+  activeDays: Map<string, Set<string>>;
+  waitlist: Date[];
+}
+
+export interface WeekRow {
+  /** Monday, "YYYY-MM-DD". */
+  week: string;
+  signups: number;
+  waitlist: number;
+  activeUsers: number;
+}
+
+export interface CohortRow {
+  week: string;
+  size: number;
+  /** Share of the cohort active in week +1..+4 after signing up; null = that week hasn't ended yet. */
+  retained: (number | null)[];
+}
+
+export interface InvestorMetrics {
+  generatedAt: string;
+  totals: {
+    users: number;
+    activated: number;
+    waitlist: number;
+    dau: number;
+    wau: number;
+    mau: number;
+  };
+  weeks: WeekRow[];
+  cohorts: CohortRow[];
+  /** Payments aren't built yet; the page says so instead of showing a made-up zero. */
+  paying: { configured: false };
+}
+
+function activeBetween(days: Set<string> | undefined, from: Date, to: Date): boolean {
+  if (!days) return false;
+  const a = dayKey(from);
+  const b = dayKey(new Date(to.getTime() - 1));
+  for (const d of days) if (d >= a && d <= b) return true;
+  return false;
+}
+
+export function computeMetrics(input: MetricsInput): InvestorMetrics {
+  const { now, users, activeDays, waitlist } = input;
+  const countActive = (from: Date, to: Date) => users.filter((u) => activeBetween(activeDays.get(u.id), from, to)).length;
+  const today = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  const end = new Date(now.getTime() + 1);
+
+  const thisWeek = weekStart(now);
+  const weeks: WeekRow[] = [];
+  for (let i = WEEKS - 1; i >= 0; i--) {
+    const from = new Date(thisWeek.getTime() - i * 7 * DAY_MS);
+    const to = new Date(from.getTime() + 7 * DAY_MS);
+    weeks.push({
+      week: dayKey(from),
+      signups: users.filter((u) => u.createdAt >= from && u.createdAt < to).length,
+      waitlist: waitlist.filter((w) => w >= from && w < to).length,
+      activeUsers: countActive(from, to),
+    });
+  }
+
+  const cohorts: CohortRow[] = weeks.map((w) => {
+    const from = new Date(`${w.week}T00:00:00.000Z`);
+    const to = new Date(from.getTime() + 7 * DAY_MS);
+    const members = users.filter((u) => u.createdAt >= from && u.createdAt < to);
+    const retained = [1, 2, 3, 4].map((k) => {
+      const wFrom = new Date(from.getTime() + k * 7 * DAY_MS);
+      const wTo = new Date(wFrom.getTime() + 7 * DAY_MS);
+      if (wTo > now || members.length === 0) return null;
+      const n = members.filter((u) => activeBetween(activeDays.get(u.id), wFrom, wTo)).length;
+      return Math.round((n / members.length) * 100);
+    });
+    return { week: w.week, size: members.length, retained };
+  });
+
+  return {
+    generatedAt: now.toISOString(),
+    totals: {
+      users: users.length,
+      activated: users.filter((u) => u.activated).length,
+      waitlist: waitlist.length,
+      dau: countActive(today, end),
+      wau: countActive(new Date(now.getTime() - 7 * DAY_MS), end),
+      mau: countActive(new Date(now.getTime() - 30 * DAY_MS), end),
+    },
+    weeks,
+    cohorts,
+    paying: { configured: false },
+  };
+}
+
+/** Metrics as CSV, for a data room or a spreadsheet. */
+export function metricsCsv(m: InvestorMetrics): string {
+  const rows = [
+    ["Metric", "Value"],
+    ["Generated", m.generatedAt],
+    ["Users", String(m.totals.users)],
+    ["Activated users", String(m.totals.activated)],
+    ["Waitlist", String(m.totals.waitlist)],
+    ["Daily active (today, UTC)", String(m.totals.dau)],
+    ["Weekly active (last 7 days)", String(m.totals.wau)],
+    ["Monthly active (last 30 days)", String(m.totals.mau)],
+    ["Paying users", "Payments not set up yet"],
+    [],
+    ["Week (Mon, UTC)", "Sign-ups", "Waitlist joins", "Active users"],
+    ...m.weeks.map((w) => [w.week, String(w.signups), String(w.waitlist), String(w.activeUsers)]),
+    [],
+    ["Cohort week", "Size", "Week 1 %", "Week 2 %", "Week 3 %", "Week 4 %"],
+    ...m.cohorts.map((c) => [c.week, String(c.size), ...c.retained.map((r) => (r === null ? "" : String(r)))]),
+  ];
+  return rows.map((r) => r.join(",")).join("\n");
+}

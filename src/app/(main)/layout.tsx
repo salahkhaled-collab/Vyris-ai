@@ -2,6 +2,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { MobileNav } from "@/components/layout/MobileNav";
 import { CommandPalette } from "@/components/layout/CommandPalette";
 import { GlobalAIChat } from "@/components/layout/GlobalAIChat";
+import { ActivityPing } from "@/components/layout/ActivityPing";
 
 export default function DashboardLayout({
   children,
@@ -19,6 +20,7 @@ export default function DashboardLayout({
       <MobileNav />
       <CommandPalette />
       <GlobalAIChat />
+      <ActivityPing />
     </div>
   );
 }
