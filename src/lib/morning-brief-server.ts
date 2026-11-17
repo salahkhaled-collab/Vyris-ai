@@ -10,7 +10,8 @@ import { getGoogleAccessToken } from "@/lib/google-token";
 import { findUnansweredThreads, getMailboxAddress } from "@/lib/gmail";
 import { calendarWindow, safeTimeZone } from "@/lib/calendar";
 import { companyHint, matchProjects } from "@/lib/meeting-brief";
-import { buildBrief, type BriefCommitment, type BriefMeeting, type MorningBrief } from "@/lib/morning-brief";
+import { buildBrief, type BriefMeeting, type MorningBrief } from "@/lib/morning-brief";
+import { loadOpenCommitments } from "@/lib/commitments-server";
 import type { Unanswered } from "@/lib/unanswered";
 
 const GOOGLE_TIMEOUT_MS = 10_000;
@@ -102,7 +103,7 @@ export interface LoadedBrief {
 export async function loadBrief(
   userId: string,
   now: Date = new Date(),
-  opts: { withInbox?: boolean; commitments?: BriefCommitment[] } = {}
+  opts: { withInbox?: boolean } = {}
 ): Promise<LoadedBrief> {
   const scope = await getScope(userId);
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { timeZone: true } }).catch(() => null);
@@ -111,11 +112,12 @@ export async function loadBrief(
     .findMany({ where: { ...scopeFilter(scope), status: "ACTIVE" }, select: { title: true }, take: 50 })
     .catch(() => [] as { title: string }[]);
 
-  const [report, signals, meetings, unanswered] = await Promise.all([
+  const [report, signals, meetings, unanswered, commitments] = await Promise.all([
     loadAttention(scope, now),
     loadRiskSignals(scope, now).catch(() => null),
     withTimeout(todaysMeetings(userId, timeZone, now, projects).catch(() => null), GOOGLE_TIMEOUT_MS),
     opts.withInbox ? unansweredFor(userId, now) : Promise.resolve({ list: null, status: "not_checked" as const }),
+    loadOpenCommitments(userId, now, timeZone),
   ]);
 
   return {
@@ -127,7 +129,7 @@ export async function loadBrief(
       unanswered: unanswered.list,
       changes: signals?.unusualChanges ?? [],
       goals: signals?.objectivesBehind ?? [],
-      commitments: opts.commitments,
+      commitments,
       now,
       timeZone,
     }),

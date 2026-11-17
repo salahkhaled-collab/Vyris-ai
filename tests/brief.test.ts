@@ -76,6 +76,7 @@ async function check(name: string, fn: () => Promise<void> | void) { try { await
   const D = (n: string, v: any) => Object.defineProperty(prisma, n, { value: v, configurable: true, writable: true });
   D("user", { findUnique: async () => ({ timeZone: "Africa/Cairo", email: "s@x.co" }), findMany: async () => [] });
   D("account", { findFirst: async () => null });
+  D("commitment", { findMany: async () => [] });
   for (const n of ["project", "objective", "strategicBet", "risk"]) D(n, { findMany: async () => [] });
   D("task", { findMany: async () => [], count: async () => 0 });
   D("workspaceSnapshot", { upsert: async (a: any) => a.create, findMany: async () => [] });

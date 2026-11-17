@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { loadBrief } from "@/lib/morning-brief-server";
-import { loadOpenCommitments } from "@/lib/commitments-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -19,7 +18,6 @@ export async function GET(req: NextRequest) {
   try {
     const { brief, timeZone, inbox } = await loadBrief(session.user.id, now, {
       withInbox: req.nextUrl.searchParams.get("inbox") === "1",
-      commitments: await loadOpenCommitments(session.user.id, now).catch(() => []),
     });
     return NextResponse.json({ brief, timeZone, inbox }, { headers: { "Cache-Control": "no-store" } });
   } catch (err) {

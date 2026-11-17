@@ -9,6 +9,8 @@ import { afterTaskStatusChange } from "@/lib/automation/engine";
 import { TRIGGERS, describeRule, isTriggerKey, parseAction } from "@/lib/automation/rules";
 import { getGoogleAccessToken } from "@/lib/google-token";
 import { searchMessages } from "@/lib/gmail";
+import { MAX_OPEN, isOverdue, sortCommitments, validateCommitment } from "@/lib/commitments";
+import { safeTimeZone } from "@/lib/calendar";
 
 const s = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 function pick<T extends string>(v: unknown, allowed: readonly T[], fallback: T): T {
@@ -390,6 +392,42 @@ export const VYRIS_TOOLS = [
       type: "object",
       properties: { title: { type: "string" }, quarter: { type: "string" } },
       required: ["title", "quarter"],
+    },
+  },
+  {
+    name: "get_commitments",
+    description:
+      "Read-only. The user's tracked promises: what they promised others (MINE) and what others promised them (THEIRS), with due dates and whether each is late. Use for 'what did I promise', 'who owes me what', 'what am I late on'. Gives ids for complete_commitment.",
+    input_schema: {
+      type: "object",
+      properties: { includeClosed: { type: "boolean", description: "Also return the last 10 done or dropped. Default false." } },
+    },
+  },
+  {
+    name: "track_commitment",
+    description:
+      "Start tracking a promise. direction MINE = the user promised someone; THEIRS = someone promised the user. text starts with a verb. dueDate as YYYY-MM-DD when a day was given. Only call when the user explicitly asks to track or remember a promise.",
+    input_schema: {
+      type: "object",
+      properties: {
+        text: { type: "string" },
+        direction: { type: "string", enum: ["MINE", "THEIRS"] },
+        counterpart: { type: "string", description: "The other person's name or email." },
+        dueDate: { type: "string", description: "YYYY-MM-DD, optional." },
+      },
+      required: ["text", "direction"],
+    },
+  },
+  {
+    name: "complete_commitment",
+    description: "Mark a tracked promise DONE or DROPPED. Get the id from get_commitments. Only call when the user explicitly asks.",
+    input_schema: {
+      type: "object",
+      properties: {
+        commitmentId: { type: "string" },
+        status: { type: "string", enum: ["DONE", "DROPPED"] },
+      },
+      required: ["commitmentId", "status"],
     },
   },
 ] as const;
@@ -887,6 +925,68 @@ export async function runTool(
         select: { id: true, title: true, quarter: true },
       });
       return { ok: true, created };
+    }
+
+    case "get_commitments": {
+      // Promises are personal: always the caller's own, even in a team.
+      const select = { id: true, text: true, counterpart: true, direction: true, dueDate: true, status: true } as const;
+      const [openRows, closedRows, user] = await Promise.all([
+        // Oldest due first, so late promises are never the ones left out.
+        prisma.commitment.findMany({
+          where: { ownerId: scope.userId, status: "OPEN" },
+          select,
+          orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
+          take: 60,
+        }),
+        input.includeClosed === true
+          ? prisma.commitment.findMany({
+              where: { ownerId: scope.userId, status: { not: "OPEN" } },
+              select,
+              orderBy: { updatedAt: "desc" },
+              take: 10,
+            })
+          : Promise.resolve([]),
+        prisma.user.findUnique({ where: { id: scope.userId }, select: { timeZone: true } }),
+      ]);
+      const tz = safeTimeZone(user?.timeZone);
+      const now = new Date();
+      const show = (r: (typeof openRows)[number]) => ({
+        ...r,
+        dueDate: r.dueDate ? r.dueDate.toISOString().slice(0, 10) : null,
+        late: r.status === "OPEN" && isOverdue(r.dueDate, now, tz),
+      });
+      const open = sortCommitments(openRows).map(show);
+      return { open, ...(input.includeClosed === true ? { closed: closedRows.map(show) } : {}) };
+    }
+
+    case "track_commitment": {
+      const v = validateCommitment(input);
+      if (!v.ok) return { ok: false, error: v.error };
+      const openCount = await prisma.commitment.count({ where: { ownerId: scope.userId, status: "OPEN" } });
+      if (openCount >= MAX_OPEN) return { ok: false, error: `${MAX_OPEN} promises are already open. Close some first.` };
+      const created = await prisma.commitment.create({
+        data: {
+          ownerId: scope.userId,
+          text: v.value.text,
+          counterpart: v.value.counterpart,
+          direction: v.value.direction,
+          dueDate: v.value.dueDate ? new Date(`${v.value.dueDate}T00:00:00.000Z`) : null,
+          source: "assistant",
+        },
+        select: { id: true, text: true, direction: true, dueDate: true },
+      });
+      return { ok: true, created };
+    }
+
+    case "complete_commitment": {
+      const id = s(input.commitmentId);
+      const status = pick(input.status, ["DONE", "DROPPED"] as const, "DONE");
+      const result = await prisma.commitment.updateMany({
+        where: { id, ownerId: scope.userId, status: "OPEN" },
+        data: { status, doneAt: new Date() },
+      });
+      if (result.count === 0) return { ok: false, error: "No open promise with that id." };
+      return { ok: true, status };
     }
 
     default:

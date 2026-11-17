@@ -8,6 +8,7 @@ import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
 import { SaveToProject } from "@/components/inbox/SaveToProject";
+import { ThreadPromises } from "@/components/inbox/ThreadPromises";
 import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
 import {
   FILTERS,
@@ -41,6 +42,7 @@ interface OpenEmailBody {
 type ReplyTarget = { to: string | null; subject: string; threadId: string; inReplyTo: string | null };
 
 interface SummaryResponse extends ThreadSummary {
+  threadId?: string;
   reply: ReplyTarget | null;
 }
 
@@ -803,6 +805,7 @@ export default function InboxPage() {
                     ) : (
                       <div className="text-[11px] text-muted">No one to reply to in this thread.</div>
                     )}
+                    <ThreadPromises proposals={summary.commitments ?? []} threadId={summary.threadId ?? null} />
                   </div>
                 )}
               </div>

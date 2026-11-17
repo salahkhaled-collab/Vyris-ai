@@ -24,6 +24,8 @@ export const WRITE_TOOLS = new Set<string>([
   "set_decision_recommendation",
   "create_decision",
   "create_objective",
+  "track_commitment",
+  "complete_commitment",
 ]);
 
 export function isWriteTool(name: string): name is VyrisToolName {
@@ -38,6 +40,8 @@ const ENUMS: Record<string, Record<string, readonly string[]>> = {
   create_task: {},
   create_risk: { severity: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
   update_risk_status: { status: ["OPEN", "MITIGATING", "RESOLVED"] },
+  track_commitment: { direction: ["MINE", "THEIRS"] },
+  complete_commitment: { status: ["DONE", "DROPPED"] },
 };
 
 function tooLong(v: unknown): boolean {
@@ -132,6 +136,7 @@ const STATUS_LABEL: Record<string, string> = {
   OPEN: "Open",
   MITIGATING: "Mitigating",
   RESOLVED: "Resolved",
+  DROPPED: "Dropped",
 };
 
 /**
@@ -141,7 +146,7 @@ const STATUS_LABEL: Record<string, string> = {
 export function summarizeAction(
   tool: string,
   input: Record<string, unknown>,
-  names: { task?: string; project?: string; risk?: string; decision?: string; person?: string } = {}
+  names: { task?: string; project?: string; risk?: string; decision?: string; person?: string; commitment?: string } = {}
 ): string {
   const task = names.task ? q(names.task) : "a task";
   const project = names.project ?? str(input.projectTitle);
@@ -184,6 +189,16 @@ export function summarizeAction(
       return `Create decision ${q(str(input.title))}${str(input.deadline, 20) ? `, decide by ${str(input.deadline, 20)}` : ""}`;
     case "create_objective":
       return `Create goal ${q(str(input.title))} for ${str(input.quarter, 20) || "this quarter"}`;
+    case "track_commitment": {
+      const who = str(input.counterpart);
+      const due = str(input.dueDate, 10);
+      const mine = str(input.direction).toUpperCase() !== "THEIRS";
+      return `${mine ? "Track your promise" : `Track ${who ? `${who}'s` : "their"} promise`}: ${q(str(input.text, 300))}${
+        mine && who ? ` to ${who}` : ""
+      }${due ? `, due ${due}` : ""}`;
+    }
+    case "complete_commitment":
+      return `Mark promise ${names.commitment ? q(names.commitment) : ""} as ${STATUS_LABEL[str(input.status)] ?? str(input.status)}`.replace("  ", " ");
     default:
       return `Run ${tool}`;
   }
@@ -213,6 +228,11 @@ export async function describeAction(tool: string, input: Record<string, unknown
     if (decisionId) {
       const d = await prisma.decision.findFirst({ where: { id: decisionId, ...where }, select: { title: true } });
       if (d) names.decision = d.title;
+    }
+    const commitmentId = str(input.commitmentId, 100);
+    if (commitmentId) {
+      const c = await prisma.commitment.findFirst({ where: { id: commitmentId, ownerId: scope.userId }, select: { text: true } });
+      if (c) names.commitment = c.text;
     }
     const assigneeId = str(input.assigneeId, 100);
     if (assigneeId) {
