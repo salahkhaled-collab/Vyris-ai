@@ -43,8 +43,12 @@ export function ThreadPromises({ proposals, threadId }: { proposals: ProposedCom
                 <div className="text-sm break-words" dir="auto">
                   {p.text}
                 </div>
-                <div className="text-[11px] text-muted break-words" dir="auto">
-                  {p.direction === "MINE" ? `You promised${p.counterpart ? ` ${p.counterpart}` : ""}` : `${p.counterpart ?? "They"} promised you`}
+                <div className="text-[11px] text-muted break-words">
+                  {p.direction === "MINE" ? (
+                    <>You promised{p.counterpart ? <> <bdi>{p.counterpart}</bdi></> : null}</>
+                  ) : (
+                    <>{p.counterpart ? <bdi>{p.counterpart}</bdi> : "They"} promised you</>
+                  )}
                   {p.dueDate ? ` · by ${p.dueDate}` : ""}
                 </div>
                 {st && st !== "saving" && st !== "saved" && <div className="text-[11px] text-red-500">{st}</div>}

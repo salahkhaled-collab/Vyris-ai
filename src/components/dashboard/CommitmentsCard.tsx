@@ -107,8 +107,12 @@ export function CommitmentsCard() {
               <div className="text-sm break-words" dir="auto">
                 {r.text}
               </div>
-              <div className="text-[11px] text-muted break-words" dir="auto">
-                {r.counterpart ? `${r.direction === "MINE" ? "To" : "From"} ${r.counterpart} · ` : ""}
+              <div className="text-[11px] text-muted break-words">
+                {r.counterpart ? (
+                  <>
+                    {r.direction === "MINE" ? "To" : "From"} <bdi>{r.counterpart}</bdi> ·{" "}
+                  </>
+                ) : null}
                 <span className={r.overdue ? "text-red-600 font-medium" : undefined}>{dueLabel(r.dueDate, now, timeZone)}</span>
               </div>
             </div>

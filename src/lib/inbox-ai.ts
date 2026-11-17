@@ -8,6 +8,7 @@
 // model can only classify and draft, and nothing here takes any action.
 
 import { parseProposals, type ProposedCommitment } from "./commitments";
+import { THREAD_LANGUAGE_RULE } from "./language";
 
 export const PRIORITIES = ["urgent", "needs_reply", "fyi", "low"] as const;
 export type Priority = (typeof PRIORITIES)[number];
@@ -161,6 +162,7 @@ export function threadPrompt(
     "- commitments: clear promises made in the thread, at most 5. direction \"MINE\" when a message with sender=\"the user\" promises to do something; \"THEIRS\" when someone else promises to do something for the user. text: what will be done, short, starting with a verb (\"Send the signed contract\"). counterpart: the other person's name. dueDate: \"YYYY-MM-DD\" when a day or date is stated, else null." +
       (today ? ` Today is ${today}; resolve words like \"Thursday\" or \"next week\" from it.` : "") +
       " Requests, questions and vague intentions (\"let's catch up sometime\") are not promises. Use [] when there are none.",
+    THREAD_LANGUAGE_RULE,
     "Style for the reply: concise, warm, direct; no filler.",
     toneNotes.length > 0 ? `The user's own notes about how they write (follow them):\n${toneNotes.map((n) => `- ${n}`).join("\n")}` : "",
   ]

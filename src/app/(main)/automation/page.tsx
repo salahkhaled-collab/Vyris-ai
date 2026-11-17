@@ -294,7 +294,7 @@ export default function AutomationPage() {
                       : "bg-panel-2 text-ink-text/90"
                   )}
                 >
-                  <p className="whitespace-pre-wrap">{m.content}</p>
+                  <p className="whitespace-pre-wrap break-words" dir="auto">{m.content}</p>
                   {m.pendingActions && m.pendingActions.length > 0 && (
                     <div className="mt-3">
                       <PendingActions actions={m.pendingActions} />
@@ -321,7 +321,7 @@ export default function AutomationPage() {
           </div>
 
           <div className="px-6 py-4 border-t border-line flex items-center gap-2">
-            <input
+            <input dir="auto"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSend()}
@@ -373,7 +373,7 @@ export default function AutomationPage() {
                     <X className="w-3.5 h-3.5" strokeWidth={1.75} />
                   </button>
                 </div>
-                <input
+                <input dir="auto"
                   autoFocus
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -414,7 +414,7 @@ export default function AutomationPage() {
                 </select>
                 {form.actionType === "create_task" && (
                   <div className="space-y-2">
-                    <input
+                    <input dir="auto"
                       value={form.title}
                       onChange={(e) => setForm({ ...form, title: e.target.value })}
                       maxLength={200}

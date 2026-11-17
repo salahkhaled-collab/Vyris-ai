@@ -138,7 +138,7 @@ export async function emailOwner(userId: string, subject: string, body: string):
   }
   const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
   if (!user?.email) return { status: "FAILED", detail: "No email address to send to." };
-  const html = `<pre style="font-family:inherit;white-space:pre-wrap">${body
+  const html = `<pre dir="auto" style="font-family:inherit;white-space:pre-wrap">${body
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")}</pre>`;

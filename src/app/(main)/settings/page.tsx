@@ -193,7 +193,7 @@ export default function SettingsPage() {
               <p className="text-sm">
                 Type your email (<span className="font-medium">{session?.user?.email}</span>) to confirm:
               </p>
-              <input
+              <input dir="auto"
                 value={deleteEmailInput}
                 onChange={(e) => setDeleteEmailInput(e.target.value)}
                 placeholder="your@email.com"

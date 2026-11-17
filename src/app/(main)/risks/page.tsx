@@ -141,14 +141,14 @@ export default function RisksPage() {
               </button>
             </div>
             <div className="space-y-3">
-              <input
+              <input dir="auto"
                 autoFocus
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 placeholder="What's the risk?"
                 className="w-full bg-panel-2 border border-line rounded-lg px-3 py-2 text-sm placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-brass"
               />
-              <textarea
+              <textarea dir="auto"
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 placeholder="What's the impact if this happens? What would you do about it?"

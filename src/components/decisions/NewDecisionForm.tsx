@@ -80,14 +80,14 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
 
   return (
     <div className="rounded-xl bg-panel-2 border border-line p-6 space-y-4 mb-6">
-      <input
+      <input dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Decision title"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
       />
       <div className="relative">
-        <textarea
+        <textarea dir="auto"
           className="w-full bg-panel rounded-lg px-3 py-2 pr-12 text-sm border border-line resize-none"
           placeholder="Context — what's the situation?"
           rows={3}
@@ -99,7 +99,7 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
           className="absolute top-2 right-2"
         />
       </div>
-      <input
+      <input dir="auto"
         className="w-full bg-panel rounded-lg px-3 py-2 text-sm border border-line"
         placeholder="Deadline (e.g. Fri, Jul 24)"
         value={deadline}
@@ -109,7 +109,7 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
       <div className="space-y-3">
         {options.map((opt, i) => (
           <div key={i} className="grid grid-cols-1 lg:grid-cols-4 gap-2">
-            <input
+            <input dir="auto"
               className="bg-panel rounded-lg px-3 py-2 text-xs border border-line lg:col-span-2"
               placeholder={`Option ${String.fromCharCode(65 + i)} label`}
               value={opt.label}
@@ -124,7 +124,7 @@ export function NewDecisionForm({ onCreated }: { onCreated: () => void }) {
               value={opt.score}
               onChange={(e) => updateOption(i, { score: Number(e.target.value) })}
             />
-            <input
+            <input dir="auto"
               className="bg-panel rounded-lg px-3 py-2 text-xs border border-line"
               placeholder="Pros, comma separated"
               value={opt.pros}

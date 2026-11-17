@@ -319,7 +319,7 @@ export function GlobalAIChat() {
                       : "bg-panel-2 text-ink-text/90 border border-line"
                   )}
                 >
-                  <p className="whitespace-pre-wrap">
+                  <p className="whitespace-pre-wrap break-words" dir="auto">
                     {m.role === "assistant" ? m.content.replace(/\*\*(.+?)\*\*/g, "$1") : m.content}
                   </p>
                   {m.pendingActions && m.pendingActions.length > 0 && (
@@ -366,7 +366,7 @@ export function GlobalAIChat() {
 
           {/* Input row */}
           <div className="px-3 py-3 border-t border-line flex items-center gap-2 shrink-0">
-            <input
+            <input dir="auto"
               ref={inputRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}

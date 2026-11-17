@@ -86,7 +86,7 @@ export default function WaitlistAdminPage() {
                 <div className="flex flex-wrap items-center gap-3 px-5 py-4 border-b border-line">
                   <div className="relative flex-1 min-w-[12rem]">
                     <Search className="w-4 h-4 text-muted absolute left-3 top-1/2 -translate-y-1/2" />
-                    <input
+                    <input dir="auto"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
                       placeholder="Search name, email, company"

@@ -154,7 +154,7 @@ export function MeetingNotesPanel() {
         </p>
       </div>
 
-      <textarea
+      <textarea dir="auto"
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         maxLength={MAX_NOTES_CHARS}
@@ -229,7 +229,7 @@ export function MeetingNotesPanel() {
                       aria-label={`Include ${item.title}`}
                       className="accent-brass"
                     />
-                    <input
+                    <input dir="auto"
                       value={item.title}
                       onChange={(e) => update(item.key, { title: e.target.value })}
                       maxLength={200}

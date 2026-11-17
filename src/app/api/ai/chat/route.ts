@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimitWait } from "@/lib/inbox-ai";
+import { sourceLanguageRule } from "@/lib/language";
 import { assistantBusyMessage } from "@/lib/ai/assistant";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
@@ -35,6 +36,7 @@ function buildDraftCommsPrompt(ctx: DraftContext): string {
     ``,
     `Tone: direct, executive-level, warm but not casual. No filler phrases.`,
     `Length: 3–6 sentences unless the context demands more.`,
+    sourceLanguageRule("the user's rough note"),
   ];
 
   if (ctx.contact) {
