@@ -74,6 +74,7 @@ model User {
   memories      Memory[]
   snapshots     WorkspaceSnapshot[]
   commitments   Commitment[]
+  activityDays  UserActivityDay[]
   id            String              @id @default(cuid())
   name          String?
   email         String?             @unique
@@ -610,4 +611,18 @@ model Commitment {
   updatedAt   DateTime            @updatedAt
 
   @@index([ownerId, status])
+}
+
+/// One row per user per day they opened the app, for active-user and
+/// retention numbers. Holds no content, only that the day had a visit.
+model UserActivityDay {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// "YYYY-MM-DD", UTC.
+  day       String
+  createdAt DateTime @default(now())
+
+  @@unique([userId, day])
+  @@index([day])
 }
