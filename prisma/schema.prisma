@@ -76,6 +76,7 @@ model User {
   commitments   Commitment[]
   activityDays  UserActivityDay[]
   feedback      Feedback[]
+  pushSubscriptions PushSubscription[]
   id            String              @id @default(cuid())
   name          String?
   email         String?             @unique
@@ -641,4 +642,23 @@ model Feedback {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+}
+
+/// A browser or phone that asked for Vyris notifications (Web Push). The
+/// endpoint is the push service URL for that one device; p256dh and auth are
+/// its public encryption keys (not secrets of ours). Removed when the push
+/// service says the device is gone (404/410).
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String   @unique @db.Text
+  p256dh    String
+  auth      String
+  /// e.g. "Chrome on Android", for the settings list.
+  device    String?
+  createdAt DateTime @default(now())
+  lastSentAt DateTime?
+
+  @@index([userId])
 }

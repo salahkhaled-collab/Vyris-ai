@@ -28,7 +28,7 @@ export interface MetricsUser {
   activated: boolean;
   /** Granted Gmail access. Optional: older callers count it as no. */
   gmail?: boolean;
-  /** Has the morning brief turned on. */
+  /** Gets the morning brief: by email, as a notification, or both. */
   brief?: boolean;
 }
 

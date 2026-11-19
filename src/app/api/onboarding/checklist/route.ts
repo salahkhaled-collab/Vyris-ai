@@ -16,13 +16,14 @@ export async function GET() {
   const userId = session.user.id;
   const scope = await getScope(userId);
 
-  const [account, project, digest] = await Promise.all([
+  const [account, project, digest, push] = await Promise.all([
     prisma.account.findFirst({ where: { userId, provider: "google" }, select: { scope: true } }),
     prisma.project.findFirst({ where: scopeFilter(scope), select: { id: true } }),
     prisma.automationRule.findFirst({
       where: { ownerId: userId, trigger: "daily_digest", status: "ACTIVE" },
       select: { id: true },
     }),
+    prisma.pushSubscription.findFirst({ where: { userId }, select: { id: true } }),
   ]);
 
   return NextResponse.json({
@@ -30,5 +31,6 @@ export async function GET() {
     calendar: hasFeatureScopes(account?.scope, "calendar"),
     project: Boolean(project),
     digest: Boolean(digest),
+    push: Boolean(push),
   });
 }

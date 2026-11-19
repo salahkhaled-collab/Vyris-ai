@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
 import { runScheduled } from "@/lib/automation/engine";
 import { captureDailySnapshots } from "@/lib/risk-signals-server";
+import { sendMorningPushes } from "@/lib/push-server";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -29,13 +30,21 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const started = Date.now();
-  const result = await runScheduled(new Date());
+  // Emails (automation rules) and phone/browser reminders go out side by side.
+  const [result, pushes] = await Promise.all([
+    runScheduled(new Date()),
+    sendMorningPushes(new Date(), started + 45_000).catch((err: unknown) => {
+      console.error("[cron] morning notifications failed:", err);
+      return { users: 0, sent: 0, notReached: 0 };
+    }),
+  ]);
   console.log(`[cron] automations: ${result.rules} rule(s), ${result.failed} failed, ${result.notReached} not reached`);
+  console.log(`[cron] notifications: ${pushes.sent} sent to ${pushes.users} user(s), ${pushes.notReached} not reached`);
   // Daily numbers for "unusual changes", with whatever time is left.
   const snapshots = await captureDailySnapshots(new Date(), started + 55_000).catch((err: unknown) => {
     console.error("[cron] snapshots failed:", err);
     return { users: 0, saved: 0 };
   });
   console.log(`[cron] snapshots: ${snapshots.saved} of ${snapshots.users} user(s)`);
-  return NextResponse.json({ ...result, snapshots });
+  return NextResponse.json({ ...result, pushes, snapshots });
 }

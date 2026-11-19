@@ -62,6 +62,9 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
+  // Added to an iPhone home screen, Vyris opens full screen and can send notifications.
+  appleWebApp: { capable: true, title: "Vyris", statusBarStyle: "default" },
+  icons: { apple: "/apple-touch-icon.png" },
 };
 
 export default function RootLayout({
