@@ -16,7 +16,7 @@ export async function POST() {
     return NextResponse.json({ error: "rate_limited", message: "That's 5 tests today. Tomorrow's reminder comes in the morning." }, { status: 429 });
   }
   try {
-    const r = await sendMorningPush(session.user.id, new Date());
+    const r = await sendMorningPush(session.user.id, new Date(), { record: false });
     if (r.sent === 0) {
       return NextResponse.json({ error: "not_sent", message: "Couldn't reach any of your devices. Turn notifications off and on again." }, { status: 502 });
     }

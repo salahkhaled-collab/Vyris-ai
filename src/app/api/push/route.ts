@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { prisma } from "@/lib/prisma";
-import { deviceLabel, validateSubscription } from "@/lib/push";
+import { DEFAULT_PUSH_HOUR, deviceLabel, parseHour, validateSubscription } from "@/lib/push";
+import { safeTimeZone } from "@/lib/calendar";
 import { pushPublicKey } from "@/lib/push-server";
 import { consume, HOUR } from "@/lib/rate-limit";
 
@@ -10,16 +11,35 @@ export const dynamic = "force-dynamic";
 
 const MAX_DEVICES = 10;
 
-/** GET /api/push: whether notifications are available, the app's public key, and this user's devices. */
+/** GET /api/push: whether notifications are available, the app's public key, this user's devices and send time. */
 export async function GET() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
-  const devices = await prisma.pushSubscription.findMany({
-    where: { userId: session.user.id },
-    select: { endpoint: true, device: true, createdAt: true, lastSentAt: true },
-    orderBy: { createdAt: "desc" },
+  const [devices, user] = await Promise.all([
+    prisma.pushSubscription.findMany({
+      where: { userId: session.user.id },
+      select: { endpoint: true, device: true, createdAt: true, lastSentAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.user.findUnique({ where: { id: session.user.id }, select: { pushHour: true, timeZone: true } }).catch(() => null),
+  ]);
+  return NextResponse.json({
+    publicKey: pushPublicKey(),
+    devices,
+    hour: user?.pushHour ?? DEFAULT_PUSH_HOUR,
+    timeZone: safeTimeZone(user?.timeZone),
   });
-  return NextResponse.json({ publicKey: pushPublicKey(), devices });
+}
+
+/** PATCH /api/push: when the morning notification goes out. Body: { hour: 0-23 } in the user's own time zone. */
+export async function PATCH(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) return NextResponse.json({ error: "not_authenticated" }, { status: 401 });
+  const body = (await req.json().catch(() => null)) as { hour?: unknown } | null;
+  const hour = parseHour(body?.hour);
+  if (hour === null) return NextResponse.json({ error: "invalid", message: "Pick an hour from 0 to 23." }, { status: 400 });
+  await prisma.user.update({ where: { id: session.user.id }, data: { pushHour: hour } });
+  return NextResponse.json({ ok: true, hour });
 }
 
 /** POST /api/push: turn on notifications for this browser. Body: the browser's PushSubscription JSON. */
