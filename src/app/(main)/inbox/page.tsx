@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { SaveToProject } from "@/components/inbox/SaveToProject";
 import { GmailLabelsButton } from "@/components/inbox/GmailLabelsButton";
 import { ThreadPromises } from "@/components/inbox/ThreadPromises";
+import { InboxWelcome } from "@/components/inbox/InboxWelcome";
 import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
 import {
   FILTERS,
@@ -458,6 +459,7 @@ export default function InboxPage() {
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-10">
+        <InboxWelcome sorted={Boolean(triage) || emails?.length === 0} />
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">

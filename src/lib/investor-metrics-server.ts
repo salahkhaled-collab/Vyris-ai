@@ -32,6 +32,11 @@ export async function loadInvestorMetrics(now: Date = new Date()): Promise<Inves
       prisma.decision.findMany({ where: { createdAt: { gte: since } }, select: { ownerId: true, createdAt: true }, take: MAX_ROWS }),
       prisma.waitlistEntry.findMany({ select: { createdAt: true }, take: MAX_ROWS }),
     ]);
+  const briefRules = await prisma.automationRule.findMany({
+    where: { trigger: "daily_digest", status: "ACTIVE" },
+    select: { ownerId: true },
+    take: MAX_ROWS,
+  });
 
   const activeDays = new Map<string, Set<string>>();
   const mark = (userId: string, day: string) => {
@@ -46,6 +51,8 @@ export async function loadInvestorMetrics(now: Date = new Date()): Promise<Inves
   const connected = new Set(
     accounts.filter((a) => hasFeatureScopes(a.scope, "gmail") || hasFeatureScopes(a.scope, "calendar")).map((a) => a.userId)
   );
+  const withGmail = new Set(accounts.filter((a) => hasFeatureScopes(a.scope, "gmail")).map((a) => a.userId));
+  const withBrief = new Set(briefRules.map((r) => r.ownerId));
   const madeProject = new Set(projectOwners.map((p) => p.ownerId));
   const usedAi = new Set(conversationOwners.map((c) => c.ownerId));
 
@@ -55,6 +62,8 @@ export async function loadInvestorMetrics(now: Date = new Date()): Promise<Inves
       id: u.id,
       createdAt: u.createdAt,
       activated: connected.has(u.id) || madeProject.has(u.id) || usedAi.has(u.id),
+      gmail: withGmail.has(u.id),
+      brief: withBrief.has(u.id),
     })),
     activeDays,
     waitlist: waitlist.map((w) => w.createdAt),

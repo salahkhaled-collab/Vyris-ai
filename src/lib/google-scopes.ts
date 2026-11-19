@@ -67,9 +67,12 @@ export function shouldReplaceGrant(stored: string | null | undefined, incoming: 
  * whatever the user granted before (connecting Calendar does not drop Gmail);
  * offline + consent makes Google return a refresh token for background use.
  */
-export function connectParams(feature: GoogleFeature): Record<string, string> {
+export function connectParams(feature: GoogleFeature | GoogleFeature[]): Record<string, string> {
+  // Several features can share one Google screen (Gmail + Calendar at sign-up).
+  const features = Array.isArray(feature) ? feature : [feature];
+  const scopes = Array.from(new Set(features.flatMap((f) => GOOGLE_FEATURE_SCOPES[f])));
   return {
-    scope: [...BASE_GOOGLE_SCOPES, ...GOOGLE_FEATURE_SCOPES[feature]].join(" "),
+    scope: [...BASE_GOOGLE_SCOPES, ...scopes].join(" "),
     include_granted_scopes: "true",
     access_type: "offline",
     prompt: "consent",

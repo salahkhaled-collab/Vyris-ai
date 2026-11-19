@@ -5,7 +5,7 @@ import Link from "next/link";
 import { BarChart3, Download } from "lucide-react";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
-import type { InvestorMetrics, WeekRow } from "@/lib/investor-metrics";
+import type { FunnelStep, InvestorMetrics, WeekRow } from "@/lib/investor-metrics";
 
 const shortWeek = (w: string) =>
   new Date(`${w}T00:00:00.000Z`).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
@@ -64,6 +64,37 @@ function WeeklyBars({ title, rows, pick }: { title: string; rows: WeekRow[]; pic
           </div>
         ))}
       </div>
+    </Panel>
+  );
+}
+
+/** The first-week path: one bar per step, each as a share of who could reach it. */
+function Funnel({ steps }: { steps: FunnelStep[] }) {
+  return (
+    <Panel className="p-5">
+      <div className="mb-3">
+        <h3 className="text-sm font-medium">First week</h3>
+        <p className="text-[11px] text-muted mt-0.5">
+          How far new users get. &ldquo;Came back&rdquo; counts only people who signed up at least 7 days ago.
+        </p>
+      </div>
+      <ol className="space-y-2.5">
+        {steps.map((s) => {
+          const pct = s.of > 0 ? Math.round((s.users / s.of) * 100) : 0;
+          return (
+            <li key={s.key} className="grid grid-cols-[9.5rem_1fr_auto] items-center gap-3 text-sm">
+              <span className="truncate">{s.label}</span>
+              <div className="h-2.5 rounded bg-black/[0.05] overflow-hidden" aria-hidden>
+                <div className="h-full rounded bg-brass" style={{ width: `${pct}%`, minWidth: s.users > 0 ? 4 : 0 }} />
+              </div>
+              <span className="tabular-nums text-xs text-muted whitespace-nowrap">
+                <span className="text-ink-text font-medium">{s.users}</span> of {s.of}
+                {s.of > 0 && ` · ${pct}%`}
+              </span>
+            </li>
+          );
+        })}
+      </ol>
     </Panel>
   );
 }
@@ -130,6 +161,8 @@ export default function MetricsAdminPage() {
               <Tile label="Waitlist" value={m.totals.waitlist} />
               <Tile label="Paying" value="—" note="Payments not set up yet" />
             </div>
+
+            <Funnel steps={m.funnel} />
 
             <div className="grid gap-4 lg:grid-cols-3">
               <WeeklyBars title="Sign-ups" rows={m.weeks} pick={(r) => r.signups} />

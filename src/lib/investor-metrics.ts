@@ -26,6 +26,19 @@ export interface MetricsUser {
   createdAt: Date;
   /** Connected Gmail or Calendar, created a project, or used the assistant. */
   activated: boolean;
+  /** Granted Gmail access. Optional: older callers count it as no. */
+  gmail?: boolean;
+  /** Has the morning brief turned on. */
+  brief?: boolean;
+}
+
+/** The first-week path, as counts of users who reached each step. */
+export interface FunnelStep {
+  key: "signed_up" | "gmail" | "brief" | "returned";
+  label: string;
+  users: number;
+  /** Out of how many could have reached it (for "returned", only users signed up 7+ days ago). */
+  of: number;
 }
 
 export interface MetricsInput {
@@ -63,6 +76,7 @@ export interface InvestorMetrics {
   };
   weeks: WeekRow[];
   cohorts: CohortRow[];
+  funnel: FunnelStep[];
   /** Payments aren't built yet; the page says so instead of showing a made-up zero. */
   paying: { configured: false };
 }
@@ -108,6 +122,23 @@ export function computeMetrics(input: MetricsInput): InvestorMetrics {
     return { week: w.week, size: members.length, retained };
   });
 
+  // Came back: active on any day at least 7 days after signing up. Only users
+  // whose 7 days have passed can count, so new sign-ups don't drag it down.
+  const eligible = users.filter((u) => u.createdAt.getTime() + 7 * DAY_MS <= now.getTime());
+  const returned = eligible.filter((u) => {
+    const days = activeDays.get(u.id);
+    if (!days) return false;
+    const from = dayKey(new Date(u.createdAt.getTime() + 7 * DAY_MS));
+    for (const d of days) if (d >= from) return true;
+    return false;
+  }).length;
+  const funnel: FunnelStep[] = [
+    { key: "signed_up", label: "Signed up", users: users.length, of: users.length },
+    { key: "gmail", label: "Connected Gmail", users: users.filter((u) => u.gmail).length, of: users.length },
+    { key: "brief", label: "Morning brief on", users: users.filter((u) => u.brief).length, of: users.length },
+    { key: "returned", label: "Came back after a week", users: returned, of: eligible.length },
+  ];
+
   return {
     generatedAt: now.toISOString(),
     totals: {
@@ -120,6 +151,7 @@ export function computeMetrics(input: MetricsInput): InvestorMetrics {
     },
     weeks,
     cohorts,
+    funnel,
     paying: { configured: false },
   };
 }
@@ -136,6 +168,9 @@ export function metricsCsv(m: InvestorMetrics): string {
     ["Weekly active (last 7 days)", String(m.totals.wau)],
     ["Monthly active (last 30 days)", String(m.totals.mau)],
     ["Paying users", "Payments not set up yet"],
+    [],
+    ["First-week step", "Users", "Out of"],
+    ...m.funnel.map((f) => [f.label, String(f.users), String(f.of)]),
     [],
     ["Week (Mon, UTC)", "Sign-ups", "Waitlist joins", "Active users"],
     ...m.weeks.map((w) => [w.week, String(w.signups), String(w.waitlist), String(w.activeUsers)]),
