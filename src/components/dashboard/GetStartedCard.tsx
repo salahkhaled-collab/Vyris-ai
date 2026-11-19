@@ -6,9 +6,10 @@ import { Check, Loader2, Mail, X } from "lucide-react";
 import { track } from "@/lib/analytics";
 import { GoogleConnectDialog } from "@/components/onboarding/GoogleConnectDialog";
 import { INBOX_SEEN_KEY } from "@/components/inbox/InboxWelcome";
+import { PushToggle } from "@/components/notifications/PushToggle";
 import type { GoogleFeature } from "@/lib/google-scopes";
 
-type Checklist = { gmail: boolean; calendar: boolean; project: boolean; digest: boolean };
+type Checklist = { gmail: boolean; calendar: boolean; project: boolean; digest: boolean; push?: boolean };
 const DISMISS_KEY = "vyris.getStarted.dismissed";
 
 const readFlag = (key: string) => {
@@ -50,7 +51,8 @@ export function GetStartedCard() {
 
   if (hidden || !state) return null;
   const google = state.gmail && state.calendar;
-  const required = [google, state.gmail && inboxSeen, state.digest];
+  const briefOn = state.digest || Boolean(state.push);
+  const required = [google, state.gmail && inboxSeen, briefOn];
   const done = [...required, state.project].filter(Boolean).length;
   // Stay until the brief has gone out at least once this session, so "Send it now" is reachable.
   if (required.every(Boolean) && state.project && sendState !== "sent") return null;
@@ -143,15 +145,18 @@ export function GetStartedCard() {
     },
     {
       key: "digest",
-      done: state.digest,
+      done: briefOn,
       locked: !state.gmail,
       title: "Get your morning brief",
-      detail: "One email each morning: the 3 things that matter today, your meetings, and who is waiting on you.",
+      detail: "Each morning: the 3 things that matter today, your meetings, and who is waiting on you. As a notification, or by email.",
       action: (
-        <button onClick={() => void enableDigest()} disabled={digestBusy} className={btn}>
-          {digestBusy && <Loader2 className="w-3 h-3 animate-spin" />}
-          Turn on
-        </button>
+        <div className="flex flex-wrap items-start gap-2">
+          <PushToggle compact onEnabled={() => setState((s) => (s ? { ...s, push: true } : s))} />
+          <button onClick={() => void enableDigest()} disabled={digestBusy} className={btnQuiet}>
+            {digestBusy && <Loader2 className="w-3 h-3 animate-spin" />}
+            By email
+          </button>
+        </div>
       ),
     },
     {
@@ -197,7 +202,7 @@ export function GetStartedCard() {
               <div className={s.done ? "text-sm text-muted line-through" : "text-sm font-medium"}>{s.title}</div>
               {!s.done && <div className="text-xs text-muted">{s.locked ? "After you connect Gmail." : s.detail}</div>}
             </div>
-            {!s.done && !s.locked && <div className="shrink-0">{s.action}</div>}
+            {!s.done && !s.locked && <div className="shrink-0 max-w-full">{s.action}</div>}
           </li>
         ))}
       </ol>

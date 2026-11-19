@@ -52,7 +52,8 @@ export async function loadInvestorMetrics(now: Date = new Date()): Promise<Inves
     accounts.filter((a) => hasFeatureScopes(a.scope, "gmail") || hasFeatureScopes(a.scope, "calendar")).map((a) => a.userId)
   );
   const withGmail = new Set(accounts.filter((a) => hasFeatureScopes(a.scope, "gmail")).map((a) => a.userId));
-  const withBrief = new Set(briefRules.map((r) => r.ownerId));
+  const pushUsers = await prisma.pushSubscription.findMany({ distinct: ["userId"], select: { userId: true }, take: MAX_ROWS });
+  const withBrief = new Set([...briefRules.map((r) => r.ownerId), ...pushUsers.map((p) => p.userId)]);
   const madeProject = new Set(projectOwners.map((p) => p.ownerId));
   const usedAi = new Set(conversationOwners.map((c) => c.ownerId));
 
