@@ -2,6 +2,7 @@
 
 import { PendingActions, type PendingActionView } from "@/components/ai/PendingActions";
 import { useState, useRef, useEffect, useCallback } from "react";
+import { ASK_EVENT, ASK_STATE_EVENT, type AskDetail } from "@/lib/ask-vyris";
 import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { DictationButton } from "@/components/ui/DictationButton";
@@ -99,6 +100,21 @@ export function GlobalAIChat() {
   const inputRef = useRef<HTMLInputElement>(null);
   const pageContext = getPageContext(pathname);
   const suggestions = getPageSuggestions(pathname);
+
+  // The phone tab bar and "Prep me" open the assistant through an event.
+  useEffect(() => {
+    const onAsk = (e: Event) => {
+      const detail = (e as CustomEvent<AskDetail>).detail ?? {};
+      if (detail.close) return setOpen(false);
+      setOpen((wasOpen) => (detail.toggle && wasOpen && !detail.prompt ? false : true));
+      if (detail.prompt) setInput(detail.prompt);
+    };
+    window.addEventListener(ASK_EVENT, onAsk);
+    return () => window.removeEventListener(ASK_EVENT, onAsk);
+  }, []);
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent(ASK_STATE_EVENT, { detail: { open } }));
+  }, [open]);
 
   // Scroll to bottom on new messages
   useEffect(() => {
@@ -220,8 +236,9 @@ export function GlobalAIChat() {
           onClick={() => setOpen(true)}
           aria-label="Open Vyris AI assistant"
           className={cn(
-            "fixed bottom-20 right-5 z-50 lg:bottom-6 lg:right-6",
-            "flex items-center gap-2.5 px-4 py-3 rounded-2xl",
+            // Phones open it from the tab bar instead, so nothing floats over the page.
+            "hidden lg:flex fixed z-50 lg:bottom-6 lg:right-6",
+            "items-center gap-2.5 px-4 py-3 rounded-2xl",
             "bg-brass text-white shadow-lg hover:shadow-xl hover:scale-105",
             "transition-all duration-200"
           )}
@@ -237,9 +254,10 @@ export function GlobalAIChat() {
         <div
           className={cn(
             "fixed z-50 flex flex-col",
-            "bottom-20 right-5 lg:bottom-6 lg:right-6",
-            "bg-panel border border-line rounded-2xl shadow-2xl",
-            "w-[calc(100vw-40px)] h-[420px]",
+            // Phone: full screen above the tab bar. Desktop: a panel in the corner.
+            "inset-x-0 top-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] lg:inset-auto lg:bottom-6 lg:right-6",
+            "bg-panel lg:border lg:border-line lg:rounded-2xl lg:shadow-2xl",
+            "w-full",
             panelW,
             panelH,
             "transition-all duration-300 ease-out"

@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { ProjectEmails } from "@/components/projects/ProjectEmails";
 import { useUser } from "@/lib/user-context";
 import { buildAttentionReport, overdueCutoff, type AttentionItem } from "@/lib/attention";
+import { nextStep, percentDone } from "@/lib/project-view";
 import {
   Plus,
   ChevronDown,
@@ -20,6 +21,8 @@ import {
   Ban,
   X,
   AlertTriangle,
+  Clock,
+  CalendarDays,
 } from "lucide-react";
 
 type ProjectStatus = "ACTIVE" | "PAUSED" | "DONE";
@@ -349,13 +352,13 @@ export default function ProjectsPage() {
     <>
       <Topbar eyebrow="Operations" title="Projects" statusText={`${activeCount} active`} />
 
-      <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">
+      <main className="flex-1 overflow-y-auto scroll-thin px-4 lg:px-10 pt-3 pb-8 lg:py-8 space-y-4 lg:space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="font-display text-xl">All Projects</h2>
+          <h2 className="hidden lg:block font-display text-xl">All Projects</h2>
           {!creating && (
             <button
               onClick={() => setCreating(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white"
+              className="ml-auto lg:ml-0 flex items-center gap-2 px-4 py-2 rounded-full lg:rounded-lg text-sm font-medium bg-brass text-white"
             >
               <Plus className="w-4 h-4" strokeWidth={2} />
               New project
@@ -439,7 +442,35 @@ export default function ProjectsPage() {
         )}
 
         {!loading && attention.total > 0 && (
-          <Panel className="p-5">
+          <div className="md:hidden grid grid-cols-3 gap-2.5" aria-label="Needs attention">
+            {(
+              [
+                ["Blocked", attention.blocked, AlertTriangle, true],
+                ["Overdue", attention.overdue, Clock, true],
+                ["Due soon", attention.dueSoon, CalendarDays, false],
+              ] as const
+            ).map(([label, items, Icon, warn]) => (
+              <button
+                key={label}
+                onClick={() => items[0] && openProject(items[0].projectId)}
+                disabled={items.length === 0}
+                className={cn(
+                  "rounded-2xl p-3 text-left space-y-1",
+                  warn && items.length > 0 ? "bg-[#f6e9dc]" : "bg-panel border border-line"
+                )}
+              >
+                <span className="flex items-center gap-1.5">
+                  <Icon className={cn("w-4 h-4", warn && items.length > 0 ? "text-[#a4561b]" : "text-muted")} strokeWidth={1.75} />
+                  <span className="font-display text-[22px] leading-7">{items.length}</span>
+                </span>
+                <span className="block text-xs text-muted">{label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {!loading && attention.total > 0 && (
+          <Panel className="hidden md:block p-5">
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle className="w-4 h-4 text-brass" strokeWidth={1.75} />
               <h3 className="text-sm font-medium">Needs attention</h3>
@@ -496,17 +527,35 @@ export default function ProjectsPage() {
                     <ChevronRight className="w-4 h-4 text-muted shrink-0" strokeWidth={1.75} />
                   )}
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium">{project.title}</div>
+                    <div className="font-display font-semibold text-[17px] lg:font-sans lg:font-medium lg:text-sm" dir="auto">
+                      {project.title}
+                    </div>
                     {project.description && (
                       <div className="text-xs text-muted mt-0.5 line-clamp-1">
                         {project.description}
                       </div>
                     )}
+                    {(() => {
+                      const step = nextStep(project.tasks, now);
+                      return step ? (
+                        <div dir="auto" className={cn("text-xs mt-1 line-clamp-1", step.tone === "warn" ? "text-[#a4561b]" : "text-muted")}>
+                          {step.text}
+                        </div>
+                      ) : null;
+                    })()}
+                    {project.tasks.length > 0 && (
+                      <div className="flex items-center gap-2.5 mt-2">
+                        <div className="flex-1 h-1.5 rounded-full bg-panel-2 overflow-hidden" aria-hidden>
+                          <div className="h-full rounded-full bg-brass" style={{ width: `${percentDone(project.tasks)}%` }} />
+                        </div>
+                        <span className="text-xs text-muted whitespace-nowrap">
+                          {doneCount} of {project.tasks.length} done
+                        </span>
+                      </div>
+                    )}
                     <div className="text-xs text-muted mt-0.5">
-                      {project.tasks.length === 0
-                        ? "No tasks"
-                        : `${doneCount}/${project.tasks.length} tasks done`}
-                      {project.teamId && " · Shared with team"}
+                      {project.tasks.length === 0 && "No tasks"}
+                      {project.teamId && `${project.tasks.length === 0 ? " · " : ""}Shared with team`}
                     </div>
                   </div>
                   <span
