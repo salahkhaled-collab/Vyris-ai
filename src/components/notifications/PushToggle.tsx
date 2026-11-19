@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Loader2, Share } from "lucide-react";
 import { currentEndpoint, disablePush, enablePush, pushSupport, type PushSupport } from "@/lib/push-client";
 import { track } from "@/lib/analytics";
+import { DEFAULT_PUSH_HOUR, hourLabel } from "@/lib/push";
 
 type State = "loading" | "off" | "on" | "busy";
 
@@ -17,18 +18,25 @@ export function PushToggle({ compact = false, onEnabled }: { compact?: boolean; 
   const [publicKey, setPublicKey] = useState<string | null>(null);
   const [state, setState] = useState<State>("loading");
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const [hour, setHour] = useState<number>(DEFAULT_PUSH_HOUR);
+  const [timeZone, setTimeZone] = useState<string>("");
+  const [hourMsg, setHourMsg] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     const s = pushSupport();
     setSupport(s);
     let active = true;
     Promise.all([
-      fetch("/api/push", { cache: "no-store" }).then((r) => (r.ok ? (r.json() as Promise<{ publicKey: string | null; devices: { endpoint: string }[] }>) : null)),
+      fetch("/api/push", { cache: "no-store" }).then((r) =>
+        r.ok ? (r.json() as Promise<{ publicKey: string | null; devices: { endpoint: string }[]; hour?: number; timeZone?: string }>) : null
+      ),
       currentEndpoint().catch(() => null),
     ])
       .then(([data, endpoint]) => {
         if (!active) return;
         setPublicKey(data?.publicKey ?? null);
+        if (typeof data?.hour === "number") setHour(data.hour);
+        if (data?.timeZone) setTimeZone(data.timeZone);
         setState(endpoint && data?.devices.some((d) => d.endpoint === endpoint) ? "on" : "off");
       })
       .catch(() => active && setState("off"));
@@ -76,6 +84,23 @@ export function PushToggle({ compact = false, onEnabled }: { compact?: boolean; 
     setState("off");
   }
 
+  async function saveHour(next: number) {
+    const previous = hour;
+    setHour(next);
+    setHourMsg(null);
+    const res = await fetch("/api/push", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ hour: next }),
+    }).catch(() => null);
+    if (res?.ok) {
+      setHourMsg({ kind: "ok", text: `Saved. It arrives between ${hourLabel(next)} and ${hourLabel((next + 1) % 24)}${timeZone ? ` (${timeZone.replace(/_/g, " ")} time)` : ""}.` });
+    } else {
+      setHour(previous);
+      setHourMsg({ kind: "error", text: "Couldn't save the time. Try again." });
+    }
+  }
+
   async function test() {
     setMessage(null);
     const res = await fetch("/api/push/test", { method: "POST" }).catch(() => null);
@@ -112,6 +137,27 @@ export function PushToggle({ compact = false, onEnabled }: { compact?: boolean; 
 
   return (
     <div className="space-y-3">
+      <label className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-muted">Send it at</span>
+        <select
+          value={hour}
+          onChange={(e) => void saveHour(Number(e.target.value))}
+          className="px-3 py-1.5 rounded-lg border border-line bg-panel text-sm"
+          aria-label="Time for the morning notification"
+        >
+          {Array.from({ length: 24 }, (_, h) => (
+            <option key={h} value={h}>
+              {hourLabel(h)}
+            </option>
+          ))}
+        </select>
+        {timeZone && <span className="text-xs text-muted">{timeZone.replace(/_/g, " ")} time</span>}
+      </label>
+      {hourMsg && (
+        <p role={hourMsg.kind === "error" ? "alert" : "status"} className={`text-xs ${hourMsg.kind === "error" ? "text-red-600" : "text-signal"}`}>
+          {hourMsg.text}
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         {state === "on" ? (
           <>

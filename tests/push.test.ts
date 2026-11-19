@@ -70,7 +70,7 @@ async function check(name: string, fn: () => Promise<void> | void) { try { await
   let rows: any[] = [];
   const log: string[] = [];
   Dp("pushSubscription", {
-    findMany: async (x: any) => (x.distinct ? [...new Set(rows.map((r) => r.userId))].map((userId) => ({ userId })) : rows.filter((r) => !x.where || r.userId === x.where.userId)),
+    findMany: async (x: any) => rows.filter((r) => !x.where || r.userId === x.where.userId).map((r) => ({ ...r, user: { pushHour: r.pushHour ?? null, timeZone: r.timeZone ?? "Africa/Cairo" } })),
     findFirst: async () => null,
     update: async (x: any) => { log.push("update " + x.where.id); return {}; },
     delete: async (x: any) => { log.push("delete " + x.where.id); rows = rows.filter((r) => r.id !== x.where.id); return {}; },
@@ -93,13 +93,33 @@ async function check(name: string, fn: () => Promise<void> | void) { try { await
     { id: "s2", userId: "u1", endpoint: "https://fcm.googleapis.com/fcm/send/gone", p256dh: sub.keys.p256dh, auth: sub.keys.auth },
     { id: "s3", userId: "u2", endpoint: "https://fcm.googleapis.com/fcm/send/flaky", p256dh: sub.keys.p256dh, auth: sub.keys.auth },
   ];
-  await check("daily send: every user once; dead devices removed; flaky ones kept", async () => {
-    const r = await S.sendMorningPushes(now, Date.now() + 10_000);
+  await check("hourly send at 7:00 Cairo: every due user once; dead devices removed; flaky ones kept", async () => {
+    const r = await S.sendMorningPushes(now, Date.now() + 10_000); // now = 05:00Z = 07:00 Cairo, default hour
     assert.deepEqual(r, { users: 2, sent: 1, notReached: 0 });
     assert.ok(log.includes("update s1") && log.includes("delete s2") && !log.includes("delete s3"));
     assert.equal(JSON.parse(sendCalls[0].body).title, "A clear day ahead");
   });
+  await check("chosen hour and time zone decide who gets it this hour; nothing twice within 20 hours", async () => {
+    log.length = 0; sendCalls.length = 0;
+    rows = [
+      { id: "a", userId: "early", endpoint: "https://fcm.googleapis.com/fcm/send/ok", p256dh: sub.keys.p256dh, auth: sub.keys.auth, pushHour: 6, timeZone: "Africa/Cairo" },
+      { id: "b", userId: "ny", endpoint: "https://fcm.googleapis.com/fcm/send/ok", p256dh: sub.keys.p256dh, auth: sub.keys.auth, pushHour: 0, timeZone: "America/New_York" },
+      { id: "c", userId: "already", endpoint: "https://fcm.googleapis.com/fcm/send/ok", p256dh: sub.keys.p256dh, auth: sub.keys.auth, timeZone: "Africa/Cairo", lastSentAt: new Date(now.getTime() - 2 * 3600e3) },
+      { id: "d", userId: "seven", endpoint: "https://fcm.googleapis.com/fcm/send/ok", p256dh: sub.keys.p256dh, auth: sub.keys.auth, timeZone: "Africa/Cairo", lastSentAt: new Date(now.getTime() - 24 * 3600e3) },
+    ];
+    const r = await S.sendMorningPushes(now, Date.now() + 10_000);
+    assert.equal(r.users, 2, "midnight New York + 7:00 Cairo (yesterday's send doesn't block today's)");
+    assert.ok(log.includes("update b") && log.includes("update d") && !log.includes("update a") && !log.includes("update c"));
+  });
+  await check("hour helpers", () => {
+    assert.equal(P.parseHour(7), 7); assert.equal(P.parseHour(0), 0); assert.equal(P.parseHour(24), null); assert.equal(P.parseHour(7.5), null); assert.equal(P.parseHour("7"), null);
+    assert.deepEqual([0, 7, 12, 13, 23].map(P.hourLabel), ["12:00 AM", "7:00 AM", "12:00 PM", "1:00 PM", "11:00 PM"]);
+    assert.equal(P.localHour(new Date("2026-11-20T05:59:00Z"), "Africa/Cairo"), 7);
+    assert.equal(P.isDue(new Date("2026-11-20T05:59:00Z"), "Africa/Cairo", null, null), true, "Hobby crons can fire late in the hour");
+    assert.equal(P.isDue(new Date("2026-11-20T06:00:00Z"), "Africa/Cairo", null, null), false);
+  });
   await check("daily send stops at the deadline and says how many it didn't reach", async () => {
+    rows = rows.map((r) => ({ ...r, lastSentAt: null }));
     const r = await S.sendMorningPushes(now, Date.now() - 1);
     assert.equal(r.sent, 0); assert.equal(r.notReached, r.users);
   });
@@ -118,10 +138,33 @@ async function check(name: string, fn: () => Promise<void> | void) { try { await
     log.length = 0; await api.DELETE(post({ endpoint: sub.endpoint }));
     assert.deepEqual(JSON.parse(log[0].replace("deleteMany ", "")), { userId: "u1", endpoint: sub.endpoint });
   });
-  await check("test send: 502 when no device was reached (never claims sent)", async () => {
+  await check("test send: 502 when no device was reached; a test doesn't count as today's send", async () => {
     rows = []; assert.equal((await testApi.POST()).status, 502);
     rows = [{ id: "s9", userId: "u1", endpoint: "https://fcm.googleapis.com/fcm/send/ok", p256dh: sub.keys.p256dh, auth: sub.keys.auth }];
-    assert.equal((await testApi.POST()).status, 200);
+    log.length = 0; assert.equal((await testApi.POST()).status, 200);
+    assert.ok(!log.includes("update s9"), "lastSentAt untouched by a test");
+  });
+  await check("send time: GET returns hour and zone; PATCH saves a whole hour only", async () => {
+    let saved: any = null;
+    Dp("user", { findUnique: async () => ({ pushHour: null, timeZone: "Africa/Cairo" }), update: async (x: any) => { saved = x; return {}; } });
+    const g = await (await api.GET()).json(); assert.equal(g.hour, 7); assert.equal(g.timeZone, "Africa/Cairo");
+    const patch = (b: any) => api.PATCH({ json: async () => b } as any);
+    assert.equal((await patch({ hour: 25 })).status, 400); assert.equal((await patch({ hour: "8" })).status, 400);
+    assert.equal((await patch({ hour: 8 })).status, 200); assert.deepEqual(saved, { where: { id: "u1" }, data: { pushHour: 8 } });
+    me = null; assert.equal((await patch({ hour: 8 })).status, 401); me = { id: "u1", email: "u1@x.co" };
+  });
+  await check("hourly cron route: refuses without the secret", async () => {
+    const cron = require("@/app/api/cron/push/route");
+    const req = (auth?: string) => ({ headers: new Headers(auth ? { authorization: auth } : {}) }) as any;
+    delete process.env.CRON_SECRET; assert.equal((await cron.GET(req("Bearer x"))).status, 503);
+    process.env.CRON_SECRET = "s3cret-for-tests"; assert.equal((await cron.GET(req("Bearer nope"))).status, 401);
+    assert.equal((await cron.GET(req("Bearer s3cret-for-tests"))).status, 200);
+  });
+  await check("vercel.json: one daily job per hour (allowed on Hobby) for notifications", () => {
+    const cfg = JSON.parse(require("node:fs").readFileSync("vercel.json", "utf8"));
+    const push = cfg.crons.filter((c: any) => c.path.startsWith("/api/cron/push"));
+    assert.equal(push.length, 24);
+    assert.deepEqual(push.map((c: any) => c.schedule).sort(), Array.from({ length: 24 }, (_, h) => `0 ${h} * * *`).sort());
   });
   await check("no keys configured: subscribe says not set up (503), nothing breaks", async () => {
     delete process.env.VAPID_PRIVATE_KEY;

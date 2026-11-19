@@ -108,7 +108,7 @@ export default function SettingsPage() {
         <section className="bg-panel border border-line rounded-2xl p-6">
           <h2 className="font-display text-xl mb-1">Morning reminder</h2>
           <p className="text-sm text-muted mb-4">
-            A notification every morning at 7:00 Cairo time with what you have today: who&apos;s waiting on you, what&apos;s late, your
+            A notification at the time you choose with what you have today: who&apos;s waiting on you, what&apos;s late, your
             meetings. Instead of, or as well as, the morning email.
           </p>
           <PushToggle />

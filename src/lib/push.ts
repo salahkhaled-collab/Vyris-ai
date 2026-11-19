@@ -51,6 +51,39 @@ export function deviceLabel(userAgent: string | null | undefined): string {
   return os ? `${browser} on ${os}` : browser;
 }
 
+/** Default hour for the morning notification, in the user's own time zone. */
+export const DEFAULT_PUSH_HOUR = 7;
+
+/** A whole hour 0-23, or null when the input isn't one. */
+export function parseHour(v: unknown): number | null {
+  return typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= 23 ? v : null;
+}
+
+/** Hour of day (0-23) in a zone; UTC when the zone is unknown. */
+export function localHour(now: Date, timeZone: string): number {
+  try {
+    return Number(new Intl.DateTimeFormat("en-GB", { hour: "numeric", hourCycle: "h23", timeZone }).format(now));
+  } catch {
+    return now.getUTCHours();
+  }
+}
+
+/**
+ * Whether this user's notification should go out on this hourly run: it's
+ * their chosen hour where they are, and nothing went out in the last 20
+ * hours (so a repeated run, or a test sent just before, can't double up).
+ */
+export function isDue(now: Date, timeZone: string, pushHour: number | null, lastSentAt: Date | null): boolean {
+  if (localHour(now, timeZone) !== (pushHour ?? DEFAULT_PUSH_HOUR)) return false;
+  return !lastSentAt || now.getTime() - lastSentAt.getTime() >= 20 * 3600_000;
+}
+
+/** "7:00 AM" style label for an hour. */
+export function hourLabel(hour: number): string {
+  const h12 = hour % 12 === 0 ? 12 : hour % 12;
+  return `${h12}:00 ${hour < 12 ? "AM" : "PM"}`;
+}
+
 export interface PushPayload {
   title: string;
   body: string;

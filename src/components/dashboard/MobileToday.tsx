@@ -68,7 +68,7 @@ function PushNudge() {
     <section aria-label="Morning notification" className="rounded-[20px] bg-brass-soft px-4 py-3.5 flex flex-wrap items-center gap-3">
       <Bell className="w-5 h-5 text-brass shrink-0" strokeWidth={1.75} />
       <div className="min-w-0 flex-1">
-        <div className="text-[13px] font-medium">Get this at 7:00 every morning</div>
+        <div className="text-[13px] font-medium">Get this every morning</div>
         <div className="text-xs text-muted">A notification, not another email.</div>
       </div>
       <PushToggle compact onEnabled={() => window.setTimeout(hide, 1500)} />

@@ -8,7 +8,8 @@
 import webpush from "web-push";
 import { prisma } from "@/lib/prisma";
 import { loadBrief } from "@/lib/morning-brief-server";
-import { morningPush, type PushPayload } from "@/lib/push";
+import { isDue, morningPush, type PushPayload } from "@/lib/push";
+import { safeTimeZone } from "@/lib/calendar";
 import { SITE_URL } from "@/lib/site-url";
 
 export function pushPublicKey(): string | null {
@@ -33,8 +34,13 @@ export interface SendResult {
   failed: number;
 }
 
-/** Sends to every device the user turned notifications on for. Gone devices (404/410) are removed. */
-export async function sendToUser(userId: string, payload: PushPayload): Promise<SendResult> {
+/**
+ * Sends to every device the user turned notifications on for. Gone devices
+ * (404/410) are removed. `record: false` (a test) leaves lastSentAt alone, so
+ * a test just before the chosen hour doesn't cancel the real one.
+ */
+export async function sendToUser(userId: string, payload: PushPayload, opts: { record?: boolean } = {}): Promise<SendResult> {
+  const record = opts.record ?? true;
   const result: SendResult = { sent: 0, removed: 0, failed: 0 };
   if (!configure()) return result;
   const subs = await prisma.pushSubscription.findMany({ where: { userId }, select: { id: true, endpoint: true, p256dh: true, auth: true }, take: 20 });
@@ -44,7 +50,7 @@ export async function sendToUser(userId: string, payload: PushPayload): Promise<
       try {
         await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, body, { TTL: 6 * 3600, urgency: "normal", timeout: 10_000 });
         result.sent += 1;
-        await prisma.pushSubscription.update({ where: { id: s.id }, data: { lastSentAt: new Date() } }).catch(() => {});
+        if (record) await prisma.pushSubscription.update({ where: { id: s.id }, data: { lastSentAt: new Date() } }).catch(() => {});
       } catch (err: unknown) {
         const status = typeof err === "object" && err !== null && "statusCode" in err ? Number((err as { statusCode: unknown }).statusCode) : 0;
         if (status === 404 || status === 410) {
@@ -61,15 +67,28 @@ export async function sendToUser(userId: string, payload: PushPayload): Promise<
 }
 
 /** Today's reminder for one user, from the same brief as the morning email. */
-export async function sendMorningPush(userId: string, now: Date): Promise<SendResult> {
+export async function sendMorningPush(userId: string, now: Date, opts: { record?: boolean } = {}): Promise<SendResult> {
   const { brief, timeZone } = await loadBrief(userId, now, { withInbox: true });
-  return sendToUser(userId, morningPush(brief, timeZone));
+  return sendToUser(userId, morningPush(brief, timeZone), opts);
 }
 
-/** Called by the daily cron: everyone with notifications on gets today's reminder, until the deadline. */
+/**
+ * Called every hour: users whose chosen hour it is (in their own time zone)
+ * get today's reminder, until the deadline.
+ */
 export async function sendMorningPushes(now: Date, deadline: number): Promise<{ users: number; sent: number; notReached: number }> {
   if (!configure()) return { users: 0, sent: 0, notReached: 0 };
-  const rows = await prisma.pushSubscription.findMany({ distinct: ["userId"], select: { userId: true }, take: 2000 });
+  const subs = await prisma.pushSubscription.findMany({
+    select: { userId: true, lastSentAt: true, user: { select: { pushHour: true, timeZone: true } } },
+    take: 5000,
+  });
+  const byUser = new Map<string, { last: Date | null; pushHour: number | null; timeZone: string }>();
+  for (const s of subs) {
+    const prev = byUser.get(s.userId);
+    const last = prev?.last && s.lastSentAt ? (prev.last > s.lastSentAt ? prev.last : s.lastSentAt) : (prev?.last ?? s.lastSentAt);
+    byUser.set(s.userId, { last, pushHour: s.user.pushHour, timeZone: safeTimeZone(s.user.timeZone) });
+  }
+  const rows = [...byUser.entries()].filter(([, u]) => isDue(now, u.timeZone, u.pushHour, u.last)).map(([userId]) => ({ userId }));
   let next = 0;
   let sent = 0;
   let notReached = 0;

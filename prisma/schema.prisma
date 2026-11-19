@@ -91,6 +91,8 @@ model User {
   /// IANA zone from the user's browser, e.g. "Africa/Cairo". Decides which
   /// calendar day the daily numbers belong to.
   timeZone        String?
+  /// Hour (0-23, in timeZone) the morning notification goes out. Null = 7.
+  pushHour        Int?
   onboarded       Boolean        @default(false)
 
   createdAt DateTime @default(now())
