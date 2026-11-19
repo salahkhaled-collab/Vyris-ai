@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useShowCharts } from "@/lib/use-show-charts";
@@ -32,7 +33,15 @@ export function BetsCard() {
   }, []);
 
   if (items === null) return <p className="text-xs text-muted">Loading...</p>;
-  if (items.length === 0) return <p className="text-xs text-muted">No strategic bets yet.</p>;
+  if (items.length === 0)
+    return (
+      <p className="text-xs text-muted">
+        No strategic bets yet.{" "}
+        <Link href="/strategy" className="text-brass font-medium hover:underline">
+          Add a bet →
+        </Link>
+      </p>
+    );
 
   const counts = ORDER.map((s) => ({ s, n: items.filter((b) => b.status === s).length }));
 

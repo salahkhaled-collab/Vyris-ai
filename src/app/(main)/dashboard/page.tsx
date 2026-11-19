@@ -36,13 +36,25 @@ const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: st
   projects:   { label: "Projects", icon: FolderKanban, href: "/projects" },
 };
 
+/** Empty card: say so, and offer the one next step. */
+function EmptyCta({ text, href, action }: { text: string; href: string; action: string }) {
+  return (
+    <p className="text-xs text-muted">
+      {text}{" "}
+      <Link href={href} className="text-brass font-medium hover:underline">
+        {action} →
+      </Link>
+    </p>
+  );
+}
+
 // ── Individual widget bodies - each fetches its own real data ─────────────
 
 function ObjectivesWidget() {
   const [items, setItems] = useState<{ id: string; title: string; keyResults: { current: number; target: number }[] }[] | null>(null);
   useEffect(() => { fetch("/api/objectives").then((r) => r.json()).then((d) => setItems(Array.isArray(d) ? d.slice(0, 4) : [])).catch(() =>setItems([])); }, []);
   if (items === null) return <p className="text-xs text-muted">Loading...</p>;
-  if (items.length === 0) return <p className="text-xs text-muted">No objectives yet.</p>;
+  if (items.length === 0) return <EmptyCta text="No objectives yet." href="/strategy" action="Set your first objective" />;
   return (
     <div className="space-y-3">
       {items.map((o) => (
@@ -68,7 +80,7 @@ function DecisionsWidget() {
     ).catch(() => setItems([]));
   }, []);
   if (items === null) return <p className="text-xs text-muted">Loading...</p>;
-  if (items.length === 0) return <p className="text-xs text-muted">Nothing open right now.</p>;
+  if (items.length === 0) return <EmptyCta text="Nothing open right now." href="/decisions" action="Log a decision" />;
   return (
     <div className="space-y-2">
       {items.map((d) => (
@@ -158,8 +170,8 @@ const WIDGET_BODY: Record<string, () => JSX.Element> = {
 // ── Sortable card ────────────────────────────────────────────────────────
 
 function SortableWidget({
-  id, editing, onHide,
-}: { id: string; editing: boolean; onHide: (id: string) => void }) {
+  id, editing, onHide, wide,
+}: { id: string; editing: boolean; onHide: (id: string) => void; wide?: boolean }) {
   const {
     attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging,
   } = useSortable({ id, disabled: !editing });
@@ -176,8 +188,10 @@ function SortableWidget({
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <Panel className={cn("p-5", editing && "ring-1 ring-brass")}>
+    // Cards in a row share its height, and an odd last card spans both columns,
+    // so the grid has no holes.
+    <div ref={setNodeRef} style={style} className={cn("h-full", wide && "md:col-span-2")}>
+      <Panel className={cn("p-5 h-full", editing && "ring-1 ring-brass")}>
         <div className="flex items-center justify-between mb-4">
           <Link href={meta.href} className="flex items-center gap-2 hover:text-brass transition-colors">
             <Icon className="w-4 h-4 text-brass" strokeWidth={1.75} />
@@ -337,8 +351,14 @@ export default function DashboardPage() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
           <SortableContext items={order} strategy={rectSortingStrategy}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {order.map((id) => (
-                <SortableWidget key={id} id={id} editing={editing} onHide={hide} />
+              {order.map((id, i) => (
+                <SortableWidget
+                  key={id}
+                  id={id}
+                  editing={editing}
+                  onHide={hide}
+                  wide={order.length % 2 === 1 && i === order.length - 1}
+                />
               ))}
             </div>
           </SortableContext>
