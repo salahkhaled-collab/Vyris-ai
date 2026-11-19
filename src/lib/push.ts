@@ -108,12 +108,18 @@ export function morningPush(brief: MorningBrief, timeZone: string): PushPayload 
   const base = { url: "/dashboard", tag: "vyris-morning" };
   if (brief.allClear) return { ...base, title: "A clear day ahead", body: "Nothing urgent, nothing late. Open Vyris to plan your focus." };
 
-  const meetings = (brief.meetings ?? []).filter((m) => !m.allDay);
+  const meetings = (brief.meetings ?? []).filter((m) => !m.allDay && m.kind !== "reminder");
+  const reminders = (brief.meetings ?? []).filter((m) => m.kind === "reminder");
   const parts = brief.focus.map((f) => f.title);
   if (meetings.length > 0) {
     const first = meetings[0];
     const at = timeIn(first.start, timeZone);
     parts.push(meetings.length === 1 ? `Meeting${at ? ` at ${at}` : ""}: ${first.title}` : `${meetings.length} meetings, first${at ? ` at ${at}` : ""}`);
+  }
+  if (reminders.length > 0) {
+    const r = reminders[0];
+    const at = r.allDay ? "" : timeIn(r.start, timeZone);
+    parts.push(reminders.length === 1 ? `Reminder${at ? ` ${at}` : ""}: ${r.title}` : `${reminders.length} reminders, first: ${r.title}`);
   }
   const waiting = (brief.unanswered ?? []).length;
   if (waiting > 0 && !brief.focus.some((f) => f.kind === "reply")) parts.push(`${waiting} ${waiting === 1 ? "person is" : "people are"} waiting on your reply`);

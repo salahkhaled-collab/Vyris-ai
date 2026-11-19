@@ -28,6 +28,8 @@ export function allDayEnd(start: string, end: string): string {
 }
 
 type EventInput = {
+  /** "reminder": a point in time with a pop-up, doesn't block the calendar. Default "meeting" (as before). */
+  kind: "meeting" | "reminder";
   title: string;
   startTime: string;
   endTime: string | null;
@@ -56,5 +58,6 @@ export function parseEventInput(body: unknown): EventInput | { error: string } {
     return { error: "The end time is before the start time." };
   }
   const description = typeof b.description === "string" ? b.description.slice(0, 5000) : undefined;
-  return { title, startTime, endTime, allDay, description, timeZone };
+  const kind = b.kind === "reminder" ? "reminder" : "meeting";
+  return { kind, title, startTime, endTime, allDay, description, timeZone };
 }

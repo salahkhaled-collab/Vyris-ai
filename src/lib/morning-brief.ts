@@ -20,6 +20,8 @@ export interface BriefMeeting {
   attendees: string[];
   /** A Vyris project this meeting seems to be about. */
   project: string | null;
+  /** Meeting (other people or a video link) or reminder. Missing = meeting (older data). */
+  kind?: "meeting" | "reminder";
 }
 
 export interface BriefCommitment {
@@ -210,10 +212,14 @@ export function briefEmail(brief: MorningBrief, now: Date, timeZone: string, app
     )
   );
   if (brief.meetings) {
+    const reminders = brief.meetings.filter((m) => m.kind === "reminder");
+    if (reminders.length) {
+      lines.push(...section("Reminders today", reminders.map((m) => `${m.allDay ? "Today" : timeIn(m.start, timeZone)}: ${m.title}`), null));
+    }
     lines.push(
       ...section(
         "Meetings today",
-        brief.meetings.map((m) => {
+        brief.meetings.filter((m) => m.kind !== "reminder").map((m) => {
           const when = m.allDay ? "All day" : timeIn(m.start, timeZone);
           const who = m.attendees.length ? ` with ${m.attendees.slice(0, 3).join(", ")}${m.attendees.length > 3 ? " and others" : ""}` : "";
           return `${when}: ${m.title}${who}${m.project ? ` (about ${m.project})` : ""}`;

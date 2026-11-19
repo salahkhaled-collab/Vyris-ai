@@ -1,6 +1,7 @@
 // Gathers what the morning brief needs. Every source is optional: a missing
 // Google connection or a failing call leaves that section out, never the brief.
 
+import { eventKind } from "@/lib/event-kind";
 import { prisma } from "@/lib/prisma";
 import { scopeFilter } from "@/lib/ai/scope";
 import { getScope } from "@/lib/task-access";
@@ -49,6 +50,9 @@ export async function todaysMeetings(
       status?: string;
       start?: { dateTime?: string; date?: string };
       attendees?: { email?: string; self?: boolean; resource?: boolean; responseStatus?: string }[];
+      hangoutLink?: string;
+      conferenceData?: unknown;
+      extendedProperties?: { private?: Record<string, string> };
     }[];
   };
   return (data.items ?? [])
@@ -67,6 +71,7 @@ export async function todaysMeetings(
         allDay: !e.start?.dateTime,
         attendees,
         project: match?.title ?? null,
+        kind: eventKind(e),
       };
     });
 }

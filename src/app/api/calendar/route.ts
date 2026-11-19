@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
 import { calendarWindow, safeTimeZone } from "@/lib/calendar";
+import { eventKind } from "@/lib/event-kind";
 
 interface GoogleEvent {
   id: string;
@@ -13,6 +14,8 @@ interface GoogleEvent {
   hangoutLink?: string;
   description?: string;
   transparency?: string;
+  conferenceData?: unknown;
+  extendedProperties?: { private?: Record<string, string> };
 }
 
 const RSVP = new Set(["accepted", "declined", "tentative", "needsAction"]);
@@ -114,6 +117,7 @@ export async function GET(req: NextRequest) {
         allDay,
         selfStatus: selfRsvp(e),
         free: e.transparency === "transparent",
+        kind: eventKind(e),
       };
     });
 
