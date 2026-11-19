@@ -8,6 +8,7 @@ import { navigation, settingsItem } from "@/lib/navigation";
 import { cn } from "@/lib/utils";
 import { GitBranch, Menu, X } from "lucide-react";
 import { VyrisMark } from "@/components/ui/VyrisMark";
+import { FeedbackButton } from "@/components/layout/FeedbackButton";
 
 const overviewGroup = navigation.find((g) => g.label === "Overview");
 const advisoryGroup = navigation.find((g) => g.label === "Advisory");
@@ -128,6 +129,10 @@ export function MobileNav() {
             ))}
 
             <div className="mt-2 pt-2 border-t border-line">
+              {/* Opens above the menu; closing the menu first would unmount the dialog. */}
+              <FeedbackButton
+                className="w-full flex items-center gap-3 rounded-md px-3 py-3 text-sm text-muted hover:text-ink-text transition-colors"
+              />
               <Link
                 href={settingsItem.href}
                 onClick={() => setDrawerOpen(false)}

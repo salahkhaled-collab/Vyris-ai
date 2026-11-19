@@ -6,6 +6,7 @@ import { navigation, settingsItem } from "@/lib/navigation";
 import { VyrisMark } from "@/components/ui/VyrisMark";
 import { cn } from "@/lib/utils";
 import { useSession, signIn, signOut } from "next-auth/react";
+import { FeedbackButton } from "@/components/layout/FeedbackButton";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -57,6 +58,7 @@ export function Sidebar() {
       </nav>
 
       <div className="px-3 py-4 border-t border-line">
+        <FeedbackButton className="w-full flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted hover:text-ink-text hover:bg-black/[0.04] transition-colors" />
         <Link
           href={settingsItem.href}
           className={cn(

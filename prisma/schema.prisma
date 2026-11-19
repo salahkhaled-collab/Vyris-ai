@@ -75,6 +75,7 @@ model User {
   snapshots     WorkspaceSnapshot[]
   commitments   Commitment[]
   activityDays  UserActivityDay[]
+  feedback      Feedback[]
   id            String              @id @default(cuid())
   name          String?
   email         String?             @unique
@@ -625,4 +626,19 @@ model UserActivityDay {
 
   @@unique([userId, day])
   @@index([day])
+}
+
+/// What users tell the founder from the in-app "Send feedback" button.
+model Feedback {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String   @db.Text
+  /// "bad", "ok" or "great": how useful Vyris feels right now.
+  mood      String?
+  /// The page they were on, e.g. "/inbox".
+  page      String?
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
 }

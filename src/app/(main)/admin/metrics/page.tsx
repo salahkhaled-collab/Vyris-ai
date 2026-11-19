@@ -111,6 +111,10 @@ export default function MetricsAdminPage() {
                 <Link href="/admin/waitlist" className="underline">
                   Waitlist list
                 </Link>
+                {" · "}
+                <Link href="/admin/feedback" className="underline">
+                  Feedback
+                </Link>
               </p>
               <a
                 href="/api/admin/metrics?format=csv"
