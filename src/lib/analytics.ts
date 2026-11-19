@@ -19,6 +19,9 @@ export type FunnelEvent =
   | "connect_gmail_click"
   | "connect_calendar_click"
   | "digest_enabled"
+  | "connect_google_click"
+  | "google_connect_continue"
+  | "brief_sent_now"
   | "ai_rate_limited";
 
 export function track(event: FunnelEvent, params: Record<string, string | number> = {}): void {

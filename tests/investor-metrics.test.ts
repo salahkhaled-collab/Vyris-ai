@@ -68,6 +68,7 @@ const D = (s: string) => new Date(s);
   Dp("task", { findMany: async (x: any) => { seen.taskWhere = x.where; return [{ ownerId: "b", createdAt: D("2026-11-16T08:00:00Z") }]; } });
   Dp("decision", { findMany: async () => [] });
   Dp("waitlistEntry", { findMany: async () => [{ createdAt: D("2026-11-16T09:00:00Z") }] });
+  Dp("automationRule", { findMany: async () => [] });
   const S = require("@/lib/investor-metrics-server");
   await check("loader: visits + messages the user sent + things they created; Gmail/AI count as activated", async () => {
     const r = await S.loadInvestorMetrics(now);
