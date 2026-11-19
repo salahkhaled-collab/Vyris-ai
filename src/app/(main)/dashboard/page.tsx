@@ -25,6 +25,8 @@ import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
 import { GetStartedCard } from "@/components/dashboard/GetStartedCard";
 import { TodayCard } from "@/components/dashboard/TodayCard";
 import { CommitmentsCard } from "@/components/dashboard/CommitmentsCard";
+import { MobileToday } from "@/components/dashboard/MobileToday";
+import { useIsMobile } from "@/lib/use-is-mobile";
 import { computeProgress } from "@/lib/okr";
 
 const WIDGET_META: Record<string, { label: string; icon: typeof Target; href: string }> = {
@@ -217,6 +219,7 @@ export default function DashboardPage() {
   const [hidden, setHidden] = useState<string[]>([]);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
+  const isMobile = useIsMobile();
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const seq = useRef(0);
   const dirty = useRef(false);
@@ -283,6 +286,19 @@ export default function DashboardPage() {
     setHidden([]);
     save([...DEFAULT_ORDER], []);
   }
+
+  if (isMobile) {
+    // Phones get the Today screen: the brief, the next meeting, who's waiting.
+    return (
+      <main className="flex-1 overflow-y-auto scroll-thin px-4 pt-4 space-y-4">
+        <MobileToday>
+          <GetStartedCard />
+        </MobileToday>
+        <CommitmentsCard />
+      </main>
+    );
+  }
+  if (isMobile === null) return <main className="flex-1" />;
 
   return (
     <>

@@ -11,6 +11,7 @@ import { SaveToProject } from "@/components/inbox/SaveToProject";
 import { GmailLabelsButton } from "@/components/inbox/GmailLabelsButton";
 import { ThreadPromises } from "@/components/inbox/ThreadPromises";
 import { InboxWelcome } from "@/components/inbox/InboxWelcome";
+import { initials, senderName } from "@/lib/today-view";
 import { Mail, Pencil, X, Sparkles, Loader2 } from "lucide-react";
 import {
   FILTERS,
@@ -207,6 +208,14 @@ export default function InboxPage() {
     return c;
   }, [emails, triage]);
   const candidates = useMemo(() => (emails && triage ? replyCandidates(emails, triage) : []), [emails, triage]);
+
+  // Phones open on "Needs reply" once the inbox is sorted, if anything needs one.
+  const pickedMobileFilter = useRef(false);
+  useEffect(() => {
+    if (pickedMobileFilter.current || !triage) return;
+    pickedMobileFilter.current = true;
+    if (window.matchMedia("(max-width: 1023px)").matches && counts.needs_reply > 0) setFilter("needs_reply");
+  }, [triage, counts]);
 
   // Sort the inbox once it loads: reuse remembered results, ask the AI only about new emails.
   useEffect(() => {
@@ -458,21 +467,27 @@ export default function InboxPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-10">
+      <main className="flex-1 overflow-y-auto scroll-thin px-4 lg:px-10 pt-3 pb-8 lg:py-8 space-y-6 lg:space-y-10">
         <InboxWelcome sorted={Boolean(triage) || emails?.length === 0} />
         <section className="space-y-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
               <Mail className="w-4 h-4 text-brass" strokeWidth={1.75} />
               <h2 className="font-display text-xl">Email</h2>
             </div>
+            {triage && emails && emails.length > 0 && (
+              <p className="lg:hidden flex items-center gap-1.5 text-xs text-muted">
+                <Sparkles className="w-3.5 h-3.5 text-brass" strokeWidth={1.75} />
+                Sorted by Vyris{counts.needs_reply > 0 ? ` · ${counts.needs_reply} need${counts.needs_reply === 1 ? "s" : ""} your reply` : ""}
+              </p>
+            )}
             {status === "authenticated" && (
               <div className="flex flex-wrap items-center gap-2 [&>button]:whitespace-nowrap">
               {candidates.length > 0 && (
                 <button
                   onClick={() => void draftReplies()}
                   disabled={drafting}
-                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-brass text-white disabled:opacity-50"
+                  className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-medium bg-brass text-white disabled:opacity-50"
                 >
                   {drafting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" strokeWidth={1.75} />}
                   {drafting ? "Drafting..." : `Draft ${candidates.length} repl${candidates.length === 1 ? "y" : "ies"}`}
@@ -508,7 +523,11 @@ export default function InboxPage() {
           {status === "authenticated" && <GmailLabelsButton triage={triage} />}
 
           {triage && emails && emails.length > 0 && (
-            <div className="flex flex-wrap gap-2" role="tablist" aria-label="Inbox filters">
+            <div
+              className="flex gap-2 overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 lg:flex-wrap lg:overflow-visible [scrollbar-width:none]"
+              role="tablist"
+              aria-label="Inbox filters"
+            >
               {FILTERS.map((f) => (
                 <button
                   key={f}
@@ -516,8 +535,8 @@ export default function InboxPage() {
                   aria-selected={filter === f}
                   onClick={() => setFilter(f)}
                   className={cn(
-                    "text-xs px-3 py-1.5 rounded-full border transition-colors",
-                    filter === f ? "bg-brass text-white border-brass" : "bg-panel border-line text-muted hover:text-ink-text"
+                    "shrink-0 whitespace-nowrap text-[13px] lg:text-xs font-medium lg:font-normal px-3 py-1.5 rounded-full border transition-colors",
+                    filter === f ? "bg-ink-text text-white border-ink-text lg:bg-brass lg:border-brass" : "bg-panel border-line text-muted hover:text-ink-text"
                   )}
                 >
                   {FILTER_LABELS[f]} · {counts[f]}
@@ -628,7 +647,7 @@ export default function InboxPage() {
           )}
 
           {status === "authenticated" && !emailLoading && !emailError && emails && emails.length > 0 && (
-            <Panel className="overflow-hidden">
+            <Panel className="overflow-hidden -mx-4 rounded-none border-x-0 lg:mx-0 lg:rounded-2xl lg:border-x">
               <div className="divide-y divide-line">
                 {visibleEmails.length === 0 && (
                   <div className="px-6 py-6 text-sm text-muted">Nothing under {FILTER_LABELS[filter]}.</div>
@@ -643,16 +662,21 @@ export default function InboxPage() {
                     key={e.id}
                     onClick={() => openEmail(e.id)}
                     className={cn(
-                      "flex items-start gap-4 px-6 py-4 cursor-pointer hover:bg-black/[0.02]"
+                      "flex items-start gap-3 lg:gap-4 px-4 lg:px-6 py-3.5 lg:py-4 cursor-pointer hover:bg-black/[0.02]"
                     )}
                   >
-                    <div className="shrink-0 rounded-lg p-2 bg-panel-2 text-muted">
-                      <Mail className="w-4 h-4" strokeWidth={1.75} />
-                    </div>
+                    <span
+                      aria-hidden
+                      className="shrink-0 w-10 h-10 rounded-full bg-panel-2 text-brass text-[13px] font-medium flex items-center justify-center"
+                    >
+                      {initials(senderName(e.from))}
+                    </span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         {e.unread && <span className="w-1.5 h-1.5 rounded-full bg-signal shrink-0" />}
-                        <div className={cn("text-sm truncate", e.unread ? "font-semibold" : "font-medium")}>{e.from}</div>
+                        <div title={e.from} dir="auto" className={cn("text-sm truncate", e.unread ? "font-semibold" : "font-medium")}>
+                          {senderName(e.from)}
+                        </div>
                       </div>
                       <div dir="auto" className={cn("text-xs mt-0.5 truncate", e.unread ? "text-ink-text font-medium" : "text-ink-text/80")}>
                         {e.subject}
@@ -689,6 +713,16 @@ export default function InboxPage() {
             </Panel>
           )}
         </section>
+
+        {candidates.length > 0 && !drafting && queue.length === 0 && (
+          <button
+            onClick={() => void draftReplies()}
+            className="lg:hidden fixed z-30 left-1/2 -translate-x-1/2 bottom-[calc(5rem+env(safe-area-inset-bottom))] flex items-center gap-2 px-[18px] py-3 rounded-full bg-brass text-white text-[13px] font-medium shadow-[0_6px_18px_rgba(30,26,21,0.18)]"
+          >
+            <Sparkles className="w-4 h-4" strokeWidth={1.75} />
+            Draft {candidates.length} repl{candidates.length === 1 ? "y" : "ies"}
+          </button>
+        )}
 
         {showCompose && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
