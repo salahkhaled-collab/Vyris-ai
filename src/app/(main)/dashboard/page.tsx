@@ -310,11 +310,10 @@ export default function DashboardPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8">
-        <TodayView variant="desktop">
+      <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-6">
+        <TodayView variant="desktop" below={<CommitmentsCard />}>
           <GetStartedCard />
         </TodayView>
-        <CommitmentsCard />
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs text-muted">
             {editing ? "Drag the handle to reorder. Use × to hide a card." : ""}

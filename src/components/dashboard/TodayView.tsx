@@ -153,8 +153,8 @@ function PushNudge() {
 function FocusCard({ brief, done, toggle }: { brief: MorningBrief; done: Set<number>; toggle: (i: number) => void }) {
   const doneCount = [...done].filter((i) => i < brief.focus.length).length;
   return (
-    <section aria-label="Today" className="rounded-[20px] border border-line bg-panel pt-4 pb-1.5">
-      <div className="px-4 lg:px-5 pb-1.5">
+    <section aria-label="Today" className="rounded-[20px] border border-line bg-panel pt-4 pb-2">
+      <div className="px-4 lg:px-5 pb-1">
         <h2 className="font-display text-[22px] leading-7">
           {brief.allClear
             ? "A clear day"
@@ -173,7 +173,7 @@ function FocusCard({ brief, done, toggle }: { brief: MorningBrief; done: Set<num
           {brief.focus.map((f, i) => {
             const isDone = done.has(i);
             return (
-              <li key={`${i}-${f.title}`} className="flex items-start gap-3 px-4 lg:px-5 py-3.5">
+              <li key={`${i}-${f.title}`} className="flex items-start gap-3 px-4 lg:px-5 py-2.5">
                 <button
                   onClick={() => toggle(i)}
                   aria-label={isDone ? `Mark "${f.title}" not done` : `Mark "${f.title}" done`}
@@ -189,7 +189,7 @@ function FocusCard({ brief, done, toggle }: { brief: MorningBrief; done: Set<num
                   <div dir="auto" className={cn("text-[15px] font-semibold leading-[21px] break-words", isDone && "line-through text-muted")}>
                     {f.title}
                   </div>
-                  <span dir="auto" className={cn("inline-block mt-1.5 text-xs font-medium px-2 py-0.5 rounded-full", chip[isDone ? "signal" : focusTone(f.kind)])}>
+                  <span dir="auto" className={cn("inline-block mt-1 text-xs font-medium px-2 py-0.5 rounded-full", chip[isDone ? "signal" : focusTone(f.kind)])}>
                     {isDone ? "Done" : f.why}
                   </span>
                 </div>
@@ -366,7 +366,16 @@ function Waiting({ data, inboxLoaded, variant }: { data: BriefData; inboxLoaded:
  * screen with its own greeting; on desktop it's the top of Home, beside the
  * sidebar, with the page header carrying the greeting.
  */
-export function TodayView({ variant, children }: { variant: "phone" | "desktop"; children?: React.ReactNode }) {
+export function TodayView({
+  variant,
+  children,
+  below,
+}: {
+  variant: "phone" | "desktop";
+  children?: React.ReactNode;
+  /** Desktop: shown under the 3 things, so the two columns end close together. */
+  below?: React.ReactNode;
+}) {
   const { data: session } = useSession();
   const { data, failed, inboxLoaded } = useBrief();
   const now = new Date();
@@ -384,12 +393,15 @@ export function TodayView({ variant, children }: { variant: "phone" | "desktop";
 
   if (variant === "desktop") {
     return (
-      <div className="space-y-4 mb-6">
+      <div className="space-y-4 mb-4">
         {children}
         {status}
         {brief && data && (
           <div className="grid gap-4 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] items-start">
-            <FocusCard brief={brief} done={done} toggle={toggle} />
+            <div className="space-y-4 min-w-0 [&>section]:mb-0">
+              <FocusCard brief={brief} done={done} toggle={toggle} />
+              {below}
+            </div>
             <div className="space-y-4 min-w-0">
               <MeetingCard brief={brief} tz={tz} now={now} />
               <Waiting data={data} inboxLoaded={inboxLoaded} variant="desktop" />
@@ -397,6 +409,7 @@ export function TodayView({ variant, children }: { variant: "phone" | "desktop";
             </div>
           </div>
         )}
+        {!(brief && data) && below}
       </div>
     );
   }
