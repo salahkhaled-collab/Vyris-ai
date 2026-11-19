@@ -6,7 +6,7 @@ import { Panel } from "@/components/ui/Panel";
 import { useUser } from "@/lib/user-context";
 import { cn } from "@/lib/utils";
 import {
-  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X, Home,
+  GripVertical, Target, GitBranch, AlertTriangle, TrendingUp, FolderKanban, Plus, X,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -23,9 +23,8 @@ import { BetsCard } from "@/components/dashboard/BetsCard";
 import { RisksCard } from "@/components/dashboard/RisksCard";
 import { ProjectsCard } from "@/components/dashboard/ProjectsCard";
 import { GetStartedCard } from "@/components/dashboard/GetStartedCard";
-import { TodayCard } from "@/components/dashboard/TodayCard";
 import { CommitmentsCard } from "@/components/dashboard/CommitmentsCard";
-import { MobileToday } from "@/components/dashboard/MobileToday";
+import { TodayView, useGreeting } from "@/components/dashboard/TodayView";
 import { useIsMobile } from "@/lib/use-is-mobile";
 import { computeProgress } from "@/lib/okr";
 
@@ -220,6 +219,7 @@ export default function DashboardPage() {
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving" | "error">("idle");
   const isMobile = useIsMobile();
+  const hello = useGreeting();
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const seq = useRef(0);
   const dirty = useRef(false);
@@ -291,9 +291,9 @@ export default function DashboardPage() {
     // Phones get the Today screen: the brief, the next meeting, who's waiting.
     return (
       <main className="flex-1 overflow-y-auto scroll-thin px-4 pt-4 space-y-4">
-        <MobileToday>
+        <TodayView variant="phone">
           <GetStartedCard />
-        </MobileToday>
+        </TodayView>
         <CommitmentsCard />
       </main>
     );
@@ -303,17 +303,17 @@ export default function DashboardPage() {
   return (
     <>
       <Topbar
-        eyebrow="Overview"
-        title="Home"
-        titleIcon={Home}
+        eyebrow={hello.date}
+        title={hello.title}
         statusText={
           status === "saving" ? "Saving layout..." : status === "error" ? "Couldn't save layout" : undefined
         }
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8">
-        <GetStartedCard />
-        <TodayCard />
+        <TodayView variant="desktop">
+          <GetStartedCard />
+        </TodayView>
         <CommitmentsCard />
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs text-muted">
