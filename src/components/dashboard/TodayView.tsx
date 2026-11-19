@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Bell, Check, TrendingDown, X } from "lucide-react";
 import type { MorningBrief } from "@/lib/morning-brief";
-import { dateLabel, doneKey, firstName, focusTone, greeting, initials, nextMeeting, senderName, startsIn, type Tone } from "@/lib/today-view";
+import { dateLabel, doneKey, firstName, focusTone, greeting, initials, nextMeeting, remindersToday, senderName, startsIn, type Tone } from "@/lib/today-view";
 import { dayIn } from "@/lib/commitments";
 import { openAskVyris } from "@/lib/ask-vyris";
 import { pushSupport, currentEndpoint } from "@/lib/push-client";
@@ -159,7 +159,7 @@ function FocusCard({ brief, done, toggle }: { brief: MorningBrief; done: Set<num
           {brief.allClear
             ? "A clear day"
             : brief.focus.length
-              ? `${brief.focus.length} thing${brief.focus.length === 1 ? "" : "s"} that matter today`
+              ? `${brief.focus.length} ${brief.focus.length === 1 ? "thing that matters" : "things that matter"} today`
               : "Nothing urgent today"}
         </h2>
         <p className="text-xs text-muted">
@@ -262,6 +262,33 @@ function MeetingCard({ brief, tz, now }: { brief: MorningBrief; tz: string; now:
           Open calendar
         </Link>
       </div>
+    </section>
+  );
+}
+
+/** The user's own reminders for today ("Pay rent at 3"), apart from meetings. */
+function RemindersCard({ brief, tz }: { brief: MorningBrief; tz: string }) {
+  const items = remindersToday(brief.meetings);
+  if (items.length === 0) return null;
+  return (
+    <section aria-label="Reminders today" className="rounded-[20px] border border-line bg-panel p-4 space-y-2">
+      <div className="flex items-center justify-between">
+        <h2 className="font-display font-semibold text-[17px]">Reminders today</h2>
+        <Link href="/calendar" className="text-[13px] font-medium text-brass">
+          Calendar
+        </Link>
+      </div>
+      <ul className="space-y-1.5">
+        {items.slice(0, 6).map((r, i) => (
+          <li key={`${i}-${r.title}`} className="flex items-center gap-2.5 text-sm min-w-0">
+            <Bell className="w-4 h-4 text-[#a4561b] shrink-0" strokeWidth={1.75} />
+            <span className="text-xs text-muted w-16 shrink-0">{r.allDay ? "Today" : timeParts(r.start, tz).join(" ")}</span>
+            <span dir="auto" className="truncate">
+              {r.title}
+            </span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -404,6 +431,7 @@ export function TodayView({
             </div>
             <div className="space-y-4 min-w-0">
               <MeetingCard brief={brief} tz={tz} now={now} />
+              <RemindersCard brief={brief} tz={tz} />
               <Waiting data={data} inboxLoaded={inboxLoaded} variant="desktop" />
               <PushNudge />
             </div>
@@ -442,6 +470,7 @@ export function TodayView({
         <>
           <FocusCard brief={brief} done={done} toggle={toggle} />
           <MeetingCard brief={brief} tz={tz} now={now} />
+          <RemindersCard brief={brief} tz={tz} />
           <Waiting data={data} inboxLoaded={inboxLoaded} variant="phone" />
         </>
       )}

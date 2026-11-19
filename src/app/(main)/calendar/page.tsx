@@ -6,13 +6,25 @@ import { connectGoogle } from "@/lib/google-connect";
 import { Topbar } from "@/components/layout/Topbar";
 import { Panel } from "@/components/ui/Panel";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, X, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Plus, X, Trash2, Bell, Users } from "lucide-react";
 
 interface CalEvent {
   id: string;
   date: string | null;
   time: string;
   title: string;
+  /** Meeting (other people or a video link) or the user's own reminder. */
+  kind?: "meeting" | "reminder";
+}
+
+/** Small marker so a reminder never reads as a meeting. */
+function KindDot({ kind }: { kind?: CalEvent["kind"] }) {
+  return (
+    <span
+      aria-hidden
+      className={cn("inline-block w-1.5 h-1.5 rounded-full shrink-0", kind === "reminder" ? "bg-[#c07a2c]" : "bg-brass")}
+    />
+  );
 }
 
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -34,6 +46,7 @@ export default function CalendarPage() {
   const [formStartTime, setFormStartTime] = useState("");
   const [formEndTime, setFormEndTime] = useState("");
   const [formAllDay, setFormAllDay] = useState(false);
+  const [formKind, setFormKind] = useState<"reminder" | "meeting">("reminder");
   const [formError, setFormError] = useState<string | null>(null);
 
   const fetchEvents = useCallback(() => {
@@ -82,6 +95,7 @@ export default function CalendarPage() {
   function openAddModal(prefillDate?: string) {
     setFormTitle("");
     setFormAllDay(false);
+    setFormKind("reminder");
     setFormStartTime("");
     setFormEndTime("");
     setFormDate(prefillDate ?? new Date().toISOString().slice(0, 10));
@@ -98,6 +112,10 @@ export default function CalendarPage() {
     const startTime = formAllDay
       ? formDate
       : `${formDate}T${formStartTime || "09:00"}:00`;
+    if (!formAllDay && formKind === "reminder" && !formStartTime) {
+      setFormError("Pick a time for the reminder, or make it all day.");
+      return;
+    }
     const endTime = formAllDay
       ? formDate
       : `${formDate}T${formEndTime || formStartTime || "10:00"}:00`;
@@ -110,6 +128,7 @@ export default function CalendarPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          kind: formKind,
           title: formTitle.trim(),
           startTime,
           endTime,
@@ -260,8 +279,9 @@ export default function CalendarPage() {
                         </div>
                         <div className="mt-1 space-y-0.5">
                           {dayEvents.slice(0, 2).map((e) => (
-                            <div key={e.id} className="text-[10px] text-muted truncate">
-                              {e.title}
+                            <div key={e.id} className="flex items-center gap-1 text-[10px] text-muted min-w-0">
+                              <KindDot kind={e.kind} />
+                              <span className="truncate">{e.title}</span>
                             </div>
                           ))}
                           {dayEvents.length > 2 && (
@@ -302,9 +322,14 @@ export default function CalendarPage() {
                         key={e.id}
                         className="flex items-center justify-between gap-3 text-sm"
                       >
-                        <div className="flex gap-3">
-                          <span className="font-mono text-xs text-muted w-16">{e.time}</span>
-                          <span>{e.title}</span>
+                        <div className="flex items-center gap-3 min-w-0">
+                          <span className="font-mono text-xs text-muted w-16 shrink-0">{e.time}</span>
+                          {e.kind === "reminder" ? (
+                            <Bell className="w-3.5 h-3.5 text-[#a4561b] shrink-0" strokeWidth={1.75} aria-label="Reminder" />
+                          ) : (
+                            <Users className="w-3.5 h-3.5 text-brass shrink-0" strokeWidth={1.75} aria-label="Meeting" />
+                          )}
+                          <span dir="auto" className="truncate">{e.title}</span>
                         </div>
 
                         {confirmDeleteId === e.id ? (
@@ -352,16 +377,43 @@ export default function CalendarPage() {
                 <X className="w-4 h-4" strokeWidth={1.75} />
               </button>
 
-              <h3 className="font-display text-lg mb-4">Add event</h3>
+              <h3 className="font-display text-lg mb-4">Add to calendar</h3>
 
               <div className="space-y-3">
+                <div role="radiogroup" aria-label="Type" className="grid grid-cols-2 gap-1 p-1 rounded-lg bg-panel-2">
+                  {(
+                    [
+                      ["reminder", "Reminder", Bell],
+                      ["meeting", "Meeting", Users],
+                    ] as const
+                  ).map(([k, label, Icon]) => (
+                    <button
+                      key={k}
+                      role="radio"
+                      aria-checked={formKind === k}
+                      onClick={() => setFormKind(k)}
+                      className={cn(
+                        "flex items-center justify-center gap-1.5 py-1.5 rounded-md text-sm",
+                        formKind === k ? "bg-panel shadow-sm font-medium" : "text-muted"
+                      )}
+                    >
+                      <Icon className="w-3.5 h-3.5" strokeWidth={1.75} />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-muted -mt-1">
+                  {formKind === "reminder"
+                    ? "A nudge at a time, like \u201cPay rent\u201d. Google shows a pop-up then, and it doesn\u2019t block your calendar."
+                    : "Time blocked on your calendar, from start to end."}
+                </p>
                 <div>
                   <label className="text-xs text-muted block mb-1">Title</label>
                   <input dir="auto"
                     value={formTitle}
                     onChange={(e) => setFormTitle(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg border border-line text-sm"
-                    placeholder="Event title"
+                    placeholder={formKind === "reminder" ? "e.g. Pay rent" : "e.g. Call with Atlas"}
                   />
                 </div>
 
@@ -384,7 +436,19 @@ export default function CalendarPage() {
                   All day
                 </label>
 
-                {!formAllDay && (
+                {!formAllDay && formKind === "reminder" && (
+                  <div>
+                    <label className="text-xs text-muted block mb-1">Time</label>
+                    <input
+                      type="time"
+                      value={formStartTime}
+                      onChange={(e) => setFormStartTime(e.target.value)}
+                      className="w-full px-3 py-2 rounded-lg border border-line text-sm"
+                    />
+                  </div>
+                )}
+
+                {!formAllDay && formKind === "meeting" && (
                   <div className="flex gap-3">
                     <div className="flex-1">
                       <label className="text-xs text-muted block mb-1">Start</label>
@@ -414,7 +478,7 @@ export default function CalendarPage() {
                   disabled={saving}
                   className="w-full mt-2 px-4 py-2 rounded-lg text-sm font-medium bg-brass text-white disabled:opacity-50"
                 >
-                  {saving ? "Adding..." : "Add event"}
+                  {saving ? "Adding..." : formKind === "reminder" ? "Add reminder" : "Add meeting"}
                 </button>
               </div>
             </Panel>

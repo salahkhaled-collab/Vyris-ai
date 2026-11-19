@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { allDayEnd, parseEventInput } from "@/lib/calendar-events";
+import { addMinutesWallClock } from "@/lib/event-kind";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth-options";
 import { getGoogleAccessToken } from "@/lib/google-token";
@@ -29,7 +30,18 @@ export async function POST(req: NextRequest) {
   if ("error" in parsed) {
     return NextResponse.json({ error: "invalid_input", message: parsed.error }, { status: 400 });
   }
-  const { title, startTime, endTime, allDay, description, timeZone } = parsed;
+  const { kind, title, startTime, endTime, allDay, description, timeZone } = parsed;
+  // Reminders: a pop-up at the time, 15 minutes long, shown as free so they
+  // don't block the day. Both kinds are tagged so Vyris knows which is which.
+  const tag = { extendedProperties: { private: { vyrisKind: kind } } };
+  const reminderExtras =
+    kind === "reminder"
+      ? {
+          transparency: "transparent",
+          reminders: allDay ? { useDefault: true } : { useDefault: false, overrides: [{ method: "popup", minutes: 0 }] },
+        }
+      : {};
+  const timedEnd = kind === "reminder" ? addMinutesWallClock(startTime, 15) : endTime ?? startTime;
 
   // Google needs a timezone for wall-clock times ("2026-11-10T10:00:00") and an
   // exclusive end date for all-day events (a one-day event ends the next day).
@@ -39,12 +51,16 @@ export async function POST(req: NextRequest) {
         description,
         start: { date: startTime.slice(0, 10) },
         end: { date: allDayEnd(startTime.slice(0, 10), (endTime ?? startTime).slice(0, 10)) },
+        ...tag,
+        ...reminderExtras,
       }
     : {
         summary: title,
         description,
         start: { dateTime: startTime, ...(timeZone ? { timeZone } : {}) },
-        end: { dateTime: endTime ?? startTime, ...(timeZone ? { timeZone } : {}) },
+        end: { dateTime: timedEnd, ...(timeZone ? { timeZone } : {}) },
+        ...tag,
+        ...reminderExtras,
       };
 
   try {

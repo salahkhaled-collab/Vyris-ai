@@ -17,6 +17,7 @@ interface MeetingEvent extends CalendarItem {
   meta: string;
   attendees: string[];
   videoLink: string | null;
+  kind?: "meeting" | "reminder";
 }
 
 function dayLabel(iso: string): string {
@@ -66,7 +67,10 @@ export default function MeetingsPage() {
 
   const conflicts = useMemo(() => findConflicts(events ?? []), [events]);
 
-  const grouped = (events ?? []).reduce<Record<string, MeetingEvent[]>>((acc, e) => {
+  // Reminders ("Pay rent") live on the Calendar page, not in the meetings list.
+  // Focus time and overlaps still see everything that blocks the day.
+  const meetingsOnly = (events ?? []).filter((e) => e.kind !== "reminder");
+  const grouped = meetingsOnly.reduce<Record<string, MeetingEvent[]>>((acc, e) => {
     if (!e.date) return acc;
     const key = new Date(e.date).toDateString();
     (acc[key] ??= []).push(e);
@@ -82,7 +86,7 @@ export default function MeetingsPage() {
       <Topbar
         eyebrow="Operations"
         title="Meetings"
-        statusText={events ? `${events.length} this week` : undefined}
+        statusText={events ? `${meetingsOnly.length} this week` : undefined}
       />
 
       <main className="flex-1 overflow-y-auto scroll-thin px-6 lg:px-10 py-8 space-y-6">

@@ -61,9 +61,16 @@ export function focusTone(kind: BriefFocus["kind"]): Tone {
 export function nextMeeting(meetings: BriefMeeting[] | null, now: Date): BriefMeeting | null {
   if (!meetings) return null;
   const timed = meetings
-    .filter((m) => !m.allDay && !Number.isNaN(new Date(m.start).getTime()))
+    .filter((m) => m.kind !== "reminder" && !m.allDay && !Number.isNaN(new Date(m.start).getTime()))
     .sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
   return timed.find((m) => new Date(m.start).getTime() + 60 * 60_000 > now.getTime()) ?? null;
+}
+
+/** Today's reminders, timed ones in order, all-day ones first. */
+export function remindersToday(meetings: BriefMeeting[] | null): BriefMeeting[] {
+  return (meetings ?? [])
+    .filter((m) => m.kind === "reminder")
+    .sort((a, b) => (a.allDay === b.allDay ? new Date(a.start).getTime() - new Date(b.start).getTime() : a.allDay ? -1 : 1));
 }
 
 /** "in 2 hours", "in 25 min", "now". */
